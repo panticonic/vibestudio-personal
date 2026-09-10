@@ -1,0 +1,315 @@
+{
+  "name": "@workspace-extensions/browser-data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "vibestudio": {
+    "displayName": "Browser Data",
+    "icon": "./assets/icon.svg",
+    "entry": "index.ts",
+    "sourcemap": true,
+    "authority": {
+      "provides": [],
+      "serviceRequests": [
+        {
+          "protocol": "vibestudio.browser-data.v1",
+          "availability": "required"
+        },
+        {
+          "protocol": "vibestudio.channel.v1",
+          "availability": "required"
+        }
+      ],
+      "requests": [
+        {
+          "capability": "userland:workers/browser-data/browser-data.delete#*",
+          "resource": {
+            "kind": "prefix",
+            "prefix": "browser-data:do:workers/browser-data:BrowserDataDO:"
+          },
+          "tier": "gated",
+          "evidence": "bounded-dynamic"
+        },
+        {
+          "capability": "userland:workers/browser-data/browser-data.write#*",
+          "resource": {
+            "kind": "prefix",
+            "prefix": "browser-data:do:workers/browser-data:BrowserDataDO:"
+          },
+          "tier": "gated",
+          "evidence": "bounded-dynamic"
+        },
+        {
+          "capability": "context.boundary",
+          "resource": {
+            "kind": "prefix",
+            "prefix": "context"
+          },
+          "tier": "critical",
+          "evidence": "bounded-dynamic"
+        },
+        {
+          "capability": "service:browserEnvironment.listImportHosts",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.listImportAcquisitionOptions",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.beginImportAcquisition",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.releaseImportSource",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.listImportSources",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.previewImportSource",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.startImportRead",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.nextImportFrame",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.cancelImportRead",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.listImportOpenTabs",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.previewSensitiveImport",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.startSensitiveImport",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.observeSensitiveImport",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "service:browserEnvironment.cancelSensitiveImport",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "subagents.create",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "workspace-service:browser.data",
+          "resource": {
+            "kind": "prefix",
+            "prefix": "do:workers/browser-data:BrowserDataDO:"
+          },
+          "tier": "gated",
+          "evidence": "bounded-dynamic"
+        },
+        {
+          "capability": "workspace-service:channel",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "workspace-service:models",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "workspace-service:workspace.state",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "workspace.runtime-state.inspect",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "workspace.runtime-state.manage",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        },
+        {
+          "capability": "workspace-service:channel",
+          "resource": {
+            "kind": "prefix",
+            "prefix": "do:workers/pubsub-channel:PubSubChannel:"
+          },
+          "tier": "gated",
+          "evidence": "bounded-dynamic",
+          "packages": [
+            "@workspace/collection-orchestration"
+          ]
+        }
+      ]
+    },
+    "extension": {
+      "activationEvents": [
+        "*"
+      ],
+      "providerContracts": {
+        "browserData": {
+          "methods": [
+            "getBrowserEnvironment",
+            "listImportHosts",
+            "listImportAcquisitionOptions",
+            "beginImportAcquisition",
+            "releaseImportSource",
+            "listImportSources",
+            "previewImport",
+            "previewSensitiveImport",
+            "startImport",
+            "startSensitiveImport",
+            "observeSensitiveImport",
+            "cancelSensitiveImport",
+            "openBrowserPrivacyManager",
+            "cancelImport",
+            "resumeImport",
+            "getImportJob",
+            "listImportJobs",
+            "listOpenTabs",
+            "openTabsAsPanels",
+            "getSitePreferences",
+            "setSiteZoom",
+            "getBookmarks",
+            "addBookmark",
+            "updateBookmark",
+            "deleteBookmark",
+            "moveBookmark",
+            "searchBookmarks",
+            "getHistory",
+            "deleteHistoryEntry",
+            "deleteHistoryRange",
+            "clearAllHistory",
+            "searchHistory",
+            "searchHistoryForAutocomplete",
+            "recordHistoryVisit",
+            "updateHistoryTitle",
+            "getSearchEngines",
+            "setDefaultEngine",
+            "listDownloadRecords",
+            "upsertDownloadRecord",
+            "putPageFavicon",
+            "getPageFavicon",
+            "exportBookmarks"
+          ]
+        }
+      },
+      "methodAuthority": {}
+    }
+  },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*",
+    "@vibestudio/browser-data": "workspace:*",
+    "@vibestudio/browser-import": "workspace:*",
+    "@workspace/collection-orchestration": "workspace:*"
+  }
+}
