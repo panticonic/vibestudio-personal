@@ -1,0 +1,64 @@
+/**
+ * Data-access helpers for the Browser Migration & State panel.
+ *
+ * Every call goes through the `@workspace-extensions/browser-data` extension.
+ * Public browser records use the installed provider. Sensitive review returns
+ * aggregates only, and one explicit start-import intent owns its user-facing
+ * gate; observing and cancelling that durable operation are not separately
+ * gated. Protected records are rendered and changed only in the host-owned
+ * privacy manager. `useAsync` normalizes denied and unavailable calls so the UI
+ * stays legible instead of crashing.
+ */
+import { useCallback, useEffect, useRef, useState } from "react";
+import { browserData } from "@workspace/runtime";
+import { type AsyncState, classifyError } from "./format";
+
+export { browserData };
+export {
+  classifyError,
+  relativeTime,
+  mask,
+  DATA_TYPES,
+  prettyHost,
+  prettyPath,
+  plural,
+} from "./format";
+export type { AsyncState, AsyncStatus } from "./format";
+
+/** Run `fn` whenever `deps` change; expose status + a manual `reload`. */
+export function useAsync<T>(
+  fn: () => Promise<T>,
+  deps: ReadonlyArray<unknown>
+): {
+  state: AsyncState<T>;
+  reload: () => void;
+} {
+  const [state, setState] = useState<AsyncState<T>>({ status: "idle" });
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  const run = useCallback(() => {
+    setState((prev) => ({ status: "loading", data: prev.data }));
+    fnRef
+      .current()
+      .then((data) => {
+        if (alive.current) setState({ status: "ready", data });
+      })
+      .catch((err) => {
+        if (!alive.current) return;
+        const { status, message } = classifyError(err);
+        setState({ status, error: message });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  useEffect(run, [run]);
+  return { state, reload: run };
+}

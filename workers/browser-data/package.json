@@ -1,0 +1,68 @@
+{
+  "name": "@workspace-workers/browser-data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "vibestudio": {
+    "title": "Browser Data",
+    "icon": "🌐",
+    "kind": "worker",
+    "entry": "index.ts",
+    "durable": {
+      "classes": [
+        {
+          "className": "BrowserDataDO",
+          "rpcSchema": "vibestudio.browser-data.v1"
+        }
+      ]
+    },
+    "authority": {
+      "provides": [
+        {
+          "name": "browser-data.write",
+          "title": "Change browser data",
+          "action": "change persistent browser data",
+          "tier": "gated",
+          "sensitivity": "write",
+          "resourceType": "browser-data",
+          "presentation": {
+            "domain": "web",
+            "verb": "manage"
+          },
+          "notability": "everyday",
+          "grantScopes": [
+            "once",
+            "version"
+          ]
+        },
+        {
+          "name": "browser-data.delete",
+          "title": "Delete browser data",
+          "action": "delete persistent browser data",
+          "tier": "gated",
+          "sensitivity": "destructive",
+          "resourceType": "browser-data",
+          "presentation": {
+            "domain": "web",
+            "verb": "manage"
+          },
+          "notability": "headline",
+          "grantScopes": [
+            "once"
+          ]
+        }
+      ],
+      "requests": []
+    }
+  },
+  "dependencies": {
+    "@vibestudio/browser-data": "workspace:*",
+    "@vibestudio/service-schemas": "workspace:*",
+    "@workspace/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@vibestudio/durable": "workspace:*",
+    "@vibestudio/rpc": "workspace:*",
+    "vitest": "^3.2.7"
+  }
+}

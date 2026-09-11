@@ -1,0 +1,92 @@
+# Getting started
+
+The first-run chat opens directly in the transcript. The agent reads
+[SKILL.md](SKILL.md), gives a short welcome, and renders
+[SetupHub.tsx](SetupHub.tsx) inline with the stable ID
+`onboarding-setup-overview`. The component displays its panel-scope cache and
+refreshes capability-owner state on mount. Onboarding does not install an
+action bar.
+
+## Run the setup projection
+
+Render the base-owned setup hub by path with no leading `client_eval` and no
+snapshot props. In a non-panel client,
+summarize blocking and attention states concisely and mention that all other
+configuration is optional. A missing owner for a capability shipped in base is
+unavailable, not installable.
+
+The component loads installed capability definitions and statuses directly.
+**Add workspace** opens the client's workspace creation surface,
+including exact local candidates selected with `--template-checkout`. The host
+owns their inspection and acquisition; do not inspect a local candidate through
+its remote Git URL. Creating a workspace keeps the Personal onboarding
+conversation in place.
+
+## Handle a choice
+
+The user message contains an `interaction` object. Through `client_eval`,
+statically import `executeOnboardingSelection` from
+`@workspace-skills/onboarding` and pass the complete structured object, then
+follow an unhandled owner target. The function performs validated About, panel,
+and shell navigation. This is the only selection route; the visible sentence
+is for people and transcript replay, not dispatch.
+
+Panel navigation focuses the destination and waits for application readiness.
+It includes the committed `panelId` and reports `readiness: "ready"`. An
+`unconfirmed` result means the slot was committed but readiness failed; it
+includes the structured failure, so do not retry the open while readiness is
+uncertain.
+
+Owner workflows remain authoritative:
+
+- Google and GitHub setup/checks use their dedicated skill helpers.
+- Browser migration uses `extensions/browser-data/SKILL.md`.
+- Alternative search setup uses `skills/web-research/SKILL.md`; Codex agents
+  use subscription search and other agents use DuckDuckGo without setup.
+- Recurring worker methods, exact inline agent evals, and agent prompts use
+  `skills/automations/SKILL.md`; help shape and launch the active definition,
+  whose chat pill exposes inspection and controls.
+- Model/provider and agent-default changes use model settings.
+- Device and remote controls open the typed shell connection surface.
+- Credential inspection/revocation and agent grants open their distinct About
+  pages.
+
+The client runs from the authenticated user's private System workspace and
+shows that user's private Personal workspace alongside ordinary shared
+workspaces. Workspace membership uses explicit `admin` and `member` roles;
+those roles are distinct from the authenticated account's `accountRole` and
+do not make Personal or System shareable.
+
+The component handles refresh and connection checks directly and caches the
+result in panel scope. After any external workflow outcome, render the setup
+hub by path with the same stable ID and no snapshot props. The update replaces
+and bumps the card; its render revision triggers a fresh owner read.
+
+## Continue from intent
+
+Ready-now choices begin work directly. For example, a PDF choice asks for the
+document or starts an ingestion task; it never creates a PDF setup flow.
+Likewise, **Schedule recurring work** begins the Automations owner workflow: it
+chooses a deterministic method, a model-free inline eval in an existing agent,
+or an agent prompt; selects an interval or timezone-aware cron cadence plus any
+time/run/natural-completion boundary; resolves the exact target; and launches
+it. The user can immediately inspect and control it from either the running
+chat pill or the Automations panel; opening the panel alone does not complete
+the request.
+Channel and project configuration is disclosed only when the user chooses that
+channel or project goal.
+
+Use the owner’s trusted workflow UI for OAuth, credential entry, browser
+imports, and other side effects. A self-contained setup workflow uses
+`inline_ui` and calls its trusted helpers directly; it does not return choices
+to the agent for translation into eval code. Use `feedback_custom` only when
+the agent truly needs structured input for later reasoning. One setup
+selection produces one cohesive owner workflow; do not chain small feedback
+forms for access, provider, browser, or permission choices that can be shown
+together or derived from a recommended default.
+
+Template inspection reviews exact source for a new workspace; it does not
+apply trust or provider settings to the current workspace. Any resulting unit
+or capability admission uses the new workspace's protected approval flow.
+Do not duplicate that approval in `feedback_custom`, chat, inline UI, or an
+action bar.
