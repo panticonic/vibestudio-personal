@@ -75,6 +75,7 @@ template:
     - about/permissions
     - extensions/browser-data
     - packages/collection-orchestration
+    - panels/tour
     - skills/automations
     - skills/github
     - skills/memory

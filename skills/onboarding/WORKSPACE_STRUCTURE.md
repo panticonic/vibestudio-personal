@@ -147,25 +147,27 @@ For branch-aware declarations, import approvals, startup auto-import, and
 credentialed private repo retries, see
 [EXTERNAL_GIT_PROJECTS.md](EXTERNAL_GIT_PROJECTS.md).
 
-## Source distributions and live workspaces
+## Workspace templates and live workspaces
 
-Base, Personal and System are separate self-contained source distributions.
+Base, Personal and System are separate Git repositories containing workspace
+templates. Personal and System declare Base as a dependency in their own
+`meta/vibestudio.yml`.
 Base supplies common agentic functionality; Personal supplies normal personal
 work and browser-data services; System supplies the native client and system
 workflows. Each user has their own non-shareable Personal and System workspace.
 Other workspaces can have explicit members. No running Base workspace is needed.
 
-1. The host acquires and verifies the selected distribution's exact URL, ref,
+1. The host acquires and verifies the selected template's exact URL, ref,
    commit and snapshot. The host contains no fallback workspace source.
-2. It imports those repositories through exact `vcs.importSnapshot` work units
-   with explicit repository and file identities.
-3. It builds and activates that distribution's manifest, including its declared
-   `gad.workspace` source provider.
-4. It keeps upstream identity and source baselines for explicit source comparison
-   and merge. Optional templates use exact inspection and create their own
-   workspace; they do not become installed layers in another workspace.
+2. It recursively acquires declared dependencies and merges their inventories
+   and manifests beneath the selected template.
+3. It imports the composed repositories through exact `vcs.importSnapshot`
+   work units, then builds and activates the resulting manifest.
+4. It keeps dependency identity in `meta/vibestudio.yml`. When the workspace is
+   published as another template, inherited repositories are excluded and the
+   dependency declarations remain.
 
-A fresh development or system-test instance uses those same distribution and
+A fresh development or system-test instance uses those same template and
 bootstrap contracts. Editing a live workspace changes that workspace's semantic
 source; publishing or suggesting those changes is explicit and never mirrors
 them into a host checkout.
