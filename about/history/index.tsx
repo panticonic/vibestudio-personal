@@ -16,11 +16,11 @@ import {
   AboutPage,
   AboutThemeRoot,
   Section,
-} from "../../packages/about-shared/ui";
+} from "@workspace/about-shared/ui";
 import {
   useAsyncResource,
   useRecordActions,
-} from "../../packages/about-shared/asyncState";
+} from "@workspace/about-shared/asyncState";
 
 function HistoryPage() {
   const [query, setQuery] = useState("");

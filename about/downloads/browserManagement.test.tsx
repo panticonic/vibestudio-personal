@@ -20,7 +20,7 @@ const browserData = vi.hoisted(() => ({
   revealDownload: vi.fn(),
 }));
 vi.mock("@workspace/runtime", () => ({ browserData }));
-vi.mock("../../packages/about-shared/ui", () => ({
+vi.mock("@workspace/about-shared/ui", () => ({
   AboutThemeRoot: ({ children }: { children: ReactNode }) => (
     <Theme>{children}</Theme>
   ),

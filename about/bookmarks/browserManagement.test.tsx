@@ -17,7 +17,7 @@ const browserData = vi.hoisted(() => ({
   deleteBookmark: vi.fn(),
 }));
 vi.mock("@workspace/runtime", () => ({ browserData, openPanel: vi.fn() }));
-vi.mock("../../packages/about-shared/ui", () => ({
+vi.mock("@workspace/about-shared/ui", () => ({
   AboutThemeRoot: ({ children }: { children: ReactNode }) => (
     <Theme>{children}</Theme>
   ),

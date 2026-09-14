@@ -8,11 +8,11 @@ import {
   Text,
 } from "@radix-ui/themes";
 import { browserData } from "@workspace/runtime";
-import { AboutPage, AboutThemeRoot } from "../../packages/about-shared/ui";
+import { AboutPage, AboutThemeRoot } from "@workspace/about-shared/ui";
 import {
   useAsyncResource,
   useRecordActions,
-} from "../../packages/about-shared/asyncState";
+} from "@workspace/about-shared/asyncState";
 
 const readDownloads = () => browserData.listDownloads();
 const sizeFormat = new Intl.NumberFormat(undefined, {

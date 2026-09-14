@@ -1,4 +1,4 @@
-import { SilentAgentWorker } from "../silent-agent-worker/index.js";
+import { SilentAgentWorker } from "@workspace-workers/silent-agent-worker";
 import { installMessageTypes, type AgentToolExecutionContext } from "@workspace/agentic-do";
 import { driveMerge, type ParticipantDescriptor } from "@workspace/harness";
 import type { AgentTool } from "@workspace/pi-core";
