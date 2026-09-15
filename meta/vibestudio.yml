@@ -62,7 +62,6 @@ template:
   dependencies:
     - url: git+https://github.com/panticonic/vibestudio-base.git
   description: Your private projects, browsing and personal work.
-  files: []
   name: Personal
   repositories:
     - about/bookmarks
