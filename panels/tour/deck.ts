@@ -1,99 +1,62 @@
-/** Scene order, titles and presenter notes for the Vibestudio Tour. */
-
+/** Scene ids are persisted panel state. */
 export interface SceneMeta {
   id: string;
   title: string;
-  /** Talking points shown in the presenter-notes drawer (press N). */
   notes: string[];
 }
-
 export const DECK: readonly SceneMeta[] = [
   {
     id: "opening",
-    title: "An integrated personal software environment",
+    title: "Make it yours",
     notes: [
-      "Thesis: one environment for apps, agents, automations, and data. Software is cheap now — trust and changeability are the hard parts.",
-      "Everything dotted-underlined is live. Drag, click, flip — invite the audience to ask for a number.",
-      "This deck is a panel in the workspace. We’ll come back to why that matters.",
-      "Press F for presentation mode, ? for keys.",
+      "This tour is an editable workspace panel. The action opens an unsent Quickfire request.",
+      "On desktop, selecting text and choosing Ask about also opens the panel's agent.",
     ],
   },
   {
     id: "continuum",
-    title: "The continuum",
+    title: "Apps meet agents",
     notes: [
-      "This is the product idea. Drag slowly from left to right and narrate each anchor.",
-      "One substrate: same source, VCS, builds, channels and authority at every point.",
-      "The data anchor: agents can query the app’s DO state or read its managed files without the user present — same authority gates apply.",
-      "Proof by example: at the ‘reshape’ anchor, press ‘Reshape this deck’. The real command overlay opens bound to this panel with the request pre-filled. Send it, keep presenting, come back.",
+      "The agentic UI continuum is the architectural starting point: apps expose state and tools to agents, and agents can bring interactive UI into conversations. The launch task is illustrative.",
+      "This includes third-party code, so integration needs explicit authority boundaries. Security enables the continuum; it is not a separate feature bolted onto it.",
     ],
   },
   {
-    id: "tiers",
-    title: "Host and userland",
+    id: "workspaces",
+    title: "Separate spaces",
     notes: [
-      "The host’s list is the whole host. Everything else is userland — including the agents.",
-      "Trust follows declared identity and review, not folder position.",
-      "Flip the agent lens: an agent can reach exactly what any DO can, through the same gates.",
+      "The switcher is illustrative. Show the real workspace switcher when presenting.",
+      "Workspaces own their software, data, and panel trees. Some host settings and provider configuration are shared.",
+      "Workspace separation and capability checks play different roles. Being in a workspace is not blanket permission to use all of its capabilities; a navigation link is not an access grant.",
     ],
   },
   {
-    id: "authority",
-    title: "Authority",
+    id: "websites",
+    title: "Websites & apps",
     notes: [
-      "Identity says who, the host decides what. Userland can render a prompt but can’t approve itself.",
-      "Press Run and let it travel; it only stops where a human is needed. Run it twice with a version grant, then edit the source — the grant no longer matches.",
-      "See it live opens the real Permissions ledger — itself a gated effect.",
-      "Critical effects (cross-context read, publish to main) never get standing grants.",
-      "Missions wait for a human decision outside their closure — there is no timeout.",
-    ],
-  },
-  {
-    id: "credentials",
-    title: "Credentials",
-    notes: [
-      "Contrast: secrets in the agent’s env vs. secrets in the host, audience-bound.",
-      "Press the injection button: on the left, it exfiltrates; on the right, there’s nothing to leak.",
-      "Content integrity latch: reading outside content pauses standing authority until reviewed.",
+      "Connection and capability approval are separate decisions. A website does not inherit workspace permissions.",
+      "Installing an app template creates a workspace with reviewed source; it does not import arbitrary website code.",
+      "Use a verified example for live demonstrations. Do not promise arbitrary websites or unverified model flows.",
     ],
   },
   {
     id: "automations",
-    title: "Automations",
+    title: "Let it repeat",
     notes: [
-      "Edit the sentence live; the closure on the right is what the user reviews.",
-      "Drafts are inert; only the user approves. One request → one definition.",
-      "Three forms: agent prompt, inline eval (no model call), DO method.",
-    ],
-  },
-  {
-    id: "provenance",
-    title: "Provenance & VCS",
-    notes: [
-      "Click lines; switch walks. Cause → cohort → rejections is the abduction pattern.",
-      "Rejections are the strongest evidence: a human said no.",
-      "Semantic VCS: net-effect merge by coordinate; Git is a projection; main is protected.",
-    ],
-  },
-  {
-    id: "runtime",
-    title: "Runtime & builds",
-    notes: [
-      "The measured card reads hostPerformance.snapshot live: workerd RSS ÷ isolates hosted. Press ‘Use … per isolate’ to feed the real number into the sentence.",
-      "Sentence defaults are order-of-magnitude; drag to your own measurements before making a claim.",
-      "The interesting part: a sandbox per task/subagent/panel becomes a non-decision.",
-      "Builds run from the exact working head; activation fails closed.",
+      "The schedule is illustrative and creates nothing.",
+      "Automations can run prompts, scripts, or service methods. Show the real definition and controls in Automations. Unattended access remains scoped.",
     ],
   },
   {
     id: "closing",
-    title: "Recap",
-    notes: ["Land the phrase: an integrated personal software environment — small host, explicit authority, software you can change while you use it.", "Offer: change the deck for the next audience."],
+    title: "Your first tool",
+    notes: [
+      "Finish with one useful request. The action opens an unsent prompt for a new tool in this workspace.",
+      "Ordinary workspace review and permission rules still apply.",
+    ],
   },
 ];
-
 export function sceneIndex(id: string | undefined): number {
-  if (!id) return 0;
   const index = DECK.findIndex((scene) => scene.id === id);
   return index < 0 ? 0 : index;
 }

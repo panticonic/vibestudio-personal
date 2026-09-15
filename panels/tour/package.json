@@ -11,7 +11,7 @@
     "title": "Vibestudio Tour",
     "icon": "./assets/icon.svg",
     "entry": "index.tsx",
-    "description": "An explorable presentation of how Vibestudio works and why",
+    "description": "A short interactive tour of workspaces, connected websites, and software you can shape by asking",
     "exposeModules": [
       "react",
       "react/jsx-runtime",

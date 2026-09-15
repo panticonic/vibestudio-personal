@@ -1,63 +1,64 @@
 ---
 name: tour-panel
-description: Extend or restyle the Vibestudio Tour deck (panels/tour) — an explorable presentation of the system.
+description: Extend or restyle the concise Vibestudio product tour.
 ---
 
 # Vibestudio Tour
 
-`panels/tour` is a presentation panel framing Vibestudio as an integrated
-personal software environment: one scene at a time, keyboard navigable, with
-live widgets (draggable numbers, word pickers, step-through
-simulations) instead of bullet points. It explains the host/userland split,
-authority, credentials, the build→reshape→embed→JIT-UI continuum, automations,
-provenance/VCS, and the containerless runtime.
+The tour introduces six ideas: editable software, the agentic UI continuum,
+separate workspaces, connected websites versus installed app workspaces,
+recurring work, and creating a first tool.
 
-## Shape
+Make the motivation explicit: apps with agents and agents with interfaces form
+a continuum that includes third-party code. Workspace boundaries and scoped
+capabilities enable that integration. Keep this connection visible in the tour,
+not only in presenter notes; do not imply that navigation grants authority.
 
-- `deck.ts` — scene order, titles and presenter notes. Scene ids are the
-  public contract; `index.tsx` maps ids to components.
-- `scenes/*.tsx` — one component per scene, wrapped in `SceneFrame`
-  (`lib/Scene.tsx`: eyebrow, title, lede, figures, choice chips).
-- `lib/Tangle.tsx` — `Tangle` (draggable number inside prose) and `Pick`
-  (clickable word). Use them wherever a claim has a knob the audience might
-  want to turn.
-- `lib/schedule.ts` — cadence → cron → next runs for the automations scene.
-- `tour.css` — all styling; only Radix/foundation tokens, so light/dark and the
-  app accent follow the host.
+## Design
 
-State args `{ scene?: string; notes?: boolean }` hold the current scene and
-whether presenter notes are open. The panel persists them so a reopened panel
-resumes, and an agent can drive the deck with
-`panel.stateArgs.setForPanel(id, { scene: "continuum" })`. Unknown ids fall
-back to the opening scene. `useAgentState("tour", …)` exposes the current
-position to `parent.state()`.
+Keep one idea and one main interactive figure per scene. Use short,
+concrete copy and generous spacing. Put technical qualifications in presenter
+notes rather than adding more cards. Label examples as illustrations.
+Do not present adjustable numbers as measured performance or simulated
+permissions as live approvals.
 
-## Adding a scene
+## Source
 
-1. Add `{ id, title, notes }` to `DECK` in `deck.ts` at the desired position.
-2. Create `scenes/<Name>.tsx` using `SceneFrame`; keep one idea per scene and
-   prefer a live figure over prose.
-3. Map the id in the `switch` in `index.tsx`. Eyebrows are `"NN · Topic"` and
-   must match the rail number.
-4. Keep illustrative records labelled as illustrative (see `Provenance.tsx`);
-   never present them as live workspace data. Numbers that are placeholders
-   must be `Tangle`s the presenter can change.
-5. Run `deck.test.ts` and `lib/schedule.test.ts`; open the panel from the exact
-   context (`openPanel("panels/tour", { contextId, ref: "ctx:<id>" })`) and read
-   it visually before publishing.
+- `deck.ts`: scene order, short navigation labels, and presenter notes.
+- `scenes/ProductTour.tsx`: the six compact scene components and their shared
+  agent action. Requests open the panel's real command conversation, unsent.
+- `lib/Scene.tsx`: shared frame, figure, and accessible choice controls.
+- `lib/Tangle.tsx`: keyboard-accessible draggable numbers.
+- `index.tsx`: persisted scene/notes, host commands, keyboard navigation,
+  presentation mode, and Back/Next controls shared across screen sizes.
+- `tour.css`: responsive layout using Radix/foundation tokens.
 
-Host commands (`Tour › Next scene / Previous scene / Toggle presenter notes /
-Toggle presentation mode / Restart`) and keys (`←/→`, `PageUp/Down`,
-`Home/End`, `1–9`, `N` notes, `F` presentation mode, `?` key help) are owned by
-`index.tsx`. Presentation mode and the help overlay are ephemeral; scene and
-notes persist.
+Scene ids are public persisted state. Unknown ids return to the opening.
+Keep the deck registry, component switch, and numbered eyebrows aligned.
+`useAgentState("tour", …)` exposes the current position to agents.
+Scene and notes persist; presentation mode and key help are ephemeral.
 
-The Continuum scene's “Reshape this deck” button calls
-`panel.openCommandAgent({ prompt })` (the shell's real Quickfire overlay bound to
-this panel); the Runtime scene reads `hostPerformance.snapshot` (open method)
-for its measured card. Both degrade to explanatory text on hosts without the
-feature. `lib/live.tsx` (`LiveLink`) opens the real panel a scene is about (Permissions,
-Credentials, Automations, Workspace history, a chat). Opening a panel is the
-gated `workspace.runtime-state.manage` effect declared in `package.json`; keep
-that request if you add more live links, and don't add broader authority for
-decoration.
+## Claims and actions
+
+Connected websites request access in the workspace where they are viewed.
+Connection consent does not grant every capability. Installed app templates
+create dedicated workspaces with reviewed source. Do not conflate the two.
+Some provider configuration and host settings are shared across workspaces.
+
+Use the existing panel command conversation for real requests. For navigation,
+use `buildPanelLink` from `@workspace/runtime`: for example,
+`buildPanelLink("about/automations", { workspace: { role: "system" } })`.
+This selects the user's System workspace without knowing its ID or name.
+Do not broaden authority for illustrations.
+
+## Verification
+
+Run `deck.test.ts` and `lib/schedule.test.ts` through the host's Personal
+userland test configuration. Inspect every scene at phone and desktop widths
+in light and dark themes; check overflow, navigation, choices, and the time
+control's arrow keys. Preview host stubs can verify layout and local behavior,
+but do not establish live command delivery or persisted state.
+
+Before publishing, open the panel from the exact context
+(`openPanel("panels/tour", { contextId, ref: "ctx:<id>" })`) and verify it
+visually in its actual host, including a real command-conversation action.

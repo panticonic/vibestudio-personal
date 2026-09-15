@@ -26,15 +26,14 @@ import {
 } from "@workspace/react";
 import { VibestudioLogo } from "@workspace/ui/brand";
 import { DECK, sceneIndex } from "./deck";
-import { Opening } from "./scenes/Opening";
-import { TwoTiers } from "./scenes/TwoTiers";
-import { Authority } from "./scenes/Authority";
-import { Credentials } from "./scenes/Credentials";
-import { Continuum } from "./scenes/Continuum";
-import { Automations } from "./scenes/Automations";
-import { Provenance } from "./scenes/Provenance";
-import { Runtime } from "./scenes/Runtime";
-import { Closing } from "./scenes/Closing";
+import {
+  Opening,
+  Workspaces,
+  Websites,
+  Continuum,
+  Automations,
+  Closing,
+} from "./scenes/ProductTour";
 
 type TourStateArgs = {
   scene?: string;
@@ -95,16 +94,26 @@ function Tour() {
       update({ scene: target.id });
       stageRef.current?.scrollTo({ top: 0 });
     },
-    [scene.id, update]
+    [scene.id, update],
   );
-  const goTo = useCallback((id: string) => goToIndex(sceneIndex(id)), [goToIndex]);
-  const toggleNotes = useCallback(() => update({ notes: !notesOpen }), [notesOpen, update]);
+  const toggleNotes = useCallback(
+    () => update({ notes: !notesOpen }),
+    [notesOpen, update],
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey
+      )
+        return;
       if (isEditableTarget(event.target)) return;
-      const onButton = event.target instanceof HTMLElement && event.target.tagName === "BUTTON";
+      const onButton =
+        event.target instanceof HTMLElement &&
+        event.target.tagName === "BUTTON";
       switch (event.key) {
         case "ArrowRight":
         case "PageDown":
@@ -143,7 +152,12 @@ function Tour() {
           break;
         default: {
           const digit = Number(event.key);
-          if (Number.isInteger(digit) && digit >= 1 && digit <= SCENE_COUNT_KEYS) goToIndex(digit - 1);
+          if (
+            Number.isInteger(digit) &&
+            digit >= 1 &&
+            digit <= SCENE_COUNT_KEYS
+          )
+            goToIndex(digit - 1);
           else return;
         }
       }
@@ -170,23 +184,20 @@ function Tour() {
       notesOpen,
       presentationMode: present,
     }),
-    [index, notesOpen, present, scene.id, scene.title]
+    [index, notesOpen, present, scene.id, scene.title],
   );
   useAgentState("tour", agentState);
 
   let content;
   switch (scene.id) {
     case "opening":
-      content = <Opening goTo={goTo} />;
+      content = <Opening />;
       break;
-    case "tiers":
-      content = <TwoTiers />;
+    case "workspaces":
+      content = <Workspaces />;
       break;
-    case "authority":
-      content = <Authority />;
-      break;
-    case "credentials":
-      content = <Credentials />;
+    case "websites":
+      content = <Websites />;
       break;
     case "continuum":
       content = <Continuum />;
@@ -194,14 +205,8 @@ function Tour() {
     case "automations":
       content = <Automations />;
       break;
-    case "provenance":
-      content = <Provenance />;
-      break;
-    case "runtime":
-      content = <Runtime />;
-      break;
     default:
-      content = <Closing goTo={goTo} />;
+      content = <Closing />;
   }
 
   return (
@@ -228,13 +233,16 @@ function Tour() {
               aria-current={i === index}
               onClick={() => goToIndex(i)}
             >
-              <span className="tour-rail__num">{String(i + 1).padStart(2, "0")}</span>
+              <span className="tour-rail__num">
+                {String(i + 1).padStart(2, "0")}
+              </span>
               <span>{item.title}</span>
             </button>
           ))}
           <div className="tour-rail__spacer" />
           <div className="tour-rail__hint">
-            <kbd>←</kbd> <kbd>→</kbd> scenes · <kbd>F</kbd> present · <kbd>N</kbd> notes · <kbd>?</kbd> keys
+            <kbd>←</kbd> <kbd>→</kbd> scenes · <kbd>F</kbd> present ·{" "}
+            <kbd>N</kbd> notes · <kbd>?</kbd> keys
           </div>
         </nav>
       )}
@@ -242,6 +250,26 @@ function Tour() {
         <div className="tour-stage" ref={stageRef} key={scene.id}>
           {content}
         </div>
+        <nav className="tour-footer" aria-label="Tour navigation">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => goToIndex(index - 1)}
+            disabled={index === 0}
+          >
+            Back
+          </button>
+          <span aria-live="polite">
+            {index + 1} / {DECK.length}
+          </span>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => goToIndex(index === DECK.length - 1 ? 0 : index + 1)}
+          >
+            {index === DECK.length - 1 ? "Restart" : "Next"}
+          </button>
+        </nav>
         {notesOpen ? (
           <aside className="notes" aria-label="Presenter notes">
             <div className="notes__title">
@@ -255,15 +283,25 @@ function Tour() {
           </aside>
         ) : null}
       </div>
-      {present ? (
-        <div className="tour-present-exit" aria-hidden="true">
-          <kbd>Esc</kbd> exits presentation mode
-        </div>
-      ) : null}
       {helpOpen ? (
-        <div className="help" role="dialog" aria-label="Keyboard shortcuts" onClick={() => setHelpOpen(false)}>
-          <div className="help__card" onClick={(event) => event.stopPropagation()}>
+        <div
+          className="help"
+          role="dialog"
+          aria-label="Keyboard shortcuts"
+          onClick={() => setHelpOpen(false)}
+        >
+          <div
+            className="help__card"
+            onClick={(event) => event.stopPropagation()}
+          >
             <h2>Keys</h2>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setHelpOpen(false)}
+            >
+              Close
+            </button>
             <dl>
               <dt>
                 <kbd>→</kbd> <kbd>Space</kbd> <kbd>PgDn</kbd>
@@ -295,31 +333,9 @@ function Tour() {
               <dd>this overlay</dd>
             </dl>
             <p className="box__sub" style={{ marginBottom: 0, marginTop: 12 }}>
-              Dotted numbers drag; dotted words cycle; arrow keys work on both.
+              Drag the dotted time, or focus it and use the arrow keys.
             </p>
           </div>
-        </div>
-      ) : null}
-      {isMobile ? (
-        <div className="tour-dots">
-          <button type="button" className="tour-dots__btn" onClick={() => goToIndex(index - 1)} disabled={index === 0} aria-label="Previous scene">
-            ‹
-          </button>
-          <div className="tour-dots__track" role="tablist" aria-label="Scenes">
-            {DECK.map((item, i) => (
-              <button
-                key={item.id}
-                type="button"
-                className="tour-dots__dot"
-                aria-current={i === index}
-                aria-label={item.title}
-                onClick={() => goToIndex(i)}
-              />
-            ))}
-          </div>
-          <button type="button" className="tour-dots__btn" onClick={() => goToIndex(index + 1)} disabled={index === DECK.length - 1} aria-label="Next scene">
-            ›
-          </button>
         </div>
       ) : null}
     </div>
