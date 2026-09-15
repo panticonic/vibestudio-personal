@@ -295,6 +295,8 @@
             "updateHistoryTitle",
             "getSearchEngines",
             "setDefaultEngine",
+            "saveSearchEngine",
+            "getSearchSuggestions",
             "listDownloadRecords",
             "upsertDownloadRecord",
             "putPageFavicon",

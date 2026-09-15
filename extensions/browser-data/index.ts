@@ -117,6 +117,8 @@ const BROWSER_DATA_STORE_METHODS = [
   "updateHistoryTitle",
   "getSearchEngines",
   "setDefaultEngine",
+  "saveSearchEngine",
+  "getSearchSuggestions",
   "listDownloadRecords",
   "upsertDownloadRecord",
   "putPageFavicon",

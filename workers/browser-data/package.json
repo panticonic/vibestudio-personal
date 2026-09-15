@@ -52,10 +52,21 @@
           ]
         }
       ],
-      "requests": []
+      "requests": [
+        {
+          "capability": "network.response.read",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        }
+      ]
     }
   },
   "dependencies": {
+    "@vibestudio/shared": "workspace:*",
     "@vibestudio/browser-data": "workspace:*",
     "@vibestudio/service-schemas": "workspace:*",
     "@workspace/runtime": "workspace:*"

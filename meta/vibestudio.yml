@@ -71,6 +71,7 @@ template:
     - about/credentials
     - about/downloads
     - about/history
+    - about/search
     - about/local-models
     - about/permissions
     - extensions/browser-data

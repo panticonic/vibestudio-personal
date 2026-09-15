@@ -1,0 +1,39 @@
+{
+  "name": "@workspace-about/search",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "vibestudio": {
+    "title": "Web Search",
+    "icon": "⌕",
+    "description": "Choose search providers and configure search suggestions",
+    "authority": {
+      "provides": [],
+      "requests": [
+        {
+          "capability": "workspace-service:browser.data",
+          "resource": {
+            "kind": "prefix",
+            "prefix": ""
+          },
+          "tier": "gated",
+          "evidence": "intentional-broad"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "@vibestudio/browser-data": "workspace:*",
+    "@vibestudio/shared": "workspace:*",
+    "@workspace/about-shared": "workspace:*",
+    "@workspace/runtime": "workspace:*",
+    "@radix-ui/themes": "^3.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

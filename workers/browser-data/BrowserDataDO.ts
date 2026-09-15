@@ -5,6 +5,14 @@ import {
 } from "@workspace/runtime/worker/kernel";
 import { browserProductMethods } from "@vibestudio/service-schemas/browserData";
 import {
+  BUILTIN_SEARCH_ENGINES,
+  webSearchUrl,
+  parseWebSearchSuggestions,
+  type WebSearchEngineInput,
+} from "@vibestudio/shared/webSearch";
+import { browserUrlFromEntry } from "@vibestudio/shared/webAddress";
+import type { StoredSearchEngine } from "@vibestudio/browser-data";
+import {
   BROWSER_PRODUCT_SCHEMA,
   MAX_PAGE_FAVICON_BYTES,
   detectFaviconMimeType,
@@ -12,7 +20,6 @@ import {
   type BrowserDownloadRecord,
   type ImportedBookmark,
   type ImportedHistoryEntry,
-  type ImportedHistoryVisit,
   type ImportedSearchEngine,
   type ImportJobWrite,
   type PageFavicon,
@@ -66,7 +73,9 @@ function encodeFaviconData(value: unknown): string | null {
   return btoa(binary);
 }
 
-function encodeFaviconRow(row: Record<string, unknown>): Record<string, unknown> {
+function encodeFaviconRow(
+  row: Record<string, unknown>,
+): Record<string, unknown> {
   return {
     ...row,
     image_data: encodeFaviconData(row["image_data"]),
@@ -75,7 +84,7 @@ function encodeFaviconRow(row: Record<string, unknown>): Record<string, unknown>
 
 export class BrowserDataDO extends DurableObjectBase {
   static override rpcMethods = browserProductMethods;
-  static override schemaVersion = 1;
+  static override schemaVersion = 2;
 
   constructor(ctx: DurableObjectContext, env: unknown) {
     super(ctx, env);
@@ -96,6 +105,7 @@ export class BrowserDataDO extends DurableObjectBase {
       "bookmarks",
       "history",
       "history_visits",
+      "history_import_summaries",
       "search_engines",
       "import_jobs",
       "import_batches",
@@ -113,7 +123,13 @@ export class BrowserDataDO extends DurableObjectBase {
       throw new Error("Download metadata URL must use HTTP(S)");
     }
     if (
-      !["progressing", "paused", "completed", "cancelled", "interrupted"].includes(record.state)
+      ![
+        "progressing",
+        "paused",
+        "completed",
+        "cancelled",
+        "interrupted",
+      ].includes(record.state)
     ) {
       throw new Error("Download metadata state is invalid");
     }
@@ -139,20 +155,25 @@ export class BrowserDataDO extends DurableObjectBase {
       Math.max(0, record.totalBytes),
       record.state,
       record.startedAt,
-      record.updatedAt
+      record.updatedAt,
     );
   }
 
   @schemaRpc()
   listDownloadRecords(hostId: string): BrowserDownloadRecord[] {
     return this.sql
-      .exec(`SELECT * FROM downloads WHERE host_id = ? ORDER BY updated_at DESC LIMIT 500`, hostId)
+      .exec(
+        `SELECT * FROM downloads WHERE host_id = ? ORDER BY updated_at DESC LIMIT 500`,
+        hostId,
+      )
       .toArray()
       .map((row) => ({
         id: String(row["id"]),
         environmentKey: String(row["environment_key"]),
         hostId: String(row["host_id"]),
-        ...(row["panel_id"] == null ? {} : { panelId: String(row["panel_id"]) }),
+        ...(row["panel_id"] == null
+          ? {}
+          : { panelId: String(row["panel_id"]) }),
         ...(row["origin"] == null ? {} : { origin: String(row["origin"]) }),
         url: String(row["url"]),
         filename: String(row["filename"]),
@@ -168,10 +189,17 @@ export class BrowserDataDO extends DurableObjectBase {
   // -- Site preferences ----------------------------------------------------
 
   @schemaRpc()
-  getSitePreferences(origin: string): { origin: string; zoomFactor: number; updatedAt?: number } {
+  getSitePreferences(origin: string): {
+    origin: string;
+    zoomFactor: number;
+    updatedAt?: number;
+  } {
     const normalized = this.requireHttpOrigin(origin);
     const row = this.sql
-      .exec(`SELECT zoom_factor, updated_at FROM site_preferences WHERE origin = ?`, normalized)
+      .exec(
+        `SELECT zoom_factor, updated_at FROM site_preferences WHERE origin = ?`,
+        normalized,
+      )
       .toArray()[0];
     return {
       origin: normalized,
@@ -194,7 +222,7 @@ export class BrowserDataDO extends DurableObjectBase {
          updated_at = excluded.updated_at`,
       normalized,
       zoomFactor,
-      Date.now()
+      Date.now(),
     );
   }
 
@@ -203,13 +231,18 @@ export class BrowserDataDO extends DurableObjectBase {
   @schemaRpc()
   getBookmarks(folderPath = "/") {
     return this.sql
-      .exec(`SELECT * FROM bookmarks WHERE folder_path = ? ORDER BY position, title`, folderPath)
+      .exec(
+        `SELECT * FROM bookmarks WHERE folder_path = ? ORDER BY position, title`,
+        folderPath,
+      )
       .toArray();
   }
 
   @schemaRpc()
   getAllBookmarks() {
-    return this.sql.exec(`SELECT * FROM bookmarks ORDER BY folder_path, position, title`).toArray();
+    return this.sql
+      .exec(`SELECT * FROM bookmarks ORDER BY folder_path, position, title`)
+      .toArray();
   }
 
   @schemaRpc()
@@ -233,7 +266,7 @@ export class BrowserDataDO extends DurableObjectBase {
         bookmark.dateAdded ?? Date.now(),
         bookmark.position ?? 0,
         bookmark.tags ?? null,
-        bookmark.keyword ?? null
+        bookmark.keyword ?? null,
       )
       .one();
     return Number(result["id"]);
@@ -253,7 +286,7 @@ export class BrowserDataDO extends DurableObjectBase {
         position: "position",
       },
       partial,
-      { date_modified: Date.now() }
+      { date_modified: Date.now() },
     );
   }
 
@@ -269,7 +302,7 @@ export class BrowserDataDO extends DurableObjectBase {
       folderPath,
       position,
       Date.now(),
-      id
+      id,
     );
   }
 
@@ -282,7 +315,7 @@ export class BrowserDataDO extends DurableObjectBase {
          WHERE title LIKE ? ESCAPE '\\' OR url LIKE ? ESCAPE '\\'
          ORDER BY date_modified DESC, date_added DESC LIMIT 100`,
         pattern,
-        pattern
+        pattern,
       )
       .toArray();
   }
@@ -312,12 +345,15 @@ export class BrowserDataDO extends DurableObjectBase {
       clauses.push("last_visit <= ?");
       params.push(query.endTime);
     }
-    params.push(Math.min(Math.max(query.limit ?? 100, 1), 1_000), Math.max(query.offset ?? 0, 0));
+    params.push(
+      Math.min(Math.max(query.limit ?? 100, 1), 1_000),
+      Math.max(query.offset ?? 0, 0),
+    );
     return this.sql
       .exec(
         `SELECT * FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
          ORDER BY last_visit DESC LIMIT ? OFFSET ?`,
-        ...params
+        ...params,
       )
       .toArray();
   }
@@ -329,13 +365,42 @@ export class BrowserDataDO extends DurableObjectBase {
 
   @schemaRpc()
   searchHistoryForAutocomplete(query: { query: string; limit?: number }) {
-    return this.getHistory({ search: query.query, limit: query.limit ?? 20 });
+    const needle = this.escapeLikePattern(query.query.trim());
+    return this.sql
+      .exec(
+        `SELECT * FROM history
+       WHERE url LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\'
+       ORDER BY CASE
+         WHEN lower(title) = lower(?) OR lower(url) = lower(?) THEN 3
+         WHEN title LIKE ? ESCAPE '\\' OR url LIKE ? ESCAPE '\\'
+           OR url LIKE ? ESCAPE '\\' OR url LIKE ? ESCAPE '\\'
+           OR url LIKE ? ESCAPE '\\' OR url LIKE ? ESCAPE '\\' THEN 2
+         ELSE 1 END DESC,
+       (visit_count + typed_count * 2) DESC, last_visit DESC, url
+       LIMIT ?`,
+        `%${needle}%`,
+        `%${needle}%`,
+        query.query.trim(),
+        query.query.trim(),
+        `${needle}%`,
+        `${needle}%`,
+        `https://${needle}%`,
+        `http://${needle}%`,
+        `https://www.${needle}%`,
+        `http://www.${needle}%`,
+        Math.min(Math.max(query.limit ?? 20, 1), 100),
+      )
+      .toArray();
   }
 
   @schemaRpc()
   recordHistoryVisit(request: RecordHistoryVisitRequest): number {
     const visitTime = request.visitTime ?? Date.now();
-    const historyId = this.ensureHistoryRow(request.url, request.title, visitTime);
+    const historyId = this.ensureHistoryRow(
+      request.url,
+      request.title,
+      visitTime,
+    );
     this.insertHistoryVisit(historyId, {
       visitTime,
       transition: request.transition ?? "link",
@@ -353,7 +418,11 @@ export class BrowserDataDO extends DurableObjectBase {
   updateHistoryTitle(request: UpdateHistoryTitleRequest): void {
     const title = request.title.trim();
     if (!title) return;
-    this.sql.exec(`UPDATE history SET title = ? WHERE url = ?`, title, request.url);
+    this.sql.exec(
+      `UPDATE history SET title = ? WHERE url = ?`,
+      title,
+      request.url,
+    );
     this.sql.exec(
       `UPDATE history_visits SET title = ? WHERE id = (
          SELECT history_visits.id
@@ -365,7 +434,7 @@ export class BrowserDataDO extends DurableObjectBase {
        )`,
       title,
       request.url,
-      request.observedAt ?? Date.now()
+      request.observedAt ?? Date.now(),
     );
   }
 
@@ -379,9 +448,13 @@ export class BrowserDataDO extends DurableObjectBase {
     const affected = this.sql
       .exec(
         `SELECT DISTINCT history_id AS id FROM history_visits
-         WHERE visit_time >= ? AND visit_time <= ?`,
+         WHERE visit_time >= ? AND visit_time <= ?
+         UNION SELECT history_id AS id FROM history_import_summaries
+         WHERE first_visit <= ? AND last_visit >= ?`,
         start,
-        end
+        end,
+        end,
+        start,
       )
       .toArray()
       .map((row) => Number(row["id"]));
@@ -389,13 +462,25 @@ export class BrowserDataDO extends DurableObjectBase {
       this.sql.exec(
         `DELETE FROM history_visits WHERE visit_time >= ? AND visit_time <= ?`,
         start,
-        end
+        end,
+      );
+      // An aggregate cannot say which visits fell inside the interval. Drop
+      // the overlapping observation and retain only remaining exact visits.
+      this.sql.exec(
+        `DELETE FROM history_import_summaries WHERE first_visit <= ? AND last_visit >= ?`,
+        end,
+        start,
       );
       for (const id of affected) {
         const count = Number(
           this.sql
-            .exec(`SELECT COUNT(*) AS count FROM history_visits WHERE history_id = ?`, id)
-            .one()["count"]
+            .exec(
+              `SELECT (SELECT COUNT(*) FROM history_visits WHERE history_id = ?)
+              + (SELECT COUNT(*) FROM history_import_summaries WHERE history_id = ?) AS count`,
+              id,
+              id,
+            )
+            .one()["count"],
         );
         if (count === 0) this.sql.exec(`DELETE FROM history WHERE id = ?`, id);
         else this.recomputeHistorySummary(id);
@@ -414,15 +499,150 @@ export class BrowserDataDO extends DurableObjectBase {
 
   @schemaRpc()
   getSearchEngines() {
-    return this.sql.exec(`SELECT * FROM search_engines ORDER BY is_default DESC, name`).toArray();
+    return this.sql
+      .exec<StoredSearchEngine>(
+        `SELECT * FROM search_engines ORDER BY is_default DESC, name`,
+      )
+      .toArray();
+  }
+
+  protected override afterSchemaReady(): void {
+    // Seed choices once, preserving an imported or explicitly selected default.
+    const hasDefault =
+      this.sql
+        .exec(`SELECT id FROM search_engines WHERE is_default = 1`)
+        .toArray().length > 0;
+    for (const engine of BUILTIN_SEARCH_ENGINES) {
+      this.sql.exec(
+        `INSERT INTO search_engines (name, keyword, search_url, suggest_url, is_default, import_key)
+        SELECT ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM search_engines WHERE search_url = ? OR import_key = ?)`,
+        engine.name,
+        engine.keyword ?? null,
+        engine.searchUrl,
+        engine.suggestUrl ?? null,
+        !hasDefault && engine.isDefault ? 1 : 0,
+        `builtin:${engine.name}`,
+        engine.searchUrl,
+        `builtin:${engine.name}`,
+      );
+    }
   }
 
   @schemaRpc()
   setDefaultEngine(id: number): void {
+    if (
+      !this.sql.exec(`SELECT id FROM search_engines WHERE id = ?`, id).toArray()
+        .length
+    ) {
+      throw new Error("Search provider no longer exists");
+    }
     this.ctx.storage.transactionSync(() => {
       this.sql.exec(`UPDATE search_engines SET is_default = 0`);
-      this.sql.exec(`UPDATE search_engines SET is_default = 1 WHERE id = ?`, id);
+      this.sql.exec(
+        `UPDATE search_engines SET is_default = 1 WHERE id = ?`,
+        id,
+      );
     });
+  }
+
+  @schemaRpc()
+  saveSearchEngine(engine: WebSearchEngineInput & { id?: number }): number {
+    if (!engine.name.trim()) throw new Error("Search provider needs a name");
+    webSearchUrl(engine.searchUrl, "test");
+    if (engine.suggestUrl) webSearchUrl(engine.suggestUrl, "test");
+    return this.ctx.storage.transactionSync(() => {
+      if (
+        engine.id !== undefined &&
+        !this.sql
+          .exec(`SELECT id FROM search_engines WHERE id = ?`, engine.id)
+          .toArray().length
+      ) {
+        throw new Error("Search provider no longer exists");
+      }
+      if (engine.isDefault)
+        this.sql.exec(`UPDATE search_engines SET is_default = 0`);
+      const row = this.sql
+        .exec(
+          `INSERT INTO search_engines (id, name, keyword, search_url, suggest_url, is_default)
+        VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name, keyword = excluded.keyword, search_url = excluded.search_url,
+        suggest_url = excluded.suggest_url, is_default = excluded.is_default RETURNING id`,
+          engine.id ?? null,
+          engine.name.trim(),
+          engine.keyword?.trim() || null,
+          engine.searchUrl,
+          engine.suggestUrl || null,
+          engine.isDefault ? 1 : 0,
+        )
+        .toArray()[0];
+      return Number(row!["id"]);
+    });
+  }
+
+  @schemaRpc()
+  async getSearchSuggestions(query: string) {
+    const trimmed = query.trim();
+    // Address input belongs to local history. Do not send URLs or long agent prompts.
+    if (
+      trimmed.length < 2 ||
+      trimmed.length > 160 ||
+      /[\n\r/:@]/.test(trimmed) ||
+      browserUrlFromEntry(trimmed)
+    )
+      return [];
+    const engines = this.getSearchEngines();
+    const [keyword, ...words] = trimmed.split(/\s+/);
+    const keywordEngine = words.length
+      ? engines.find(
+          (entry) => entry.keyword?.toLowerCase() === keyword?.toLowerCase(),
+        )
+      : undefined;
+    const engine =
+      keywordEngine ?? engines.find((entry) => entry.is_default === 1);
+    if (!engine?.suggest_url) return [];
+    const response = await fetch(
+      webSearchUrl(
+        engine.suggest_url,
+        keywordEngine ? words.join(" ") : trimmed,
+      ),
+      {
+        signal: AbortSignal.timeout(1500),
+        credentials: "omit",
+        redirect: "error",
+      },
+    );
+    if (!response.ok || !response.body) return [];
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > 32_768) return [];
+        chunks.push(value);
+      }
+    } finally {
+      await reader.cancel();
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return parseWebSearchSuggestions(
+      JSON.parse(new TextDecoder().decode(bytes)),
+    ).map((title) => ({
+      url: webSearchUrl(engine.search_url, title),
+      title,
+      source: "search-suggestion" as const,
+      completionQuery: trimmed,
+      engineId: engine.id,
+      engineName: engine.name,
+      searchTemplate: engine.search_url,
+    }));
   }
 
   @schemaRpc()
@@ -433,7 +653,9 @@ export class BrowserDataDO extends DurableObjectBase {
       (page.protocol !== "http:" && page.protocol !== "https:") ||
       page.origin !== origin.origin
     ) {
-      throw new Error("Favicon page association must use one matching HTTP(S) origin");
+      throw new Error(
+        "Favicon page association must use one matching HTTP(S) origin",
+      );
     }
     if (!isFaviconMimeType(favicon.mimeType)) {
       throw new Error(`Unsupported favicon MIME type: ${favicon.mimeType}`);
@@ -443,7 +665,7 @@ export class BrowserDataDO extends DurableObjectBase {
     const detectedMimeType = detectFaviconMimeType(imageData);
     if (detectedMimeType !== favicon.mimeType) {
       throw new Error(
-        `Favicon bytes are ${detectedMimeType ?? "not a supported image"}, not ${favicon.mimeType}`
+        `Favicon bytes are ${detectedMimeType ?? "not a supported image"}, not ${favicon.mimeType}`,
       );
     }
     this.sql.exec(
@@ -462,7 +684,7 @@ export class BrowserDataDO extends DurableObjectBase {
       favicon.sourceUrl ?? null,
       imageData,
       favicon.mimeType,
-      favicon.updatedAt
+      favicon.updatedAt,
     );
   }
 
@@ -477,7 +699,7 @@ export class BrowserDataDO extends DurableObjectBase {
     const byOrigin = this.sql
       .exec(
         `SELECT * FROM page_favicons WHERE origin = ? ORDER BY updated_at DESC LIMIT 1`,
-        page.origin
+        page.origin,
       )
       .toArray()[0];
     return byOrigin ? encodeFaviconRow(byOrigin) : null;
@@ -513,13 +735,15 @@ export class BrowserDataDO extends DurableObjectBase {
       JSON.stringify(job.progress),
       JSON.stringify(job.warnings),
       job.error ?? null,
-      job.resumable ? 1 : 0
+      job.resumable ? 1 : 0,
     );
   }
 
   @schemaRpc()
   getImportJob(jobId: string) {
-    const row = this.sql.exec(`SELECT * FROM import_jobs WHERE job_id = ?`, jobId).toArray()[0];
+    const row = this.sql
+      .exec(`SELECT * FROM import_jobs WHERE job_id = ?`, jobId)
+      .toArray()[0];
     return row ? this.importJobRow(row) : null;
   }
 
@@ -540,7 +764,10 @@ export class BrowserDataDO extends DurableObjectBase {
     itemCount: number;
   }): { stored: boolean } {
     const existing = this.sql
-      .exec(`SELECT 1 FROM import_batches WHERE idempotency_key = ?`, input.idempotencyKey)
+      .exec(
+        `SELECT 1 FROM import_batches WHERE idempotency_key = ?`,
+        input.idempotencyKey,
+      )
       .toArray();
     if (existing.length > 0) return { stored: false };
     this.sql.exec(
@@ -552,16 +779,20 @@ export class BrowserDataDO extends DurableObjectBase {
       input.batchIndex,
       input.idempotencyKey,
       input.itemCount,
-      Date.now()
+      Date.now(),
     );
     return { stored: true };
   }
 
   @schemaRpc()
-  async addBookmarksBatch(bookmarks: ImportedBookmark[], meta: ImportSourceMeta): Promise<number> {
+  async addBookmarksBatch(
+    bookmarks: ImportedBookmark[],
+    meta: ImportSourceMeta,
+  ): Promise<number> {
     return this.runBatch(bookmarks.length, (index) => {
       const bookmark = bookmarks[index];
-      if (!bookmark) throw new Error(`Bookmark batch item ${index} is unavailable`);
+      if (!bookmark)
+        throw new Error(`Bookmark batch item ${index} is unavailable`);
       const folderPath = `/${bookmark.folder.join("/")}`.replace(/\/+/g, "/");
       const importKey = this.importKey("bookmark", meta.sourceId, [
         bookmark.sourceId ?? "",
@@ -589,19 +820,62 @@ export class BrowserDataDO extends DurableObjectBase {
         meta.sourceId,
         importKey,
         bookmark.tags?.join(",") ?? null,
-        bookmark.keyword ?? null
+        bookmark.keyword ?? null,
       );
     });
   }
 
   @schemaRpc()
-  async addHistoryBatch(entries: ImportedHistoryEntry[], meta: ImportSourceMeta): Promise<number> {
+  async addHistoryBatch(
+    entries: ImportedHistoryEntry[],
+    meta: ImportSourceMeta,
+  ): Promise<number> {
     return this.runBatch(entries.length, (index) => {
       const entry = entries[index];
       if (!entry) throw new Error(`History batch item ${index} is unavailable`);
-      const visits = this.importedVisitsForEntry(entry);
+      const visits = (entry.visits ?? []).filter(
+        (visit) => Number.isFinite(visit.visitTime) && visit.visitTime > 0,
+      );
+      const lastVisit = visits.reduce(
+        (latest, visit) => Math.max(latest, visit.visitTime),
+        Number.isFinite(entry.lastVisitTime) ? entry.lastVisitTime : 0,
+      );
+      if (lastVisit <= 0) return;
+      const firstVisit = visits.reduce(
+        (first, visit) => Math.min(first, visit.visitTime),
+        Math.min(
+          lastVisit,
+          entry.firstVisitTime && Number.isFinite(entry.firstVisitTime)
+            ? entry.firstVisitTime
+            : lastVisit,
+        ),
+      );
+      const historyId = this.ensureHistoryRow(
+        entry.url,
+        entry.title,
+        lastVisit,
+      );
+      this.sql.exec(
+        `INSERT INTO history_import_summaries
+        (history_id, source_id, visit_count, typed_count, first_visit, last_visit, title)
+        VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(history_id, source_id) DO UPDATE SET
+        visit_count = MAX(history_import_summaries.visit_count, excluded.visit_count),
+        typed_count = MAX(history_import_summaries.typed_count, excluded.typed_count),
+        first_visit = MIN(history_import_summaries.first_visit, excluded.first_visit),
+        last_visit = MAX(history_import_summaries.last_visit, excluded.last_visit),
+        title = CASE WHEN excluded.last_visit >= history_import_summaries.last_visit THEN excluded.title ELSE history_import_summaries.title END`,
+        historyId,
+        meta.sourceId,
+        Math.max(1, entry.visitCount ?? 0, visits.length),
+        Math.max(
+          entry.typedCount ?? 0,
+          visits.filter((visit) => visit.typed).length,
+        ),
+        firstVisit,
+        lastVisit,
+        entry.title ?? null,
+      );
       for (const visit of visits) {
-        const historyId = this.ensureHistoryRow(entry.url, entry.title, visit.visitTime);
         this.insertHistoryVisit(historyId, {
           visitTime: visit.visitTime,
           transition: visit.transition ?? entry.transition ?? "link",
@@ -611,24 +885,26 @@ export class BrowserDataDO extends DurableObjectBase {
           title: entry.title,
           typed: visit.typed ?? false,
         });
-        this.recomputeHistorySummary(historyId);
       }
+      this.recomputeHistorySummary(historyId);
     });
   }
 
   @schemaRpc()
   async addSearchEnginesBatch(
     engines: ImportedSearchEngine[],
-    meta: ImportSourceMeta
+    meta: ImportSourceMeta,
   ): Promise<number> {
     return this.runBatch(engines.length, (index) => {
       const engine = engines[index];
-      if (!engine) throw new Error(`Search-engine batch item ${index} is unavailable`);
+      if (!engine)
+        throw new Error(`Search-engine batch item ${index} is unavailable`);
       const importKey = this.importKey("search-engine", meta.sourceId, [
         engine.sourceId ?? "",
         engine.searchUrl,
       ]);
-      if (engine.isDefault) this.sql.exec(`UPDATE search_engines SET is_default = 0`);
+      if (engine.isDefault)
+        this.sql.exec(`UPDATE search_engines SET is_default = 0`);
       this.sql.exec(
         `INSERT INTO search_engines
           (name, keyword, search_url, suggest_url, favicon_url, is_default, source_id, import_key)
@@ -647,7 +923,7 @@ export class BrowserDataDO extends DurableObjectBase {
         engine.faviconUrl ?? null,
         engine.isDefault ? 1 : 0,
         meta.sourceId,
-        importKey
+        importKey,
       );
     });
   }
@@ -656,14 +932,19 @@ export class BrowserDataDO extends DurableObjectBase {
   async addFaviconsBatch(favicons: PageFavicon[]): Promise<number> {
     return this.runBatch(favicons.length, (index) => {
       const favicon = favicons[index];
-      if (!favicon) throw new Error(`Favicon batch item ${index} is unavailable`);
+      if (!favicon)
+        throw new Error(`Favicon batch item ${index} is unavailable`);
       return this.putPageFavicon(favicon);
     });
   }
 
   // -- Helpers -------------------------------------------------------------
 
-  private ensureHistoryRow(url: string, title: string | undefined, observedAt: number): number {
+  private ensureHistoryRow(
+    url: string,
+    title: string | undefined,
+    observedAt: number,
+  ): number {
     const row = this.sql
       .exec(
         `INSERT INTO history(url, title, visit_count, typed_count, first_visit, last_visit)
@@ -675,13 +956,16 @@ export class BrowserDataDO extends DurableObjectBase {
          RETURNING id`,
         url,
         title?.trim() || null,
-        observedAt
+        observedAt,
       )
       .one();
     return Number(row["id"]);
   }
 
-  private insertHistoryVisit(historyId: number, visit: HistoryVisitWrite): void {
+  private insertHistoryVisit(
+    historyId: number,
+    visit: HistoryVisitWrite,
+  ): void {
     this.sql.exec(
       `INSERT OR IGNORE INTO history_visits
         (history_id, visit_time, transition, source, import_source_id, panel_id, title, typed)
@@ -693,21 +977,32 @@ export class BrowserDataDO extends DurableObjectBase {
       visit.importSourceId,
       visit.panelId,
       visit.title ?? null,
-      visit.typed ? 1 : 0
+      visit.typed ? 1 : 0,
     );
   }
 
   private recomputeHistorySummary(historyId: number): void {
     this.sql.exec(
-      `UPDATE history SET
-         visit_count = (SELECT COUNT(*) FROM history_visits WHERE history_id = ?),
-         typed_count = (SELECT COALESCE(SUM(typed), 0) FROM history_visits WHERE history_id = ?),
-         first_visit = (SELECT MIN(visit_time) FROM history_visits WHERE history_id = ?),
-         last_visit = (SELECT MAX(visit_time) FROM history_visits WHERE history_id = ?),
+      `WITH observations AS (
+         SELECT import_source_id AS source_id, COUNT(*) AS visits, SUM(typed) AS typed,
+           MIN(visit_time) AS first, MAX(visit_time) AS last
+         FROM history_visits WHERE history_id = ? GROUP BY source, import_source_id
+         UNION ALL
+         SELECT source_id, visit_count, typed_count, first_visit, last_visit
+         FROM history_import_summaries WHERE history_id = ?
+       ), sources AS (
+         SELECT MAX(visits) AS visits, MAX(typed) AS typed, MIN(first) AS first, MAX(last) AS last
+         FROM observations GROUP BY source_id
+       ), titles AS (
+         SELECT title, visit_time AS time FROM history_visits WHERE history_id = ?
+         UNION ALL SELECT title, last_visit AS time FROM history_import_summaries WHERE history_id = ?
+       ) UPDATE history SET
+         visit_count = (SELECT COALESCE(SUM(visits), 0) FROM sources),
+         typed_count = (SELECT COALESCE(SUM(typed), 0) FROM sources),
+         first_visit = (SELECT MIN(first) FROM sources),
+         last_visit = (SELECT MAX(last) FROM sources),
          title = COALESCE(
-           (SELECT title FROM history_visits
-            WHERE history_id = ? AND title IS NOT NULL AND title != ''
-            ORDER BY visit_time DESC LIMIT 1),
+           (SELECT title FROM titles WHERE title IS NOT NULL AND title != '' ORDER BY time DESC LIMIT 1),
            title
          )
        WHERE id = ?`,
@@ -716,31 +1011,7 @@ export class BrowserDataDO extends DurableObjectBase {
       historyId,
       historyId,
       historyId,
-      historyId
     );
-  }
-
-  private importedVisitsForEntry(entry: ImportedHistoryEntry): ImportedHistoryVisit[] {
-    if (entry.visits?.length) {
-      return entry.visits
-        .filter((visit) => Number.isFinite(visit.visitTime) && visit.visitTime > 0)
-        .sort((a, b) => a.visitTime - b.visitTime);
-    }
-    if (!Number.isFinite(entry.lastVisitTime) || entry.lastVisitTime <= 0) return [];
-    const count = Math.max(1, entry.visitCount || 1);
-    const first =
-      entry.firstVisitTime && Number.isFinite(entry.firstVisitTime)
-        ? Math.min(entry.firstVisitTime, entry.lastVisitTime)
-        : entry.lastVisitTime;
-    if (count === 1 || first === entry.lastVisitTime) {
-      return [{ visitTime: entry.lastVisitTime, transition: entry.transition }];
-    }
-    const step = (entry.lastVisitTime - first) / (count - 1);
-    return Array.from({ length: count }, (_, index) => ({
-      visitTime: Math.round(first + step * index),
-      transition: entry.transition,
-      typed: index < (entry.typedCount ?? 0),
-    }));
   }
 
   private importJobRow(row: Record<string, unknown>) {
@@ -753,7 +1024,9 @@ export class BrowserDataDO extends DurableObjectBase {
       phase: String(row["phase"]),
       startedAt: Number(row["started_at"]),
       updatedAt: Number(row["updated_at"]),
-      ...(row["finished_at"] == null ? {} : { finishedAt: Number(row["finished_at"]) }),
+      ...(row["finished_at"] == null
+        ? {}
+        : { finishedAt: Number(row["finished_at"]) }),
       requestedDataTypes: this.parseStringArray(row["data_types"]),
       progress: this.parseJson(row["progress"], []),
       warnings: this.parseStringArray(row["warnings"]),
@@ -765,7 +1038,9 @@ export class BrowserDataDO extends DurableObjectBase {
   private httpOrigin(raw: string): string | null {
     try {
       const url = new URL(raw);
-      return url.protocol === "http:" || url.protocol === "https:" ? url.origin : null;
+      return url.protocol === "http:" || url.protocol === "https:"
+        ? url.origin
+        : null;
     } catch {
       return null;
     }
@@ -811,7 +1086,7 @@ export class BrowserDataDO extends DurableObjectBase {
     id: number,
     map: Record<string, string>,
     partial: Record<string, unknown>,
-    extra: Record<string, unknown> = {}
+    extra: Record<string, unknown> = {},
   ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
@@ -827,16 +1102,23 @@ export class BrowserDataDO extends DurableObjectBase {
     }
     if (sets.length === 0) return;
     values.push(id);
-    this.sql.exec(`UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`, ...values);
+    this.sql.exec(
+      `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`,
+      ...values,
+    );
   }
 
-  private async runBatch(total: number, apply: (index: number) => void): Promise<number> {
+  private async runBatch(
+    total: number,
+    apply: (index: number) => void,
+  ): Promise<number> {
     for (let start = 0; start < total; start += BATCH_SIZE) {
       const end = Math.min(start + BATCH_SIZE, total);
       this.ctx.storage.transactionSync(() => {
         for (let index = start; index < end; index += 1) apply(index);
       });
-      if (end < total) await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      if (end < total)
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
     return total;
   }
@@ -847,16 +1129,20 @@ export class BrowserDataDO extends DurableObjectBase {
 
   private executeSchema(
     schema: string,
-    sql: { exec(query: string, ...bindings: unknown[]): unknown } = this.sql
+    sql: { exec(query: string, ...bindings: unknown[]): unknown } = this.sql,
   ): void {
     let buffer: string[] = [];
     let inTrigger = false;
     for (const line of schema.split("\n")) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("/**") || trimmed.startsWith("*")) continue;
+      if (!trimmed || trimmed.startsWith("/**") || trimmed.startsWith("*"))
+        continue;
       if (/^CREATE TRIGGER\b/i.test(trimmed)) inTrigger = true;
       buffer.push(line);
-      if ((inTrigger && /^END;$/i.test(trimmed)) || (!inTrigger && trimmed.endsWith(";"))) {
+      if (
+        (inTrigger && /^END;$/i.test(trimmed)) ||
+        (!inTrigger && trimmed.endsWith(";"))
+      ) {
         sql.exec(buffer.join("\n"));
         buffer = [];
         inTrigger = false;

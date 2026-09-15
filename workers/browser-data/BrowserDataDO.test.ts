@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import {
@@ -51,7 +51,7 @@ describe("BrowserDataDO schema", () => {
       db.prepare(`SELECT singleton, version FROM _vibestudio_schema`).get(),
     ).toEqual({
       singleton: 1,
-      version: 1,
+      version: 2,
     });
     expect(
       db.prepare(`SELECT 1 FROM state WHERE key = 'schema_version'`).get(),
@@ -123,6 +123,78 @@ describe("BrowserDataDO schema", () => {
 });
 
 describe("BrowserDataDO canonical history", () => {
+  it("preserves aggregate imports without inventing visits, and reimport is idempotent", async () => {
+    const db = new DatabaseSync(":memory:");
+    const store = createBrowserDataDO(db);
+    const entries = [
+      {
+        url: "https://example.test/old",
+        title: "Old favorite",
+        visitCount: 120,
+        typedCount: 70,
+        lastVisitTime: 100,
+      },
+    ];
+    await store.addHistoryBatch(entries, { sourceId: "profile" });
+    await store.addHistoryBatch(entries, { sourceId: "profile" });
+    expect(
+      db.prepare("SELECT count(*) AS n FROM history_visits").get(),
+    ).toEqual({ n: 0 });
+    store.recordHistoryVisit({
+      url: entries[0]!.url,
+      visitTime: 200,
+      typed: true,
+    });
+    expect(store.getHistory({ limit: 1 })[0]).toMatchObject({
+      visit_count: 121,
+      typed_count: 71,
+      first_visit: 100,
+      last_visit: 200,
+    });
+    for (let index = 0; index < 65; index++)
+      store.recordHistoryVisit({
+        url: `https://example.test/recent-${index}`,
+        visitTime: 300 + index,
+      });
+    expect(
+      store.searchHistoryForAutocomplete({
+        query: "example.test",
+        limit: 1,
+      })[0],
+    ).toMatchObject({ url: entries[0]!.url });
+    store.deleteHistoryRange(90, 110);
+    expect(store.getHistory({ search: "/old" })[0]).toMatchObject({
+      visit_count: 1,
+      typed_count: 1,
+      first_visit: 200,
+    });
+  });
+
+  it("uses exact imported visits without counting their profile totals twice", async () => {
+    const db = new DatabaseSync(":memory:");
+    const store = createBrowserDataDO(db);
+    await store.addHistoryBatch(
+      [
+        {
+          url: "https://example.test/",
+          title: "Example",
+          visitCount: 10,
+          typedCount: 4,
+          lastVisitTime: 100,
+          visits: [{ visitTime: 90, typed: true }, { visitTime: 100 }],
+        },
+      ],
+      { sourceId: "profile" },
+    );
+    expect(store.getHistory({ limit: 1 })[0]).toMatchObject({
+      visit_count: 10,
+      typed_count: 4,
+      first_visit: 90,
+    });
+    expect(
+      db.prepare("SELECT count(*) AS n FROM history_visits").get(),
+    ).toEqual({ n: 2 });
+  });
   it("returns an empty history before any native visits or imports", () => {
     const db = new DatabaseSync(":memory:");
     const store = createBrowserDataDO(db);
@@ -167,6 +239,74 @@ describe("BrowserDataDO canonical history", () => {
       }),
     ]);
     db.close();
+  });
+});
+
+describe("BrowserDataDO search providers", () => {
+  it("seeds DuckDuckGo, preserves an imported default, and validates selection", async () => {
+    const store = createBrowserDataDO(new DatabaseSync(":memory:"));
+    expect(
+      store.getSearchEngines().find((engine) => engine.is_default)?.name,
+    ).toBe("DuckDuckGo");
+    await store.addSearchEnginesBatch(
+      [
+        {
+          name: "Custom",
+          searchUrl: "https://custom.test/?q=%s",
+          isDefault: true,
+        },
+      ],
+      { sourceId: "profile" },
+    );
+    expect(
+      store
+        .getSearchEngines()
+        .filter((engine) => engine.is_default)
+        .map((engine) => engine.name),
+    ).toEqual(["Custom"]);
+    expect(() => store.setDefaultEngine(9999)).toThrow("no longer exists");
+    expect(
+      store.getSearchEngines().find((engine) => engine.is_default)?.name,
+    ).toBe("Custom");
+    expect(() =>
+      store.saveSearchEngine({
+        name: "Unsafe",
+        searchUrl: "javascript:%s",
+        isDefault: true,
+      }),
+    ).toThrow();
+  });
+
+  it("fetches encoded OpenSearch completions and keeps addresses local", async () => {
+    const store = createBrowserDataDO(new DatabaseSync(":memory:"));
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            "coffee",
+            ["coffee beans", "coffee beans", "coffee shop"],
+          ]),
+        ),
+      );
+    try {
+      expect(await store.getSearchSuggestions("example.com/path")).toEqual([]);
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(await store.getSearchSuggestions("coffee")).toEqual([
+        expect.objectContaining({
+          title: "coffee beans",
+          source: "search-suggestion",
+          url: "https://duckduckgo.com/?q=coffee%20beans",
+        }),
+        expect.objectContaining({ title: "coffee shop" }),
+      ]);
+      expect(fetcher).toHaveBeenCalledWith(
+        "https://duckduckgo.com/ac/?q=coffee&type=list",
+        expect.objectContaining({ credentials: "omit" }),
+      );
+    } finally {
+      fetcher.mockRestore();
+    }
   });
 });
 
