@@ -28,6 +28,12 @@ A prompt action is an instruction for the future agent turn, not a message paylo
 
 An automation launched during an ongoing conversation continues with the current agent in that conversation by default. This keeps its results and notifications where the user asked for them and lets later wake-ups benefit from shared context. Omit `conversation` or use `conversation: { mode: "continue" }`; the tool binds the current channel and context itself.
 
+A run requested while this agent is busy waits in its durable turn queue.
+When no foreground work remains, use `suspend_turn` to yield to that work;
+do not poll for a run waiting behind your own turn. Model-free eval results
+appear directly in the conversation. User Stop also parks queued runs until
+explicit input resumes the agent.
+
 Use `conversation: { mode: "fresh" }` only when the automation is a genuinely separate topic or a long-running background task that should have its own context. For an interval of one hour or less, continue the existing conversation whenever the work benefits from shared context. If wake-ups may be more than one hour apart, shared context would still help, and the user's intent is unclear, ask whether they want the existing conversation or a fresh one before launching. The one-hour boundary is a product decision about conversational continuity and likely provider-cache reuse, not a reason to discard context the user asked to retain.
 
 ## Launch correctly

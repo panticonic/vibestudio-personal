@@ -38,6 +38,24 @@
       "provides": [],
       "requests": [
         {
+          "capability": "workspace-service:tour-sample",
+          "resource": {
+            "kind": "exact",
+            "key": "do:workers/tour-sample:TourSample:sample"
+          },
+          "tier": "gated",
+          "evidence": "exact"
+        },
+        {
+          "capability": "userland:workers/tour-sample/sample.read#*",
+          "resource": {
+            "kind": "exact",
+            "key": "tour-sample:do:workers/tour-sample:TourSample:sample"
+          },
+          "tier": "gated",
+          "evidence": "bounded-dynamic"
+        },
+        {
           "capability": "context.boundary",
           "resource": {
             "kind": "prefix",
@@ -62,6 +80,7 @@
     "@radix-ui/themes": "^3.3.0",
     "@vibestudio/shared": "workspace:*",
     "@workspace/react": "workspace:*",
+    "@workspace/agentic-chat": "workspace:*",
     "@workspace/runtime": "workspace:*",
     "@workspace/ui": "workspace:*",
     "react": "^19.0.0",

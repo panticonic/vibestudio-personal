@@ -1,0 +1,51 @@
+{
+  "name": "@workspace-workers/tour-sample",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "vibestudio": {
+    "title": "Tour sample",
+    "kind": "worker",
+    "entry": "index.ts",
+    "durable": {
+      "classes": [
+        {
+          "className": "TourSample"
+        }
+      ]
+    },
+    "authority": {
+      "requests": [],
+      "provides": [
+        {
+          "name": "sample.read",
+          "title": "Read the tour sample",
+          "action": "read a fictional reading-list item in the tour",
+          "description": "Only a built-in sample. No personal data, network access, or changes to your workspace.",
+          "tier": "gated",
+          "sensitivity": "read",
+          "resourceType": "tour-sample",
+          "presentation": {
+            "domain": "files",
+            "verb": "see"
+          },
+          "notability": "everyday",
+          "grantScopes": [
+            "once",
+          "version"
+          ]
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7",
+    "@vibestudio/durable": "workspace:*",
+    "@vibestudio/rpc": "workspace:*",
+    "@vibestudio/shared": "workspace:*",
+    "@vibestudio/workspace": "workspace:*"
+  }
+}

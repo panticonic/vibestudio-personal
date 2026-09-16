@@ -1,7 +1,20 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { panel, buildPanelLink } from "@workspace/runtime";
 import { Choices, Figure, SceneFrame } from "../lib/Scene";
-import { Tangle } from "../lib/Tangle";
+import { createShellSurfaceLink } from "@vibestudio/shared/shellSurface";
+import { ApprovalDemo } from "../lib/ApprovalDemo";
+import { DemoChatLink } from "../lib/DemoChatLink";
+import {
+  APP_DEMO_PROMPT,
+  AUTOMATION_DEMO_PROMPT,
+  WRITING_WORKSPACE_URL,
+} from "../lib/demos";
+import {
+  MessageSurface,
+  MessageContent,
+  InlineUiSurface,
+} from "@workspace/agentic-chat/presentation";
+import "@workspace/agentic-chat/styles.css";
 
 function AskAgent({ prompt, label }: { prompt: string; label: string }) {
   const [status, setStatus] = useState<
@@ -63,54 +76,69 @@ export function Opening() {
   );
 }
 
-const SPACES = {
-  personal: {
-    name: "Personal",
-    detail: "Your everyday tools, in one familiar place.",
-    tools: ["Reading list", "Weekly planner", "Notes"],
+const WORKSPACE_BOUNDARIES = {
+  inside: {
+    name: "Inside a workspace",
+    title: "A whole environment, not just a plugin.",
+    detail:
+      "A third-party template can bring apps, agents, data, and tools into its own workspace.",
+    mechanism:
+      "Its authority manifest declares what the code may request—not what it has permission to do. Host capabilities protect privileged operations; workspace-defined capabilities protect an app’s own resources.",
   },
-  project: {
-    name: "Project",
-    detail: "A focused environment for the thing you're making.",
-    tools: ["Task board", "Research", "Project agent"],
+  across: {
+    name: "Across the boundary",
+    title: "Share a capability. Not the keys to everything.",
+    detail:
+      "A reading-list app could let another workspace’s agent read one saved list—without permission to edit it or read other lists.",
+    mechanism:
+      "The receiving service binds the capability to that concrete resource. Access checks use the authenticated caller, executing code, and authority session. A connection or navigation link grants none of this by itself.",
   },
-  app: {
-    name: "An app's own space",
-    detail: "A dedicated home for an installed app and its data.",
-    tools: ["App", "App data", "App conversations"],
+  approval: {
+    name: "Who approves?",
+    title: "Code can ask. It cannot approve itself.",
+    detail:
+      "The host enforces approval outside the requesting code. A one-time grant covers one invocation; a session grant lasts for that authority session.",
+    mechanism:
+      "A version grant is tied to the exact code version: changing the source invalidates it. Critical actions always require fresh approval, never a standing grant.",
   },
 };
 export function Workspaces() {
-  const [selected, setSelected] = useState<keyof typeof SPACES>("personal");
-  const space = SPACES[selected];
+  const [selected, setSelected] =
+    useState<keyof typeof WORKSPACE_BOUNDARIES>("inside");
+  const boundary = WORKSPACE_BOUNDARIES[selected];
   return (
     <SceneFrame
-      eyebrow="03 · Workspaces"
+      eyebrow="03 · Capabilities & security"
       title={
         <>
-          A separate space for <em>each part of your life.</em>
+          Rich environments. <em>Explicit trust boundaries.</em>
         </>
       }
-      lede="Bring agents and third-party software together without giving everything the same access. Workspaces separate tools, data, and conversations; capabilities control what code can do."
+      lede="The agentic UI continuum needs a security foundation: rich workspaces for mutually untrusted code and agents, with explicit capabilities controlling privileged access."
     >
-      <Figure caption="Illustration · example workspaces, not your account.">
+      <Figure
+        caption={
+          selected === "approval"
+            ? "Live demo · the button uses the real permission system."
+            : "Illustration · explore the boundary, then try a real approval."
+        }
+      >
         <Choices
           value={selected}
-          options={Object.entries(SPACES).map(([value, item]) => ({
-            value: value as keyof typeof SPACES,
-            label: item.name,
-          }))}
+          options={Object.entries(WORKSPACE_BOUNDARIES).map(
+            ([value, item]) => ({
+              value: value as keyof typeof WORKSPACE_BOUNDARIES,
+              label: item.name,
+            }),
+          )}
           onChange={setSelected}
-          label="Example workspace"
+          label="Workspace boundary"
         />
         <div className="tour-demo" aria-live="polite">
-          <h2>{space.name}</h2>
-          <p>{space.detail}</p>
-          <div className="tour-tools">
-            {space.tools.map((tool) => (
-              <span key={tool}>{tool}</span>
-            ))}
-          </div>
+          <h2>{boundary.title}</h2>
+          <p>{boundary.detail}</p>
+          <p>{boundary.mechanism}</p>
+          {selected === "approval" && <ApprovalDemo />}
         </div>
       </Figure>
     </SceneFrame>
@@ -129,7 +157,7 @@ export function Websites() {
       }
       lede="Connect your agents to third-party code through a focused web experience or a full app workspace. Each gets scoped access—not the keys to everything."
     >
-      <Figure caption="Illustration · connection and capability access are separate approvals.">
+      <Figure caption="Illustration · capability access is checked separately from connection.">
         <Choices
           value={mode}
           options={[
@@ -152,17 +180,26 @@ export function Websites() {
           </h2>
           <p>
             {mode === "connect"
-              ? "An enabled website can request workspace capabilities. You decide what access to allow."
+              ? "First, approve an enabled website’s connection to this workspace. It can then request specific capabilities—not inherit the workspace’s permissions."
               : "An app template brings its software into a separate workspace, with its own data and tools. You review the source when creating it."}
           </p>
-          <div className="tour-tools">
-            {(mode === "connect"
-              ? ["Enabled website", "Your approval", "Workspace capabilities"]
-              : ["App template", "Your review", "New workspace"]
-            ).map((text) => (
-              <span key={text}>{text}</span>
-            ))}
-          </div>
+          {mode === "install" && (
+            <div className="tour-action">
+              <a
+                className="btn tour-link"
+                href={createShellSurfaceLink({
+                  kind: "workspace-chooser",
+                  sourceUrl: WRITING_WORKSPACE_URL,
+                })}
+              >
+                Try a writing workspace
+              </a>
+              <p className="box__sub">
+                Review Spectrolite, an editable writing app. You choose whether
+                to create its workspace and approve its requested access.
+              </p>
+            </div>
+          )}
         </div>
       </Figure>
     </SceneFrame>
@@ -170,7 +207,55 @@ export function Websites() {
 }
 
 export function Continuum() {
-  const [view, setView] = useState<"app" | "agent" | "chat">("app");
+  const [position, setPosition] = useState(0);
+  const [read, setRead] = useState(false);
+  const stages = [
+    {
+      label: "An app",
+      title: "Browse it yourself.",
+      detail: "Your reading list, with familiar controls.",
+    },
+    {
+      label: "An app + agent",
+      title: "Ask while you browse.",
+      detail: "The agent works with the list you’re looking at.",
+    },
+    {
+      label: "UI in chat",
+      title: "Use the answer.",
+      detail: "The same list and checkmark, now inside the conversation.",
+    },
+  ];
+  const stage = Math.round(position);
+  const current = stages[stage]!;
+  const readingList = (
+    <div className="continuum-reading">
+      {stage < 2 && (
+        <div className="continuum-reading__bar">
+          <span className="tour-demo__label">Saved for later</span>
+          <span className="continuum-badge">
+            {stage === 0 ? "Reading list" : "Under 10 min"}
+          </span>
+        </div>
+      )}
+      <label className="continuum-article">
+        <input
+          type="checkbox"
+          checked={read}
+          onChange={(event) => setRead(event.target.checked)}
+          aria-label="Mark A windowsill garden as read"
+        />
+        <span>
+          <strong>A windowsill garden</strong>
+          <small>6 min · Everyday inspiration</small>
+        </span>
+      </label>
+      <div className="continuum-extra" aria-hidden={stage !== 0}>
+        <span>A slower way to travel</span>
+        <small>18 min</small>
+      </div>
+    </div>
+  );
   return (
     <SceneFrame
       eyebrow="02 · Apps meet agents"
@@ -179,58 +264,91 @@ export function Continuum() {
           From apps with agents <em>to agents with interfaces.</em>
         </>
       }
-      lede="This is the agentic UI continuum: a full app, an agent working inside it, or an interactive tool inside a conversation. Mix them to fit the task—including with third-party software."
+      lede="An app doesn’t have to end where a conversation begins. Move along the agentic UI continuum—with your own tools or third-party software, backed by scoped capabilities."
     >
-      <Figure caption="Illustration · one task, three ways to work.">
-        <Choices
-          value={view}
-          options={[
-            { value: "app", label: "Use the app" },
-            { value: "agent", label: "Ask its agent" },
-            { value: "chat", label: "Work in chat" },
-          ]}
-          onChange={setView}
-          label="Ways to work"
+      <Figure caption="Illustration using real chat components · no live agent.">
+        <input
+          className="continuum-slider"
+          type="range"
+          min={0}
+          max={2}
+          step={0.01}
+          value={position}
+          onChange={(event) => setPosition(Number(event.target.value))}
+          aria-label="Position on the agentic UI continuum"
+          aria-valuetext={current.label}
         />
-        <div className="tour-demo" aria-live="polite">
-          <span className="tour-demo__label">Plan a launch</span>
-          {view === "app" ? (
-            <>
-              <h2>Your plan, at a glance.</h2>
-              <div className="tour-tools">
-                <span>Draft the announcement</span>
-                <span>Review the demo</span>
-                <span>Publish the launch page</span>
-              </div>
-            </>
-          ) : view === "agent" ? (
-            <>
-              <p className="tour-prompt">“What's left before we can launch?”</p>
-              <p>
-                An agent can use the state and tools the app exposes to help
-                with the work in front of you.
-              </p>
-            </>
-          ) : (
-            <>
-              <h2>The answer can be something you use.</h2>
-              <p>
-                A checklist, chart, or form can appear right in the
-                conversation.
-              </p>
-              <label className="tour-check">
-                <input type="checkbox" /> Review the demo
-              </label>
-            </>
-          )}
+        <div
+          className="continuum-stops"
+          role="group"
+          aria-label="Continuum positions"
+        >
+          {stages.map((item, index) => (
+            <button
+              type="button"
+              key={item.label}
+              aria-pressed={stage === index}
+              onClick={() => setPosition(index)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div
+          className="continuum-example agentic-chat-root"
+          data-stage={stage}
+          style={
+            {
+              "--conversation": Math.min(1, position),
+              "--inline": Math.max(0, position - 1),
+            } as CSSProperties
+          }
+        >
+          <div className="continuum-question" aria-hidden={stage === 0}>
+            <MessageSurface role="player">
+              <span className="tour-demo__label">You</span>
+              <MessageContent
+                content="What’s a good read for my coffee break?"
+                isStreaming={false}
+              />
+            </MessageSurface>
+          </div>
+          {stage < 2 && readingList}
+          <div className="continuum-agent" aria-hidden={stage === 0}>
+            <MessageSurface role="agent">
+              <span className="tour-demo__label">Agent</span>
+              <MessageContent
+                content={
+                  stage === 2
+                    ? "Here’s one from your list. Mark it read right here."
+                    : "Try the windowsill garden piece. It fits your break."
+                }
+                isStreaming={false}
+              />
+              {stage === 2 && (
+                <InlineUiSurface subtitle="Your reading list">
+                  {readingList}
+                </InlineUiSurface>
+              )}
+            </MessageSurface>
+          </div>
+        </div>
+        <div className="continuum-explanation" aria-live="polite">
+          <h2>{current.title}</h2>
+          <p>{current.detail}</p>
         </div>
       </Figure>
+      <DemoChatLink
+        title="Reshape Bookmarks"
+        label="Watch an agent change an app"
+        prompt={APP_DEMO_PROMPT}
+        hint="Opens a full chat and asks your agent to restyle Bookmarks in a child panel, commit locally, then rebuild it. Main stays unchanged; no bookmark data is edited."
+      />
     </SceneFrame>
   );
 }
 
 export function Automations() {
-  const [hour, setHour] = useState(9);
   return (
     <SceneFrame
       eyebrow="05 · Automations"
@@ -241,28 +359,27 @@ export function Automations() {
       }
       lede="Turn recurring work into an automation, with a schedule and scope you can inspect."
     >
-      <Figure caption="Illustration · changing this time does not schedule a task.">
+      <Figure caption="Live workflow · run once, inspect the result, then choose whether to repeat.">
         <div className="tour-demo">
-          <span className="tour-demo__label">A morning briefing</span>
+          <span className="tour-demo__label">Project pulse</span>
           <p className="tour-prompt">
-            “Every day at{" "}
-            <Tangle
-              value={hour}
-              min={0}
-              max={23}
-              onChange={setHour}
-              format={(h) => String(h).padStart(2, "0") + ":00"}
-              label="Example briefing hour"
-            />
-            , summarize what's changed in my project.”
+            “Check what’s changed in this branch. Run it once so I can see what
+            I’ll get.”
           </p>
           <p>
-            See what runs, check its activity, and pause it when you need to.
+            A real read-only check, with a saved definition and run history.
+            Start on demand; add a schedule only when it’s useful.
           </p>
+          <DemoChatLink
+            title="Try an automation"
+            label="Run a project pulse"
+            prompt={AUTOMATION_DEMO_PROMPT}
+            hint="Opens a full chat and asks your agent to create a manual automation and run it once. Results and controls appear there. Nothing repeats unless you ask."
+          />
         </div>
       </Figure>
       <a
-        className="btn tour-link"
+        className="tour-link"
         href={buildPanelLink("about/automations", {
           workspace: { role: "system" },
         })}
@@ -289,10 +406,23 @@ export function Closing() {
           <p className="tour-prompt">
             “Help me build a tool for something I do every week.”
           </p>
-          <AskAgent
-            label="Make my first tool"
-            prompt="Help me build a small useful tool in this workspace for something I do every week. Ask me what that task is first, then propose the simplest useful version."
-          />
+          <a
+            className="btn tour-link"
+            href={buildPanelLink("panels/chat", {
+              disposition: "root",
+              placement: { disposition: "side-if-room" },
+              title: "Your first tool",
+              stateArgs: {
+                initialPrompt:
+                  "Help me build a small useful tool in this workspace for something I do every week. Ask me what that task is first, then propose the simplest useful version.",
+              },
+            })}
+          >
+            Make my first tool
+          </a>
+          <p className="box__sub">
+            Opens a full chat and sends this request to get you started.
+          </p>
         </div>
       </Figure>
       <p className="scene__aside">Your software, shaped around your work.</p>

@@ -1,8 +1,8 @@
 /**
  * Vibestudio Tour — an explorable presentation of the system.
  *
- * One scene at a time, keyboard-navigable, with draggable numbers, switchable
- * diagrams and small simulations instead of bullet points. The current scene
+ * One scene at a time, keyboard-navigable, with a continuum slider, switchable
+ * illustrations and live workflows instead of bullet points. The current scene
  * and presenter-notes state live in the panel's state args
  * (`{ scene?: string; notes?: boolean }`, scene ids from ./deck.ts), so
  * reopening the panel resumes where you were and an agent can drive the deck

@@ -57,6 +57,24 @@ services:
       - vibestudio.browser-data.v1
     source: workers/browser-data
     title: Browser data
+  - source: workers/tour-sample
+    name: tour-sample
+    title: Tour sample
+    action: use the tour’s fictional reading-list sample
+    description: A read-only sample for trying real capability approvals. No
+      personal data or external services.
+    notability: everyday
+    presentation:
+      domain: files
+      verb: see
+    protocols:
+      - vibestudio.tour-sample.v1
+    authority:
+      principals:
+        - host
+        - code
+    durableObject:
+      className: TourSample
 systemEpoch: 0
 template:
   dependencies:
@@ -84,3 +102,5 @@ template:
     - workers/browser-data
     - workers/explorer-agent
     - workers/linked-agent
+    - workers/tour-sample
+singletonObjects: []
