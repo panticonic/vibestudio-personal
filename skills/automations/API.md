@@ -29,7 +29,7 @@ type AgentAutomationLaunch = {
   action:
     | { kind: "prompt"; text: string }
     | {
-        kind: "eval";
+        kind: "eval" | "watch";
         code: string;
         syntax?: "javascript" | "typescript" | "jsx" | "tsx";
         timeoutMs?: number;
@@ -107,7 +107,7 @@ type MissionCharter = {
         action:
           | { kind: "prompt"; text: string }
           | {
-              kind: "eval";
+              kind: "eval" | "watch";
               code: string;
               syntax?: "javascript" | "typescript" | "jsx" | "tsx";
               timeoutMs?: number;

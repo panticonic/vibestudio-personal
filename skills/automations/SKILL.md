@@ -21,6 +21,7 @@ current user and the missions service enforces ownership again at mutation.
 ## Choose the executor
 
 - Use an agent `prompt` when a model should reason each run.
+- Use agent `watch` for a deterministic check that should wake the model only when something changes. It returns `{protocol: "automation-signal.v1", prompt: null}` to finish quietly, or a nonempty `prompt` to continue the same run into the agent. The prompt should include the observation, the requested response, and any explicit notification instruction. Errors fail the run; they are not quiet results.
 - Use agent `eval` for a small exact script that should run as the same agent and use its ordinary channel-bound EvalDO. Eval code has the ordinary module API; model-facing tools such as `notify` are not JavaScript globals. If a run must use an agent tool, use a prompt action.
 - Use a lower-level `method` charter for a reusable deterministic method on another exact Durable Object image.
 
@@ -193,3 +194,9 @@ the canonical mission ledger rather than the launch-time snapshot and shows
 recent runs, failed effects, authority-plan reference, declared pre-acquisition
 operations, pending/granted/denied authority, current phase, and executor. Do
 not infer authority from a channel ID or a successful prior run.
+
+For a watch that should notify its owner, the returned nonempty prompt must
+instruct the future agent to call `notify` with `to: "owner"` and
+`alert: "inbox"`. Returning notification text or producing a final chat reply
+does not deliver an inbox notification. Preserve this requested effect when
+writing the check, just as for a prompt automation.
