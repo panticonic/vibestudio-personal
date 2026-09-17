@@ -61,6 +61,17 @@ place of helping.
 After the client-affine handoff, use ordinary server-side eval unless work
 depends on the inviting client's DOM, panel state, or native transport.
 
+## Update assistant preferences
+
+The Workspace update assistant row reads the user's actual automation state.
+Monitoring is provisioned automatically; it is not unfinished onboarding.
+When the user chooses to change it, read the templates skill's
+[workspace-updates reference](../templates/references/workspace-updates.md),
+inspect `templates.updateAssistant()`, and ask whether to change the frequency,
+pause, or resume. Edit that same automation. Honor stopped monitoring as a valid
+preference, never recreate it as part of welcoming a user. A missing or failed
+status read must not be described as active monitoring.
+
 ## Refresh
 
 The component owns check and refresh controls. After setup succeeds, fails, is

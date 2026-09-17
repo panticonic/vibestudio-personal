@@ -106,6 +106,23 @@ function connectionManagement(): Partial<Record<SetupAction, SetupActionTarget>>
 
 export const onboardingCatalog: readonly OnboardingCapabilityDefinition[] = [
   {
+    id: "configuration.workspace-updates",
+    title: "Workspace update assistant",
+    summary: "Automatic upstream monitoring. Change the schedule or turn it off with your agent.",
+    category: "personalization",
+    role: "optional-configuration",
+    scope: "user-workspace",
+    tier: "direct",
+    ownerSkillPath: "skills/templates/SKILL.md",
+    actions: { change: { via: "owner-skill" } },
+    visibility: "primary",
+    setup: {
+      statusAdapter: "workspace-updates",
+      successDescription:
+        "Your saved automation controls monitoring; pausing it is a valid preference.",
+    },
+  },
+  {
     id: "connection.ai-provider",
     title: "AI model",
     summary: "The model and provider used by new agent turns.",

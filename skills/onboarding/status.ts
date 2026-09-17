@@ -1,3 +1,5 @@
+import { missionRecordSchema } from "@vibestudio/service-schemas/missions";
+import type { MissionRecord } from "@vibestudio/automation/mission";
 import type { StoredCredentialSummary } from "@workspace/runtime";
 import {
   MODEL_SETTINGS_SERVICE_PROTOCOL,
@@ -28,6 +30,7 @@ export interface GitHubOnboardingStatus {
 }
 
 export interface OnboardingStatusDependencies {
+  updateAssistant(): Promise<MissionRecord | null>;
   github(opts?: { verify?: boolean }): Promise<GitHubOnboardingStatus>;
   modelSettings(): Promise<ModelSettingsSnapshot>;
   localModelsStatus(): Promise<LocalModelsStatus>;
@@ -139,6 +142,14 @@ export function createDefaultStatusDependencies(): OnboardingStatusDependencies 
       >;
     },
     browserImportJobs: async () => (await loadRuntime()).browserData.listImportJobs(),
+    updateAssistant: async () =>
+      missionRecordSchema
+        .nullable()
+        .parse(
+          await (
+            await loadRuntime()
+          ).extensions.invoke("@workspace-extensions/templates", "updateAssistant", [])
+        ),
     activeSearchProvider,
     hasSkill: async (skillPath) => (await skills()).has(skillPath),
   };
@@ -161,7 +172,9 @@ export function createCredentialConnectionStatusAdapter(
     const { credentials } = await loadRuntime();
     const [config, all] = await Promise.all([
       observer.clientConfigId
-        ? credentials.getClientConfigStatus({ configId: observer.clientConfigId })
+        ? credentials.getClientConfigStatus({
+            configId: observer.clientConfigId,
+          })
         : Promise.resolve({ configured: true }),
       credentials.listStoredCredentials(),
     ]);
@@ -412,6 +425,32 @@ export function createStatusAdapters(
   deps: OnboardingStatusDependencies = createDefaultStatusDependencies()
 ): Readonly<Record<string, CapabilityOnboardingStatusAdapter>> {
   return {
+    "workspace-updates": async () => {
+      const assistant = await deps.updateAssistant();
+      if (!assistant)
+        return {
+          state: "unknown",
+          summary: "Automatic setup has not completed.",
+          attention: "optional",
+          rawStage: "not-provisioned",
+        };
+      const active = assistant.state === "active";
+      const trigger = assistant.charter.trigger;
+      const schedule =
+        trigger.kind === "schedule"
+          ? `Every ${trigger.everyMs / 3_600_000} hours.`
+          : trigger.kind === "cron"
+            ? `${trigger.expression} (${trigger.timezone}).`
+            : "Manual checks.";
+      return {
+        state: "configured",
+        summary: active
+          ? `Monitoring is on. ${schedule} An agent asks before applying updates.`
+          : `Monitoring is ${assistant.state === "paused" ? "paused" : "stopped"}. Change this whenever you like.`,
+        attention: "none",
+        rawStage: assistant.state,
+      };
+    },
     github: async (opts) =>
       (await deps.hasSkill("skills/github/SKILL.md"))
         ? githubResult(await deps.github({ verify: opts?.verify === true }), opts?.verify === true)
@@ -435,8 +474,7 @@ export function createStatusAdapters(
       return provider === "duckduckgo"
         ? {
             state: "using-defaults",
-            summary:
-              "Codex agents use subscription search; other agents use built-in DuckDuckGo.",
+            summary: "Codex agents use subscription search; other agents use built-in DuckDuckGo.",
             attention: "none",
             rawStage: provider,
           }

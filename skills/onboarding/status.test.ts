@@ -62,6 +62,7 @@ function dependencies(
     ),
     localModelsList: vi.fn(async () => []),
     browserImportJobs: vi.fn(async () => []),
+    updateAssistant: vi.fn(async () => null),
     activeSearchProvider: vi.fn(async () => "duckduckgo" as const),
     hasSkill: vi.fn(async () => true),
     ...overrides,
@@ -71,7 +72,9 @@ function dependencies(
 describe("onboarding status adapters", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    credentialsMock.getClientConfigStatus.mockResolvedValue({ configured: true });
+    credentialsMock.getClientConfigStatus.mockResolvedValue({
+      configured: true,
+    });
     credentialsMock.listStoredCredentials.mockResolvedValue([]);
   });
 
@@ -113,7 +116,9 @@ describe("onboarding status adapters", () => {
   });
 
   it("reports an unconfigured declared credential connection without provider literals", async () => {
-    credentialsMock.getClientConfigStatus.mockResolvedValue({ configured: false });
+    credentialsMock.getClientConfigStatus.mockResolvedValue({
+      configured: false,
+    });
     const adapter = createCredentialConnectionStatusAdapter(
       {
         kind: "credential-connection",
@@ -181,5 +186,30 @@ describe("onboarding status adapters", () => {
     expect(localModelsStatus).toHaveBeenCalledOnce();
     expect(localModelsList).toHaveBeenCalledOnce();
     expect(hasSkill).not.toHaveBeenCalled();
+  });
+});
+
+describe("update assistant preferences", () => {
+  it("reports paused monitoring as an intentional saved preference", async () => {
+    const deps = dependencies({
+      updateAssistant: vi.fn(
+        async () =>
+          ({
+            state: "paused",
+            charter: { trigger: { kind: "schedule", everyMs: 21600000 } },
+          }) as Awaited<ReturnType<OnboardingStatusDependencies["updateAssistant"]>>
+      ),
+    });
+    expect(await createStatusAdapters(deps)["workspace-updates"]!()).toMatchObject({
+      state: "configured",
+      attention: "none",
+      rawStage: "paused",
+    });
+  });
+  it("does not claim monitoring is on before provisioning completes", async () => {
+    expect(await createStatusAdapters(dependencies())["workspace-updates"]!()).toMatchObject({
+      state: "unknown",
+      rawStage: "not-provisioned",
+    });
   });
 });
