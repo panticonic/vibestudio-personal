@@ -98,7 +98,6 @@ template:
     - skills/github
     - skills/memory
     - skills/onboarding
-    - skills/phone-setup
     - workers/browser-data
     - workers/explorer-agent
     - workers/linked-agent
