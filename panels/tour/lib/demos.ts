@@ -3,7 +3,9 @@ export const APP_DEMO_PROMPT = `Show me a live example of an agent changing an a
 
 Open the existing about/bookmarks panel as a child of this chat, using this conversation's context and its context source ref. Show the original first. Then edit its source into a warm, compact reading-shelf design with the heading “Saved for later”. Make the change visible even when there are no bookmarks. Preserve search, open, edit, remove, loading and error behavior, and support light and dark themes. Do not add sample bookmarks or change any saved bookmark data.
 
-Verify the change and commit it locally in this conversation's context, without pushing or publishing to main. Rebuild the same child panel from that context's source ref to load the locally committed version, and inspect it. Explain briefly what changed and leave it open for me to try. The main version and existing panels should remain unchanged. This is unpublished branch-local work, not a new workspace or a claim of private access.`;
+Verify the change and commit it locally in this conversation's context, without pushing or publishing to main. Rebuild the same child panel from that context's source ref to load the locally committed version, and inspect it. Explain briefly what changed and leave it open for me to try. The main version and existing panels should remain unchanged. This is unpublished branch-local work, not a new workspace or a claim of private access.
+
+Make the delivery status explicit in your final response: this child panel is only a local preview. My Main app will not receive the changes until they are published to Main with vcs.push and the Main panel is reloaded. Reloading Main alone will not apply this preview. Do not claim that my existing app has been updated. Offer publication as the next step, but do not publish during this preview-only demo.`;
 
 export const AUTOMATION_DEMO_PROMPT = `Help me try a real automation without scheduling recurring work yet.
 

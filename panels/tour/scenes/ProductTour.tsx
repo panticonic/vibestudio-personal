@@ -347,7 +347,7 @@ export function Continuum() {
         title="Reshape Bookmarks"
         label="Watch an agent change an app"
         prompt={APP_DEMO_PROMPT}
-        hint="Opens a full chat and asks your agent to restyle Bookmarks in a child panel, commit locally, then rebuild it. Main stays unchanged; no bookmark data is edited."
+        hint="Opens a chat where an agent restyles a Bookmarks preview. Your Main app stays unchanged: applying the result requires publishing to Main, then reloading it. No bookmark data is edited."
       />
     </SceneFrame>
   );
