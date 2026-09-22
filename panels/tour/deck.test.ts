@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@workspace/test-runtime";
 import { DECK, sceneIndex } from "./deck";
 
 describe("tour deck", () => {

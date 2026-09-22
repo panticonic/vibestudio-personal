@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@workspace/test-runtime";
 import { cadenceToCron, describeCadence, nextRuns } from "./schedule";
 import { clampToStep } from "./Tangle";
 

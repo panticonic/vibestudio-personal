@@ -80,7 +80,17 @@
           "evidence": "intentional-broad"
         }
       ]
-    }
+    },
+    "tests": [
+      {
+        "name": "browser",
+        "runtime": "browser",
+        "include": [
+          "**/*.test.ts",
+          "**/*.test.tsx"
+        ]
+      }
+    ]
   },
   "dependencies": {
     "@radix-ui/themes": "^3.3.0",
@@ -88,11 +98,9 @@
     "@workspace/react": "workspace:*",
     "@workspace/agentic-chat": "workspace:*",
     "@workspace/runtime": "workspace:*",
+    "@workspace/test-runtime": "workspace:*",
     "@workspace/ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "vitest": "^3.2.7"
   }
 }

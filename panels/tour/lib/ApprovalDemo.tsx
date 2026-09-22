@@ -1,7 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { rpc, workers } from "@workspace/runtime";
 
-export function ApprovalDemo() {
+type TourSample = { title: string; minutes: number };
+type ResolveService = (
+  protocol: string,
+  key: string,
+) => ReturnType<typeof workers.resolveService>;
+
+export interface ApprovalDemoProps {
+  resolveService?: ResolveService;
+  callService?: (
+    targetId: string,
+    method: string,
+    args: unknown[],
+    options: { signal: AbortSignal },
+  ) => Promise<TourSample>;
+}
+
+export function ApprovalDemo({
+  resolveService = (protocol, key) => workers.resolveService(protocol, key),
+  callService = (targetId, method, args, options) =>
+    rpc.call<TourSample>(targetId, method, args, options),
+}: ApprovalDemoProps = {}) {
   const [state, setState] = useState<"idle" | "pending" | "success" | "error">(
     "idle",
   );
@@ -18,7 +38,7 @@ export function ApprovalDemo() {
     setState("pending");
     setError("");
     try {
-      const service = await workers.resolveService(
+      const service = await resolveService(
         "vibestudio.tour-sample.v1",
         "sample",
       );
@@ -26,12 +46,9 @@ export function ApprovalDemo() {
       if (service.kind !== "durable-object")
         throw new Error("The tour sample requires a Durable Object service.");
       // Every click reaches the same protected receiver. Local UI state never grants access.
-      const result = await rpc.call<{ title: string; minutes: number }>(
-        service.targetId,
-        "read",
-        [],
-        { signal: controller.signal },
-      );
+      const result = await callService(service.targetId, "read", [], {
+        signal: controller.signal,
+      });
       if (controller.signal.aborted) return;
       setSample(result);
       setState("success");

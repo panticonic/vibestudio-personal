@@ -14,6 +14,12 @@ import { parseTemplateManifestContent } from "@vibestudio/workspace/templateMani
 
 describe("tour sample", () => {
   it("bounds service admission and the receiver-owned read to their exact resources", () => {
+    expect(tourManifest.vibestudio.authority.serviceRequests).toEqual([
+      {
+        protocol: "vibestudio.tour-sample.v1",
+        availability: "required",
+      },
+    ]);
     const requests = parseAuthorityRequests(tourManifest.vibestudio.authority);
     for (const capability of [
       "workspace-service:tour-sample",

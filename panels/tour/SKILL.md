@@ -80,8 +80,11 @@ authority; live actions keep the ordinary agent and host permission paths.
 
 ## Verification
 
-Run `deck.test.ts` and `scenes/ProductTour.test.tsx` through the host's Personal
-userland test configuration. Inspect every scene at phone and desktop widths
+Run the manifest-declared browser suite through `verify({ operation: "test",
+target: "panels/tour", suite: "browser" })`; use `file` for a focused test.
+Do not invoke Vitest through the shell—the panel suite runs in its production
+browser runtime and imports primitives from `@workspace/test-runtime`.
+Inspect every scene at phone and desktop widths
 in light and dark themes; check overflow, navigation, choices, and the continuum
 slider's arrow keys. Run `lib/ApprovalDemo.test.tsx` and the sample worker tests.
 Verify real approval, repeat access after a version grant, and denial in an
