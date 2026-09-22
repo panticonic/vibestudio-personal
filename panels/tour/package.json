@@ -36,6 +36,12 @@
     },
     "authority": {
       "provides": [],
+      "serviceRequests": [
+        {
+          "protocol": "vibestudio.tour-sample.v1",
+          "availability": "required"
+        }
+      ],
       "requests": [
         {
           "capability": "workspace-service:tour-sample",

@@ -88,6 +88,16 @@ describe("tour live actions", () => {
     });
   });
 
+  it("uses the themed slider with fixed continuum stages", async () => {
+    await act(async () => root.render(<Continuum />));
+    const slider = container.querySelector<HTMLElement>('[role="slider"]')!;
+    expect(slider).toBeDefined();
+    expect(slider.getAttribute("aria-valuemin")).toBe("0");
+    expect(slider.getAttribute("aria-valuemax")).toBe("2");
+    expect(slider.getAttribute("aria-valuenow")).toBe("0");
+    expect(container.querySelectorAll(".continuum-stops button")).toHaveLength(3);
+  });
+
   it("keeps the shared continuum state while offering the live source-editing action", async () => {
     await act(async () => root.render(<Continuum />));
     await act(async () =>

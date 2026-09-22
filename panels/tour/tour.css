@@ -121,6 +121,11 @@
   background: var(--gray-a2);
   min-width: 0;
 }
+.figure--flush {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
 .figure__caption,
 .scene__aside,
 .box__sub,
@@ -164,8 +169,6 @@
 }
 .continuum-slider {
   width: 100%;
-  margin: 0;
-  accent-color: var(--accent-9);
   cursor: ew-resize;
 }
 .continuum-stops {

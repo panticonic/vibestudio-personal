@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { Slider } from "@radix-ui/themes";
 import { panel, buildPanelLink } from "@workspace/runtime";
 import { Choices, Figure, SceneFrame } from "../lib/Scene";
 import { createShellSurfaceLink } from "@vibestudio/shared/shellSurface";
@@ -266,15 +267,19 @@ export function Continuum() {
       }
       lede="An app doesn’t have to end where a conversation begins. Move along the agentic UI continuum—with your own tools or third-party software, backed by scoped capabilities."
     >
-      <Figure caption="Illustration using real chat components · no live agent.">
-        <input
+      <Figure
+        flush
+        caption="Illustration using real chat components · no live agent."
+      >
+        <Slider
           className="continuum-slider"
-          type="range"
+          color="violet"
+          size="2"
           min={0}
           max={2}
-          step={0.01}
-          value={position}
-          onChange={(event) => setPosition(Number(event.target.value))}
+          step={1}
+          value={[position]}
+          onValueChange={(values) => setPosition(values[0] ?? 0)}
           aria-label="Position on the agentic UI continuum"
           aria-valuetext={current.label}
         />
