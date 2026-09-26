@@ -21,6 +21,11 @@ GitHub setup is one owner-controlled workflow, not a questionnaire.
 4. For a concrete Git remote, call `verifyGitHubGitRemoteAccess(remoteUrl,
    credentialId)` before clone or pull.
 
+When the owning website-publishing workflow requests GitHub Pages, render the
+same component with `props: { accessLevel: "publish-pages" }`. This preselects
+the existing **Publish websites** outcome; it does not create a separate
+credential workflow.
+
 Never collect tokens, scopes, repo selections, or browser placement through
 chat. The component owns those choices and calls
 `requestGitHubTokenCredential()` so secrets never enter workspace code or

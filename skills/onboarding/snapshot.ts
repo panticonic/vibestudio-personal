@@ -148,7 +148,10 @@ function nextAction(
   role: OnboardingRole,
   actions: Readonly<Partial<Record<SetupAction, unknown>>>
 ): SetupAction | undefined {
-  if (state === "connected-unverified" && actions.check) return "check";
+  if (state === "connected-unverified") {
+    if (actions.check) return "check";
+    return actions.change ? "change" : undefined;
+  }
   if (state === "needs-attention" && actions.repair) return "repair";
   if (state === "in-progress" && actions.resume) return "resume";
   if (state === "connected") return actions.change ? "change" : undefined;

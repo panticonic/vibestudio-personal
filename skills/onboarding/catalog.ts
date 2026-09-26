@@ -147,7 +147,7 @@ export const onboardingCatalog: readonly OnboardingCapabilityDefinition[] = [
   {
     id: "connection.github",
     title: "GitHub",
-    summary: "Connect repository and GitHub API access for this user in the workspace.",
+    summary: "Connect repository, API, and GitHub Pages publishing access for this user.",
     category: "connections",
     role: "connection",
     scope: "user-workspace",

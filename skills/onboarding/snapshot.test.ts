@@ -233,4 +233,48 @@ describe("composeOnboardingSnapshot", () => {
     );
     expect(snapshot.find((entry) => entry.id === "connection.github")?.nextAction).toBeUndefined();
   });
+
+  it("offers change instead of setup for a connection without a live verifier", async () => {
+    const publishing: OnboardingCapabilityDefinition = {
+      id: "connection.vercel-publishing",
+      title: "Vercel",
+      summary: "Connect Vercel publishing.",
+      category: "connections",
+      role: "connection",
+      scope: "user-workspace",
+      tier: "direct",
+      ownerSkillPath: "skills/website-publishing/SKILL.md",
+      actions: {
+        setup: { via: "owner-skill" },
+        change: { via: "owner-skill" },
+      },
+      visibility: "secondary",
+      setup: {
+        statusAdapter: "vercel-publishing",
+        successDescription: "A publishing credential is connected.",
+      },
+    };
+    const deps = dependencies({
+      "ai-provider": healthy,
+      "google-workspace": healthy,
+      github: healthy,
+      "browser-environment": healthy,
+      "local-models": healthy,
+      "agent-defaults": healthy,
+      "web-search": healthy,
+      "vercel-publishing": vi.fn(
+        async (): ReturnType<CapabilityOnboardingStatusAdapter> => ({
+          state: "connected-unverified",
+          verification: "unverified",
+          summary: "Connected; not checked live.",
+          attention: "none",
+        }),
+      ),
+    });
+    deps.catalog = [...installedCatalog, publishing];
+
+    const snapshot = await composeOnboardingSnapshot({}, deps);
+
+    expect(snapshot.find((entry) => entry.id === publishing.id)?.nextAction).toBe("change");
+  });
 });

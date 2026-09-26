@@ -19,7 +19,7 @@ import {
 } from "./index.js";
 
 interface GitHubSetupProps {
-  props?: Record<string, never>;
+  props?: { accessLevel?: GitHubAccessLevel };
   chat: {
     send(
       content: string,
@@ -73,9 +73,9 @@ const ACCESS_CHOICES: Array<{
   },
 ];
 
-export default function GitHubSetup({ chat }: GitHubSetupProps) {
+export default function GitHubSetup({ chat, props }: GitHubSetupProps) {
   const [accessLevel, setAccessLevel] =
-    useState<GitHubAccessLevel>("collaborate");
+    useState<GitHubAccessLevel>(props?.accessLevel ?? "collaborate");
   const [busy, setBusy] = useState<"internal" | "external" | "save" | null>(
     null,
   );
