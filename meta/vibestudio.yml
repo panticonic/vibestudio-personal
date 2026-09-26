@@ -69,5 +69,4 @@ template:
     - skills/onboarding
     - workers/browser-data
     - workers/explorer-agent
-    - workers/linked-agent
     - workers/tour-sample
