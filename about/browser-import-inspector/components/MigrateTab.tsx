@@ -1012,7 +1012,7 @@ function ProgressCard(props: {
                     ? "amber"
                     : isSuccessfulImportPhase(props.job.phase)
                       ? "green"
-                      : "iris"
+                      : undefined
                 }
               />
               <Flex gap="2" align="center" mt="1">
@@ -1488,7 +1488,7 @@ function WindowGroup(props: {
           </Tooltip>
         )}
         {selectedHere > 0 && (
-          <Badge color="iris" size="1">
+          <Badge size="1">
             {selectedHere} selected
           </Badge>
         )}

@@ -15,7 +15,12 @@ import "@radix-ui/themes/styles.css";
 import "@workspace/ui/foundation.css";
 import "@workspace/ui/themes/vibestudio.css";
 import { panel } from "@workspace/runtime";
-import { useIsMobile, usePanelTheme, useStateArgs } from "@workspace/react";
+import {
+  useIsMobile,
+  usePanelTheme,
+  usePanelThemeConfig,
+  useStateArgs,
+} from "@workspace/react";
 import {
   ImportSourceRail,
   type ImportSourceSelection,
@@ -39,6 +44,7 @@ function useNow(intervalMs = 60_000): number {
 
 export default function BrowserImportInspector() {
   const theme = usePanelTheme();
+  const appTheme = usePanelThemeConfig();
   const isMobile = useIsMobile();
   const stateArgs = useStateArgs<InspectorStateArgs>();
   const now = useNow();
@@ -53,7 +59,7 @@ export default function BrowserImportInspector() {
   };
 
   return (
-    <Theme appearance={theme} accentColor="iris" radius="medium">
+    <Theme appearance={theme} {...appTheme}>
       <Flex
         direction={isMobile ? "column" : "row"}
         style={{ height: "100dvh", width: "100%" }}

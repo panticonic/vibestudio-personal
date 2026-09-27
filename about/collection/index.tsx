@@ -31,7 +31,7 @@ import {
 } from "@radix-ui/react-icons";
 import { contextId, panel, panelTree, rpc, type PanelHandle } from "@workspace/runtime";
 import { recoveryCoordinator } from "@workspace/runtime/internal/diagnostics";
-import { usePanelTheme, useStateArgs } from "@workspace/react";
+import { usePanelTheme, usePanelThemeConfig, useStateArgs } from "@workspace/react";
 import { createPanelImportLoader, launchAgentIntoChannel } from "@workspace/agentic-core";
 import type { AgenticChatHandle } from "@workspace/agentic-chat";
 import { FULL_AGENTIC_CHAT_FEATURES } from "@workspace/agentic-chat/features";
@@ -145,6 +145,7 @@ function MemberNoteEditor(props: { value: string; onCommit(value: string): void 
 
 export default function CollectionPanel() {
   const theme = usePanelTheme();
+  const appTheme = usePanelThemeConfig();
   const stateArgs = useStateArgs<CollectionStateArgs>();
   const resolvedContextId = requireContextId(contextId);
   const [title, setTitle] = useState(stateArgs.title ?? "Collection");
@@ -439,7 +440,7 @@ export default function CollectionPanel() {
   );
 
   return (
-    <Theme appearance={theme} accentColor="iris" radius="medium" style={{ height: "100dvh" }}>
+    <Theme appearance={theme} {...appTheme} style={{ height: "100dvh" }}>
       <Flex direction="column" gap="3" p="4" className="collection-shell">
         <Flex justify="between" align="center" gap="2">
           {editingTitle ? (
@@ -561,7 +562,7 @@ export default function CollectionPanel() {
                         {nodeLabel(node)}
                       </Text>
                       {node.childCount > 0 ? (
-                        <Badge size="1" color="iris">
+                        <Badge size="1">
                           {node.childCount}
                         </Badge>
                       ) : null}
