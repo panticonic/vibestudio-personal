@@ -93,7 +93,6 @@ template:
     - meta
     - packages/collection-orchestration
     - panels/tour
-    - skills/automations
     - skills/github
     - skills/memory
     - skills/onboarding
