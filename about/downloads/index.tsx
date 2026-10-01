@@ -7,7 +7,7 @@ import {
   Spinner,
   Text,
 } from "@radix-ui/themes";
-import { browserData } from "@workspace/runtime";
+import { browserData, openPanel } from "@workspace/runtime";
 import { AboutPage, AboutThemeRoot } from "@workspace/about-shared/ui";
 import {
   useAsyncResource,
@@ -58,6 +58,8 @@ export default function DownloadsPanel() {
           const pending = actions.pending.has(download.id);
           const active =
             download.state === "progressing" || download.state === "paused";
+          const interrupted = download.state === "interrupted";
+          const canReopen = /^https?:\/\//i.test(download.url);
           const control = (operation: () => Promise<void>) =>
             void actions.run(download.id, async () => {
               await operation();
@@ -117,7 +119,16 @@ export default function DownloadsPanel() {
                   }
                 />
               ) : null}
-              {active || download.state === "completed" ? (
+              {interrupted ? (
+                <Text as="p" size="2" color="gray" mt="3">
+                  {download.canResume
+                    ? "The transfer was interrupted. Resume it to continue downloading."
+                    : canReopen
+                      ? "This transfer has ended. Open the download link to start a new download."
+                      : "This transfer has ended. Return to the source page to download the file again."}
+                </Text>
+              ) : null}
+              {active || interrupted || download.state === "completed" ? (
                 <Flex gap="2" mt="3" wrap="wrap">
                   {download.state === "progressing" ? (
                     <Button
@@ -131,7 +142,7 @@ export default function DownloadsPanel() {
                       Pause
                     </Button>
                   ) : null}
-                  {download.state === "paused" ? (
+                  {download.canResume ? (
                     <Button
                       size="1"
                       variant="soft"
@@ -141,6 +152,20 @@ export default function DownloadsPanel() {
                       }
                     >
                       Resume
+                    </Button>
+                  ) : null}
+                  {interrupted && !download.canResume && canReopen ? (
+                    <Button
+                      size="1"
+                      variant="soft"
+                      disabled={pending}
+                      onClick={() =>
+                        void actions.run(download.id, async () => {
+                          await openPanel(download.url);
+                        })
+                      }
+                    >
+                      Open download link
                     </Button>
                   ) : null}
                   {active ? (

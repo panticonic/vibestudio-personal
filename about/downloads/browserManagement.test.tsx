@@ -19,7 +19,8 @@ const browserData = vi.hoisted(() => ({
   openDownload: vi.fn(),
   revealDownload: vi.fn(),
 }));
-vi.mock("@workspace/runtime", () => ({ browserData }));
+const openPanel = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("@workspace/runtime", () => ({ browserData, openPanel }));
 vi.mock("@workspace/about-shared/ui", () => ({
   AboutThemeRoot: ({ children }: { children: ReactNode }) => (
     <Theme>{children}</Theme>
@@ -75,6 +76,28 @@ describe("downloads management", () => {
       "textContent",
       "File no longer exists",
     );
+  });
+
+  it("resumes a live interrupted transfer and offers a fresh link only after native ownership ends", async () => {
+    browserData.listDownloads.mockResolvedValue([
+      { ...download, state: "interrupted", canResume: true },
+    ]);
+    const view = render(<Downloads />);
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await act(async () => {});
+    expect(browserData.resumeDownload).toHaveBeenCalledWith("one");
+    expect(openPanel).not.toHaveBeenCalled();
+    view.unmount();
+    browserData.listDownloads.mockResolvedValue([
+      { ...download, state: "interrupted", canResume: false },
+    ]);
+    render(<Downloads />);
+    await act(async () => {});
+    expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open download link" }));
+    await act(async () => {});
+    expect(openPanel).toHaveBeenCalledWith(download.url);
   });
 
   it("waits for download reads to settle before polling and stops polling on unmount", async () => {
