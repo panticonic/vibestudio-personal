@@ -1,3 +1,4 @@
+import { OperationNotice } from "@workspace/ui/feedback";
 import {
   Badge,
   Box,
@@ -311,9 +312,11 @@ export default function SetupHub({
           catalog: overview.catalog,
           snapshot: overview.snapshot,
         });
-      } catch {
+      } catch (error) {
         if (request === capabilityRequest.current) {
-          setError("Couldn't refresh setup status. Try again.");
+          setError(
+            `Couldn't refresh setup status: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
       } finally {
         if (request === capabilityRequest.current)
@@ -351,9 +354,9 @@ export default function SetupHub({
           interaction: onboardingInteraction(definition.id, action),
         },
       });
-    } catch {
+    } catch (error) {
       setError(
-        `Couldn't send “${readableAction(definition, action)}”. Try again.`,
+        `Couldn't send “${readableAction(definition, action)}”: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
       setPending(null);
@@ -381,9 +384,7 @@ export default function SetupHub({
           </Button>
         ) : null}
         {error ? (
-          <Text size="1" color="red">
-            {error}
-          </Text>
+          <OperationNotice intent="error">{error}</OperationNotice>
         ) : null}
       </Flex>
     );
@@ -461,12 +462,15 @@ export default function SetupHub({
         </Callout.Root>
       )}
 
-      {error ? (
-        <Text size="1" color="red" role="alert">
-          {error}
-        </Text>
-      ) : null}
+      {error ? <OperationNotice intent="error">{error}</OperationNotice> : null}
 
+      {pending ? (
+        <OperationNotice>
+          {pending.endsWith(":check")
+            ? "Checking this connection…"
+            : "Waiting for your setup request to be accepted…"}
+        </OperationNotice>
+      ) : null}
       {sections.map(([category, title]) => {
         const entries = definitions.filter(
           (entry) => entry.category === category,
