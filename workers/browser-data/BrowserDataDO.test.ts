@@ -3,9 +3,9 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import {
   DURABLE_OBJECT_FRAMEWORK_RPC_METHODS,
-  type DurableObjectContext,
   type SqlResult,
 } from "@vibestudio/durable";
+import type { DurableObjectContext } from "@workspace/runtime/worker/kernel";
 import { rpcExposedMethodNames } from "@vibestudio/rpc";
 import { browserProductMethods } from "@vibestudio/service-schemas/browserData";
 import { BrowserDataDO } from "./BrowserDataDO.js";
@@ -32,9 +32,9 @@ describe("BrowserDataDO schema", () => {
     expect(capabilities["browser-data.delete"]).toEqual(["once"]);
   });
 
-  it("has one typed declaration for every exposed data method", () => {
+  it("has one typed declaration for every exposed data method", async () => {
     const db = new DatabaseSync(":memory:");
-    const instance = createBrowserDataDO(db);
+    const instance = await createBrowserDataDO(db);
     const productMethods = [...rpcExposedMethodNames(instance)].filter(
       (method) => !DURABLE_OBJECT_FRAMEWORK_RPC_METHODS.has(method),
     );
@@ -43,9 +43,9 @@ describe("BrowserDataDO schema", () => {
     );
   });
 
-  it("creates the one canonical pre-release schema directly", () => {
+  it("creates the one canonical pre-release schema directly", async () => {
     const db = new DatabaseSync(":memory:");
-    createBrowserDataDO(db);
+    await createBrowserDataDO(db);
 
     expect(
       db.prepare(`SELECT singleton, version FROM _vibestudio_schema`).get(),
@@ -70,9 +70,9 @@ describe("BrowserDataDO schema", () => {
     db.close();
   });
 
-  it("enforces tier, sensitivity, and principals from the typed method table", () => {
+  it("enforces tier, sensitivity, and principals from the typed method table", async () => {
     const db = new DatabaseSync(":memory:");
-    const instance = createBrowserDataDO(db, {
+    const instance = await createBrowserDataDO(db, {
       BROWSER_DATA_BROKER_SOURCE: "extensions/browser-data",
     });
     const resolve = (
@@ -125,7 +125,7 @@ describe("BrowserDataDO schema", () => {
 describe("BrowserDataDO canonical history", () => {
   it("preserves aggregate imports without inventing visits, and reimport is idempotent", async () => {
     const db = new DatabaseSync(":memory:");
-    const store = createBrowserDataDO(db);
+    const store = await createBrowserDataDO(db);
     const entries = [
       {
         url: "https://example.test/old",
@@ -172,7 +172,7 @@ describe("BrowserDataDO canonical history", () => {
 
   it("uses exact imported visits without counting their profile totals twice", async () => {
     const db = new DatabaseSync(":memory:");
-    const store = createBrowserDataDO(db);
+    const store = await createBrowserDataDO(db);
     await store.addHistoryBatch(
       [
         {
@@ -195,9 +195,9 @@ describe("BrowserDataDO canonical history", () => {
       db.prepare("SELECT count(*) AS n FROM history_visits").get(),
     ).toEqual({ n: 2 });
   });
-  it("returns an empty history before any native visits or imports", () => {
+  it("returns an empty history before any native visits or imports", async () => {
     const db = new DatabaseSync(":memory:");
-    const store = createBrowserDataDO(db);
+    const store = await createBrowserDataDO(db);
 
     expect(store.getHistory({ limit: 10 })).toEqual([]);
     db.close();
@@ -205,7 +205,7 @@ describe("BrowserDataDO canonical history", () => {
 
   it("combines native and imported visits in one history summary", async () => {
     const db = new DatabaseSync(":memory:");
-    const store = createBrowserDataDO(db);
+    const store = await createBrowserDataDO(db);
     const url = "https://example.test/docs";
 
     store.recordHistoryVisit({
@@ -244,7 +244,7 @@ describe("BrowserDataDO canonical history", () => {
 
 describe("BrowserDataDO search providers", () => {
   it("seeds DuckDuckGo, preserves an imported default, and validates selection", async () => {
-    const store = createBrowserDataDO(new DatabaseSync(":memory:"));
+    const store = await createBrowserDataDO(new DatabaseSync(":memory:"));
     expect(
       store.getSearchEngines().find((engine) => engine.is_default)?.name,
     ).toBe("DuckDuckGo");
@@ -278,7 +278,7 @@ describe("BrowserDataDO search providers", () => {
   });
 
   it("fetches encoded OpenSearch completions and keeps addresses local", async () => {
-    const store = createBrowserDataDO(new DatabaseSync(":memory:"));
+    const store = await createBrowserDataDO(new DatabaseSync(":memory:"));
     const fetcher = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(
@@ -311,9 +311,9 @@ describe("BrowserDataDO search providers", () => {
 });
 
 describe("BrowserDataDO download metadata", () => {
-  it("persists download metadata by host inside the canonical environment", () => {
+  it("persists download metadata by host inside the canonical environment", async () => {
     const db = new DatabaseSync(":memory:");
-    const store = createBrowserDataDO(db);
+    const store = await createBrowserDataDO(db);
     const record = {
       id: "download-1",
       environmentKey: "environment-1",
@@ -352,9 +352,9 @@ describe("BrowserDataDO download metadata", () => {
 });
 
 describe("BrowserDataDO native favicon formats", () => {
-  it("stores validated source bytes and serves them by page or origin", () => {
+  it("stores validated source bytes and serves them by page or origin", async () => {
     const db = new DatabaseSync(":memory:");
-    const store = createBrowserDataDO(db);
+    const store = await createBrowserDataDO(db);
     const svg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`);
 
     store.putPageFavicon({
@@ -379,9 +379,9 @@ describe("BrowserDataDO native favicon formats", () => {
     db.close();
   });
 
-  it("rejects MIME labels that disagree with the icon bytes", () => {
+  it("rejects MIME labels that disagree with the icon bytes", async () => {
     const db = new DatabaseSync(":memory:");
-    const store = createBrowserDataDO(db);
+    const store = await createBrowserDataDO(db);
     const ico = Buffer.from([0x00, 0x00, 0x01, 0x00, 0x01, 0x00]);
 
     expect(() =>
@@ -397,12 +397,14 @@ describe("BrowserDataDO native favicon formats", () => {
   });
 });
 
-function createBrowserDataDO(
+async function createBrowserDataDO(
   db: DatabaseSync,
   env: Record<string, unknown> = {},
-): BrowserDataDO {
+): Promise<BrowserDataDO> {
   const instance = new BrowserDataDO(sqliteContext(db), env);
-  (instance as unknown as { ensureReady(): void }).ensureReady();
+  await (
+    instance as unknown as { initializeSchema(): Promise<void> }
+  ).initializeSchema();
   return instance;
 }
 
@@ -434,6 +436,18 @@ function sqliteContext(db: DatabaseSync): DurableObjectContext {
         return null;
       },
       deleteAlarm() {},
+      async sync() {},
+      async transaction<T>(callback: () => Promise<T>): Promise<T> {
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const result = await callback();
+          db.exec("COMMIT");
+          return result;
+        } catch (error) {
+          db.exec("ROLLBACK");
+          throw error;
+        }
+      },
       transactionSync<T>(callback: () => T): T {
         db.exec("BEGIN IMMEDIATE");
         try {

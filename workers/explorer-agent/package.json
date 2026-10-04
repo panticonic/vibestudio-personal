@@ -156,15 +156,16 @@
     "@vibestudio/shared": "workspace:*",
     "@workspace/runtime": "workspace:*",
     "@workspace/agentic-do": "workspace:*",
-    "@workspace/agent-loop": "workspace:*",
     "@workspace/pubsub": "workspace:*",
     "@workspace/harness": "workspace:*",
-    "@workspace/pi-core": "workspace:*",
     "@workspace-workers/agent-worker": "workspace:*",
     "@workspace-workers/silent-agent-worker": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@panticonic/pi-ai": "0.99.2-vibestudio.11",
+    "@panticonic/pi-chord": "0.99.2-vibestudio.11",
+    "@panticonic/pi-durable": "0.99.2-vibestudio.11"
   },
   "devDependencies": {
     "vitest": "^3.2.7"

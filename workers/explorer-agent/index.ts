@@ -1,12 +1,25 @@
 import { SilentAgentWorker } from "@workspace-workers/silent-agent-worker";
-import { installMessageTypes, type AgentToolExecutionContext } from "@workspace/agentic-do";
-import { driveMerge, type ParticipantDescriptor } from "@workspace/harness";
-import type { AgentTool } from "@workspace/pi-core";
-import { defaultPolicies } from "@workspace/agent-loop";
-import type { RespondPolicy, StepPolicy } from "@workspace/agent-loop";
+import {
+  installMessageTypes,
+  type AgentToolExecutionContext,
+} from "@workspace/agentic-do";
+import {
+  authorNativeTool,
+  driveMerge,
+  type ParticipantDescriptor,
+} from "@workspace/harness";
+import { Type } from "@panticonic/pi-ai";
+import type { JsonValue } from "@panticonic/pi-chord";
+import type { ToolRegistration } from "@panticonic/pi-durable";
 import { rpcErrorDataOf } from "@vibestudio/rpc";
-import { canonicalJson, sha256HexSyncText } from "@vibestudio/content-addressing";
-import { vcsMethods, type VcsStatusResult } from "@vibestudio/service-schemas/vcs";
+import {
+  canonicalJson,
+  sha256HexSyncText,
+} from "@vibestudio/content-addressing";
+import {
+  vcsMethods,
+  type VcsStatusResult,
+} from "@vibestudio/service-schemas/vcs";
 import { createTypedServiceClient } from "@vibestudio/shared/typedServiceClient";
 import { EXPLORER_SYSTEM_PROMPT } from "./prompts.js";
 import {
@@ -24,10 +37,19 @@ import {
   type FindingSeverity,
 } from "./findings-card.js";
 
-const FINDING_CLASSES: readonly FindingClass[] = ["BUG", "DOC-MISMATCH", "SURPRISING"];
+const FINDING_CLASSES: readonly FindingClass[] = [
+  "BUG",
+  "DOC-MISMATCH",
+  "SURPRISING",
+];
 const SEVERITIES: readonly FindingSeverity[] = ["low", "medium", "high"];
 
-type FindingOpPhase = "prepared" | "authored" | "committed" | "published" | "finalized";
+type FindingOpPhase =
+  | "prepared"
+  | "authored"
+  | "committed"
+  | "published"
+  | "finalized";
 interface FindingOpRow {
   toolCallId: string;
   channelId: string;
@@ -68,7 +90,10 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
   /** Channels whose findings message-type has been installed this lifetime. */
   private readonly installedUi = new Set<string>();
 
-  constructor(ctx: ConstructorParameters<typeof SilentAgentWorker>[0], env: unknown) {
+  constructor(
+    ctx: ConstructorParameters<typeof SilentAgentWorker>[0],
+    env: unknown,
+  ) {
     super(ctx, env);
     void this.setOwnTitle("Explorer");
     // Source of truth for both the per-run findings file AND the findings card.
@@ -78,11 +103,11 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
          id TEXT NOT NULL, ts TEXT NOT NULL, cls TEXT NOT NULL, surface TEXT NOT NULL,
          title TEXT NOT NULL, severity TEXT NOT NULL, expected TEXT NOT NULL,
          actual TEXT NOT NULL, repro TEXT,
-         PRIMARY KEY (channel_id, run_id, seq))`
+         PRIMARY KEY (channel_id, run_id, seq))`,
     );
     this.sql.exec(
       `CREATE UNIQUE INDEX IF NOT EXISTS explorer_findings_invocation
-         ON explorer_findings (channel_id, run_id, id)`
+         ON explorer_findings (channel_id, run_id, id)`,
     );
     this.sql.exec(
       `CREATE TABLE IF NOT EXISTS explorer_finding_ops (
@@ -99,13 +124,13 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
          committed_event_id TEXT,
          published_event_id TEXT,
          published_main_event_id TEXT,
-         updated_at INTEGER NOT NULL)`
+         updated_at INTEGER NOT NULL)`,
     );
   }
 
   protected override getParticipantInfo(
     channelId: string,
-    config?: unknown
+    config?: unknown,
   ): ParticipantDescriptor {
     const base = super.getParticipantInfo(channelId, config);
     return { ...base, handle: "explorer", name: "Explorer" };
@@ -122,7 +147,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
    * message) — which would pile a concurrent explorer turn onto every channel message
    * alongside other agents, diverging the channel log (GAD id-collision/replay-mismatch).
    */
-  protected override getDefaultRespondPolicy(): RespondPolicy {
+  protected override getDefaultRespondPolicy(): "mentioned-or-followup" {
     return "mentioned-or-followup";
   }
 
@@ -133,17 +158,20 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
    * unresponsive even when it ran. Drop it so an addressed (or scheduled) run SHOWS its
    * work; findings still go to the committed file + the findings card.
    */
-  protected override getStepPolicies(_channelId: string): StepPolicy[] {
-    return defaultPolicies();
+  protected override getPublishPolicy(_channelId: string): "all" {
+    return "all";
   }
 
-  protected override async getLoopTools(
+  protected override async getTools(
     channelId: string,
-    execution?: AgentToolExecutionContext
-  ): Promise<AgentTool[]> {
+  ): Promise<ToolRegistration[]> {
     return [
-      ...(await super.getLoopTools(channelId, execution)),
-      this.createReportFindingTool(channelId, execution?.rpc ?? this.rpc),
+      ...(await super.getTools(channelId)),
+      authorNativeTool(
+        (execution: AgentToolExecutionContext | undefined) =>
+          this.createReportFindingTool(channelId, execution),
+        (api, context) => this.bindNativeToolExecution(api, context),
+      ),
     ];
   }
 
@@ -151,17 +179,17 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
 
   private createReportFindingTool(
     channelId: string,
-    toolRpc: AgentToolExecutionContext["rpc"]
-  ): AgentTool<any> {
+    execution?: AgentToolExecutionContext,
+  ): ToolRegistration {
+    const toolRpc = execution?.rpc ?? this.rpc;
     return {
       name: "report_finding",
-      label: "report_finding",
       description:
         "Record one discrepancy found while exploring. Appends it to this run's findings " +
         "file (committed + pushed for a durable, searchable history) and aggregates it into " +
         "the findings card in the connected chat panel. Call once per finding; group a run's " +
         "findings under a stable `runId`.",
-      parameters: {
+      parameters: Type.Unsafe<Record<string, JsonValue>>({
         type: "object",
         properties: {
           runId: {
@@ -177,15 +205,23 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
           },
           surface: {
             type: "string",
-            description: "The catalog id, e.g. service:blobstore.putText or runtime:vcs.",
+            description:
+              "The catalog id, e.g. service:blobstore.putText or runtime:vcs.",
           },
-          title: { type: "string", description: "One-line summary of the finding." },
+          title: {
+            type: "string",
+            description: "One-line summary of the finding.",
+          },
           expected: {
             type: "string",
-            description: "What you expected (from the docs/contract) BEFORE the call.",
+            description:
+              "What you expected (from the docs/contract) BEFORE the call.",
           },
           actual: { type: "string", description: "What actually happened." },
-          repro: { type: "string", description: "Optional minimal steps/code to reproduce." },
+          repro: {
+            type: "string",
+            description: "Optional minimal steps/code to reproduce.",
+          },
           severity: {
             type: "string",
             enum: [...SEVERITIES],
@@ -193,8 +229,13 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
           },
         },
         required: ["runId", "class", "surface", "title", "expected", "actual"],
-      } as never,
-      execute: async (toolCallId, params) => {
+      }),
+      execute: async (params) => {
+        const toolCallId = execution?.invocationId;
+        if (!toolCallId)
+          throw new Error(
+            "report_finding requires its attributed native invocation",
+          );
         const p = (params ?? {}) as Record<string, unknown>;
         const runId = str(p["runId"]).trim();
         const cls = str(p["class"]) as FindingClass;
@@ -204,18 +245,27 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
         const actual = str(p["actual"]).trim();
         const repro = str(p["repro"]).trim() || undefined;
         const severityRaw = str(p["severity"]) as FindingSeverity;
-        const severity: FindingSeverity = SEVERITIES.includes(severityRaw) ? severityRaw : "medium";
+        const severity: FindingSeverity = SEVERITIES.includes(severityRaw)
+          ? severityRaw
+          : "medium";
 
         if (!runId) throw new Error("report_finding requires a runId");
         if (!FINDING_CLASSES.includes(cls)) {
-          throw new Error(`report_finding class must be one of ${FINDING_CLASSES.join(", ")}`);
+          throw new Error(
+            `report_finding class must be one of ${FINDING_CLASSES.join(", ")}`,
+          );
         }
         if (!surface || !title || !expected || !actual) {
-          throw new Error("report_finding requires surface, title, expected, and actual");
+          throw new Error(
+            "report_finding requires surface, title, expected, and actual",
+          );
         }
 
         const contextId = this.subscriptions.getContextId(channelId);
-        if (!contextId) throw new Error(`report_finding has no context for channel ${channelId}`);
+        if (!contextId)
+          throw new Error(
+            `report_finding has no context for channel ${channelId}`,
+          );
         const command = (operation: string, basis: string) =>
           `explorer:${operation}:${toolCallId}:${basis}`;
         let op = this.loadFindingOp(toolCallId);
@@ -241,7 +291,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
           }>("main", "vcs.status", [{ contextId }]);
           if (!before.clean) {
             throw new Error(
-              "report_finding requires a clean explorer context; commit or discard unrelated work first"
+              "report_finding requires a clean explorer context; commit or discard unrelated work first",
             );
           }
           this.sql.exec(
@@ -257,7 +307,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
             renderFindingsFile(runId, rows),
             `explorer: ${cls} on ${surface} (${runId})`,
             before.mainEventId,
-            Date.now()
+            Date.now(),
           );
           op = this.loadFindingOp(toolCallId)!;
         } else if (
@@ -272,51 +322,62 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
           (op.detail.repro ?? undefined) !== repro
         ) {
           throw new Error(
-            `report_finding invocation ${toolCallId} was reused with different input`
+            `report_finding invocation ${toolCallId} was reused with different input`,
           );
         }
 
         if (op.phase === "prepared") {
-          await toolRpc.call("main", "fs.writeFile", [op.filePath, op.fileText]);
+          await toolRpc.call("main", "fs.writeFile", [
+            op.filePath,
+            op.fileText,
+          ]);
           const authored = await toolRpc.call<{
             clean: boolean;
             workingHead:
               | { kind: "event"; eventId: string }
               | { kind: "application"; applicationId: string };
           }>("main", "vcs.status", [{ contextId }]);
-          if (authored.clean) throw new Error("Managed findings write produced no semantic change");
+          if (authored.clean)
+            throw new Error(
+              "Managed findings write produced no semantic change",
+            );
           this.updateFindingOp(toolCallId, "authored", {
             expectedWorkingHead: authored.workingHead,
           });
           op = this.loadFindingOp(toolCallId)!;
         }
         if (op.phase === "authored") {
-          if (!op.expectedWorkingHead) throw new Error("finding operation lost its authored head");
-          const committed = await toolRpc.call<{ event: { kind: "event"; eventId: string } }>(
-            "main",
-            "vcs.commit",
-            [
-              {
-                commandId: command("commit", op.expectedMainEventId),
-                contextId,
-                expectedWorkingHead: op.expectedWorkingHead,
-                message: op.summary,
-              },
-            ]
-          );
+          if (!op.expectedWorkingHead)
+            throw new Error("finding operation lost its authored head");
+          const committed = await toolRpc.call<{
+            event: { kind: "event"; eventId: string };
+          }>("main", "vcs.commit", [
+            {
+              commandId: command("commit", op.expectedMainEventId),
+              contextId,
+              expectedWorkingHead: op.expectedWorkingHead,
+              message: op.summary,
+            },
+          ]);
           this.updateFindingOp(toolCallId, "committed", {
             committedEventId: committed.event.eventId,
           });
           op = this.loadFindingOp(toolCallId)!;
         }
         if (op.phase === "committed") {
-          if (!op.committedEventId) throw new Error("finding operation lost its committed event");
+          if (!op.committedEventId)
+            throw new Error("finding operation lost its committed event");
           let push: { eventId: string; mainEventId: string };
           try {
             push = await this.pushFinding(toolRpc, contextId, op, command);
           } catch (error) {
             if (!isRevisionChanged(error)) throw error;
-            const recovered = await this.integrateLatestMain(toolRpc, contextId, op, command);
+            const recovered = await this.integrateLatestMain(
+              toolRpc,
+              contextId,
+              op,
+              command,
+            );
             if (recovered.alreadyPublished) {
               push = {
                 eventId: recovered.committedEventId,
@@ -347,12 +408,12 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
           await this.publishFindingsCard(
             channelId,
             runId,
-            buildCardState(runId, op.filePath, rows, op.detail.ts)
+            buildCardState(runId, op.filePath, rows, op.detail.ts),
           );
         } catch (error) {
           console.warn(
             "[Explorer] findings card projection failed after durable publication:",
-            error
+            error,
           );
         }
 
@@ -377,7 +438,10 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
 
   private loadFindingOp(toolCallId: string): FindingOpRow | null {
     const row = this.sql
-      .exec(`SELECT * FROM explorer_finding_ops WHERE tool_call_id = ?`, toolCallId)
+      .exec(
+        `SELECT * FROM explorer_finding_ops WHERE tool_call_id = ?`,
+        toolCallId,
+      )
       .toArray()[0];
     if (!row) return null;
     return {
@@ -393,15 +457,21 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
         row["expected_working_head_json"] == null
           ? null
           : (JSON.parse(
-              String(row["expected_working_head_json"])
+              String(row["expected_working_head_json"]),
             ) as FindingOpRow["expectedWorkingHead"]),
       expectedMainEventId: String(row["expected_main_event_id"]),
       committedEventId:
-        row["committed_event_id"] == null ? null : String(row["committed_event_id"]),
+        row["committed_event_id"] == null
+          ? null
+          : String(row["committed_event_id"]),
       publishedEventId:
-        row["published_event_id"] == null ? null : String(row["published_event_id"]),
+        row["published_event_id"] == null
+          ? null
+          : String(row["published_event_id"]),
       publishedMainEventId:
-        row["published_main_event_id"] == null ? null : String(row["published_main_event_id"]),
+        row["published_main_event_id"] == null
+          ? null
+          : String(row["published_main_event_id"]),
     };
   }
 
@@ -409,9 +479,10 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
     toolRpc: AgentToolExecutionContext["rpc"],
     contextId: string,
     op: FindingOpRow,
-    command: (operation: string, basis: string) => string
+    command: (operation: string, basis: string) => string,
   ): Promise<{ eventId: string; mainEventId: string }> {
-    if (!op.committedEventId) throw new Error("finding operation lost its committed event");
+    if (!op.committedEventId)
+      throw new Error("finding operation lost its committed event");
     return toolRpc.call("main", "vcs.push", [
       {
         commandId: command("publish", op.expectedMainEventId),
@@ -429,15 +500,26 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
     toolRpc: AgentToolExecutionContext["rpc"],
     contextId: string,
     op: FindingOpRow,
-    command: (operation: string, basis: string) => string
-  ): Promise<{ alreadyPublished: boolean; committedEventId: string; mainEventId: string }> {
-    if (!op.committedEventId) throw new Error("finding operation lost its committed event");
-    const status = await toolRpc.call<VcsStatusResult>("main", "vcs.status", [{ contextId }]);
+    command: (operation: string, basis: string) => string,
+  ): Promise<{
+    alreadyPublished: boolean;
+    committedEventId: string;
+    mainEventId: string;
+  }> {
+    if (!op.committedEventId)
+      throw new Error("finding operation lost its committed event");
+    const status = await toolRpc.call<VcsStatusResult>("main", "vcs.status", [
+      { contextId },
+    ]);
     if (!status.clean || status.committed.kind !== "event") {
-      throw new Error("finding publication recovery requires its clean committed context");
+      throw new Error(
+        "finding publication recovery requires its clean committed context",
+      );
     }
     if (status.committed.eventId !== op.committedEventId) {
-      throw new Error("finding publication recovery found unrelated committed context work");
+      throw new Error(
+        "finding publication recovery found unrelated committed context work",
+      );
     }
     if (status.mainEventId === op.committedEventId) {
       return {
@@ -449,8 +531,10 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
 
     const sourceEventId = status.mainEventId;
     const source = { kind: "event" as const, eventId: sourceEventId };
-    const vcs = createTypedServiceClient("vcs", vcsMethods, (_service, method, args) =>
-      toolRpc.call("main", `vcs.${method}`, args)
+    const vcs = createTypedServiceClient(
+      "vcs",
+      vcsMethods,
+      (_service, method, args) => toolRpc.call("main", `vcs.${method}`, args),
     );
     const driven = await driveMerge({
       vcs,
@@ -462,23 +546,23 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
       commandIdForPage: ({ expectedWorkingHead }) =>
         command(
           "merge",
-          sha256HexSyncText(canonicalJson({ contextId, expectedWorkingHead, source }))
+          sha256HexSyncText(
+            canonicalJson({ contextId, expectedWorkingHead, source }),
+          ),
         ),
     });
     const workingHead = driven.workingHead;
 
-    const committed = await toolRpc.call<{ event: { kind: "event"; eventId: string } }>(
-      "main",
-      "vcs.commit",
-      [
-        {
-          commandId: command("commit-integration", sourceEventId),
-          contextId,
-          expectedWorkingHead: workingHead,
-          message: `${op.summary}; integrate protected main`,
-        },
-      ]
-    );
+    const committed = await toolRpc.call<{
+      event: { kind: "event"; eventId: string };
+    }>("main", "vcs.commit", [
+      {
+        commandId: command("commit-integration", sourceEventId),
+        contextId,
+        expectedWorkingHead: workingHead,
+        message: `${op.summary}; integrate protected main`,
+      },
+    ]);
     this.updateFindingOp(op.toolCallId, "committed", {
       expectedMainEventId: sourceEventId,
       committedEventId: committed.event.eventId,
@@ -499,7 +583,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
       committedEventId?: string;
       publishedEventId?: string;
       publishedMainEventId?: string;
-    } = {}
+    } = {},
   ): void {
     this.sql.exec(
       `UPDATE explorer_finding_ops SET
@@ -512,23 +596,29 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
          updated_at = ?
        WHERE tool_call_id = ?`,
       phase,
-      fields.expectedWorkingHead ? JSON.stringify(fields.expectedWorkingHead) : null,
+      fields.expectedWorkingHead
+        ? JSON.stringify(fields.expectedWorkingHead)
+        : null,
       fields.expectedMainEventId ?? null,
       fields.committedEventId ?? null,
       fields.publishedEventId ?? null,
       fields.publishedMainEventId ?? null,
       Date.now(),
-      toolCallId
+      toolCallId,
     );
   }
 
-  private persistFinding(channelId: string, runId: string, detail: FindingDetail): void {
+  private persistFinding(
+    channelId: string,
+    runId: string,
+    detail: FindingDetail,
+  ): void {
     const exists = this.sql
       .exec(
         `SELECT 1 FROM explorer_findings WHERE channel_id = ? AND run_id = ? AND id = ?`,
         channelId,
         runId,
-        detail.id
+        detail.id,
       )
       .toArray();
     if (exists.length > 0) return;
@@ -536,7 +626,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
       .exec(
         `SELECT COALESCE(MAX(seq), 0) AS m FROM explorer_findings WHERE channel_id = ? AND run_id = ?`,
         channelId,
-        runId
+        runId,
       )
       .toArray()[0];
     const seq = Number(prev?.["m"] ?? 0) + 1;
@@ -555,7 +645,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
       detail.severity,
       detail.expected,
       detail.actual,
-      detail.repro ?? null
+      detail.repro ?? null,
     );
   }
 
@@ -564,7 +654,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
       .exec(
         `SELECT * FROM explorer_findings WHERE channel_id = ? AND run_id = ? ORDER BY seq`,
         channelId,
-        runId
+        runId,
       )
       .toArray()
       .map((r) => ({
@@ -584,7 +674,11 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
     if (this.installedUi.has(channelId)) return;
     await installMessageTypes({
       channel: this.createChannelClient(channelId),
-      actor: { kind: "agent", id: this.participantId(), participantId: this.participantId() },
+      actor: {
+        kind: "agent",
+        id: this.participantId(),
+        participantId: this.participantId(),
+      },
       specs: FINDINGS_MESSAGE_TYPES,
       imports: FINDINGS_UI_IMPORTS,
       version: FINDINGS_UI_INSTALL_VERSION,
@@ -593,7 +687,10 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
       channelId,
       readFile: async (path) => {
         try {
-          const raw = await this.rpc.call<unknown>("main", "fs.readFile", [path, "utf8"]);
+          const raw = await this.rpc.call<unknown>("main", "fs.readFile", [
+            path,
+            "utf8",
+          ]);
           return typeof raw === "string" ? raw : null;
         } catch {
           return null;
@@ -606,7 +703,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
   private async publishFindingsCard(
     channelId: string,
     runId: string,
-    state: ReturnType<typeof buildCardState>
+    state: ReturnType<typeof buildCardState>,
   ): Promise<void> {
     const key = findingsCardKey(runId);
     const existing = this.cards.find(channelId, key);
@@ -622,7 +719,12 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
 
 function isRevisionChanged(error: unknown): boolean {
   const data = rpcErrorDataOf(error);
-  if (data && typeof data === "object" && "code" in data && data.code === "RevisionChanged") {
+  if (
+    data &&
+    typeof data === "object" &&
+    "code" in data &&
+    data.code === "RevisionChanged"
+  ) {
     return true;
   }
   return (error as { code?: unknown } | null)?.code === "RevisionChanged";

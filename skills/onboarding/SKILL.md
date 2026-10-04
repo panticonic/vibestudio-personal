@@ -38,6 +38,23 @@ complete interaction object, never its label:
   `@workspace-skills/onboarding` through `client_eval` (navigation is
   client-affine).
 
+The interaction is supplied in the message metadata; it is not an injected
+`client_eval` variable. Copy the complete typed object from that metadata into
+the code. For example, when the received metadata selects GitHub setup:
+
+```ts
+import { executeOnboardingSelection } from "@workspace-skills/onboarding";
+return await executeOnboardingSelection({
+  source: "onboarding-setup-hub",
+  kind: "onboarding-capability",
+  action: "setup",
+  targetId: "connection.github",
+});
+```
+
+Use the actual received action and target ID. Do not infer them from button text
+or refer to an undeclared `interaction` binding.
+
 Follow the returned discriminant. A committed panel slot with unconfirmed
 readiness must not be opened again. Owner-skill, model-setting, and conversation
 routes return their authoritative next target; don't match button prose or
