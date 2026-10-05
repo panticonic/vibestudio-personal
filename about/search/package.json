@@ -5,7 +5,7 @@
   "type": "module",
   "vibestudio": {
     "title": "Web Search",
-    "icon": "⌕",
+    "icon": "./assets/icon.svg",
     "description": "Choose search providers and configure search suggestions",
     "authority": {
       "provides": [],
