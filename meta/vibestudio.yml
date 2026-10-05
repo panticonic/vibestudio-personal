@@ -37,6 +37,30 @@ providers:
   browserData:
     extension: extensions/browser-data
 services:
+  - action: organize projects and agentic work
+    authority:
+      binding:
+        declaredFor:
+          - panels/mission-control
+          - workers/mission-agent
+      principals:
+        - host
+        - user
+        - code
+        - session
+        - mission
+    description: Projects, tasks, saved views and links to agent execution.
+    durableObject:
+      className: MissionControlStore
+    name: mission-control
+    notability: everyday
+    presentation:
+      domain: automation
+      verb: manage
+    protocols:
+      - mission-control.v1
+    source: workers/mission-control-store
+    title: Mission Control
   - action: use browser history, bookmarks, downloads, and preferences
     authority:
       binding: declared
@@ -73,6 +97,10 @@ services:
       - vibestudio.tour-sample.v1
     source: workers/tour-sample
     title: Tour sample
+singletonObjects:
+  - className: MissionControlStore
+    key: main
+    source: workers/mission-control-store
 systemEpoch: 0
 template:
   dependencies:
@@ -92,10 +120,14 @@ template:
     - extensions/browser-data
     - meta
     - packages/collection-orchestration
+    - packages/mission-control
+    - panels/mission-control
     - panels/tour
     - skills/github
     - skills/memory
     - skills/onboarding
     - workers/browser-data
     - workers/explorer-agent
+    - workers/mission-agent
+    - workers/mission-control-store
     - workers/tour-sample
