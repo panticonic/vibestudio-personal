@@ -652,43 +652,35 @@ export default function CollectionPanel() {
                 </Text>
               </Box>
             ) : null}
-            {agentReady ? (
-              <Suspense
-                fallback={
-                  <Flex align="center" justify="center" style={{ height: "100%" }}>
-                    <Spinner />
-                  </Flex>
-                }
-              >
-                <AgenticChat
-                  ref={chatRef}
-                  config={config}
-                  channelName={session.channelName}
-                  contextId={resolvedContextId}
-                  metadata={{
-                    name: `${title} conductor`,
-                    type: "panel",
-                    handle: "collection",
-                  }}
-                  theme={theme}
-                  heightMode="container"
-                  installedAgents={[
-                    { agentId: COLLECTION_AGENT_CLASS, handle: COLLECTION_AGENT_HANDLE },
-                  ]}
-                  initialPrompt={initialPrompt.current}
-                  forceInitialPrompt={Boolean(stateArgs.startupTask)}
-                  features={FULL_AGENTIC_CHAT_FEATURES}
-                  importLoader={importLoader}
-                />
-              </Suspense>
-            ) : (
-              <Flex align="center" justify="center" gap="2" className="collection-chat-loading">
-                <Spinner />
-                <Text size="2" color="gray">
-                  Starting the collection conductor…
-                </Text>
-              </Flex>
-            )}
+            {/* The channel owns the chat lifetime; agent recovery only updates status. */}
+            <Suspense
+              fallback={
+                <Flex align="center" justify="center" style={{ flex: 1, minHeight: 0 }}>
+                  <Spinner />
+                </Flex>
+              }
+            >
+              <AgenticChat
+                ref={chatRef}
+                config={config}
+                channelName={session.channelName}
+                contextId={resolvedContextId}
+                metadata={{
+                  name: `${title} conductor`,
+                  type: "panel",
+                  handle: "collection",
+                }}
+                theme={theme}
+                heightMode="container"
+                installedAgents={[
+                  { agentId: COLLECTION_AGENT_CLASS, handle: COLLECTION_AGENT_HANDLE },
+                ]}
+                initialPrompt={initialPrompt.current}
+                forceInitialPrompt={Boolean(stateArgs.startupTask)}
+                features={FULL_AGENTIC_CHAT_FEATURES}
+                importLoader={importLoader}
+              />
+            </Suspense>
           </Box>
         </Box>
       </Flex>

@@ -58,6 +58,28 @@ afterEach(() => {
 });
 
 describe("downloads management", () => {
+  it("keeps the empty state mounted while a background poll is pending", async () => {
+    vi.useFakeTimers();
+    browserData.listDownloads.mockResolvedValueOnce([]);
+    let finish!: (downloads: unknown[]) => void;
+    browserData.listDownloads.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    render(<Downloads />);
+    await act(async () => {});
+    const empty = screen.getByText("No browser downloads yet.");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(browserData.listDownloads).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("Loading downloads…")).toBeNull();
+    expect(screen.getByText("No browser downloads yet.")).toBe(empty);
+    await act(async () => finish([]));
+    expect(screen.getByText("No browser downloads yet.")).toBe(empty);
+  });
+
   it("shows download action failures and does not erase them on a successful refresh", async () => {
     vi.useFakeTimers();
     browserData.openDownload.mockRejectedValue(
