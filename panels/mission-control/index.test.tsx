@@ -119,6 +119,9 @@ const detail = (
 });
 
 beforeEach(() => {
+  // These interaction tests trigger refresh explicitly. Keep the independent
+  // background interval from racing their request-count assertions on slow CI.
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   runtime.call.mockReset();
   runtime.openPanel.mockReset();
   runtime.sourceTree.mockReset();
@@ -151,7 +154,10 @@ beforeEach(() => {
     },
   );
 });
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const open = async () => {
   render(<MissionControl />);
