@@ -96,6 +96,10 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
   ) {
     super(ctx, env);
     void this.setOwnTitle("Explorer");
+  }
+
+  protected override async createAgentTables(): Promise<void> {
+    await super.createAgentTables();
     // Source of truth for both the per-run findings file AND the findings card.
     this.sql.exec(
       `CREATE TABLE IF NOT EXISTS explorer_findings (

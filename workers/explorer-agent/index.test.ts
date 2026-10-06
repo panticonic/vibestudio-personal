@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { createTestDO } from "@workspace/runtime/worker/test-utils";
+import { afterEach, describe, expect, it } from "vitest";
+import { createNativeVesselTestDO } from "@workspace/agentic-do/testing/native-vessel";
 import type { ParticipantDescriptor } from "@workspace/harness";
 import type {
   ToolRegistration,
@@ -64,9 +64,32 @@ class TestExplorerAgentWorker extends ExplorerAgentWorker {
     );
   }
 }
+const resources: Array<
+  Awaited<ReturnType<typeof createNativeVesselTestDO<TestExplorerAgentWorker>>>
+> = [];
+async function createExplorer() {
+  const resource = await createNativeVesselTestDO(TestExplorerAgentWorker);
+  resources.push(resource);
+  return resource;
+}
+afterEach(async () => {
+  for (const resource of resources.splice(0)) {
+    try {
+      const released = await resource.instance.releaseForLifecycle({
+        epoch: "test-end",
+        mode: "suspend",
+        reason: "test",
+        deadlineMs: 0,
+      });
+      expect(released.status).toBe("ready");
+    } finally {
+      resource.db.close();
+    }
+  }
+});
 describe("ExplorerAgentWorker", () => {
   it("is a silent agent with explorer identity + oracle-loop prompt", async () => {
-    const { instance } = await createTestDO(TestExplorerAgentWorker);
+    const { instance } = await createExplorer();
     const worker = instance as TestExplorerAgentWorker;
     const participant = worker.participant();
     expect(participant.handle).toBe("explorer");
@@ -81,14 +104,15 @@ describe("ExplorerAgentWorker", () => {
     expect(worker.respondPolicy()).toBe("mentioned-or-followup");
   });
   it("exposes report_finding alongside the inherited notify tool", async () => {
-    const { instance } = await createTestDO(TestExplorerAgentWorker);
+    const { instance } = await createExplorer();
     const worker = instance as TestExplorerAgentWorker;
+    worker.prepareChannel();
     const names = (await worker.tools()).map((tool) => tool.name);
     expect(names).toContain("report_finding");
     expect(names).toContain("notify");
   });
   it("resumes publication without exposing a partially published finding", async () => {
-    const { instance } = await createTestDO(TestExplorerAgentWorker);
+    const { instance } = await createExplorer();
     const worker = instance as TestExplorerAgentWorker;
     worker.prepareChannel();
     let pushAttempts = 0;
@@ -162,7 +186,7 @@ describe("ExplorerAgentWorker", () => {
     expect(calls.filter((method) => method === "vcs.push")).toHaveLength(2);
   });
   it("integrates a concurrently advanced main before retrying publication", async () => {
-    const { instance } = await createTestDO(TestExplorerAgentWorker);
+    const { instance } = await createExplorer();
     const worker = instance as TestExplorerAgentWorker;
     worker.prepareChannel();
     let statusCalls = 0;
