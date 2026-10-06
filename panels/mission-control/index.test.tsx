@@ -23,12 +23,18 @@ const runtime = vi.hoisted(() => ({
   call: vi.fn(),
   openPanel: vi.fn(),
   sourceTree: vi.fn(),
+  connect: vi.fn(),
+  ready: vi.fn(),
+  send: vi.fn(),
+  close: vi.fn(),
 }));
 vi.mock("@workspace/runtime", () => ({
   createDurableObjectServiceClient: () => ({ call: runtime.call }),
   openPanel: runtime.openPanel,
+  rpc: { selfId: "panel:missions" },
   workspace: { sourceTree: runtime.sourceTree },
 }));
+vi.mock("@workspace/pubsub", () => ({ connectViaRpc: runtime.connect }));
 vi.mock("@workspace/ui/icons", () =>
   Object.fromEntries(
     [
@@ -125,6 +131,15 @@ beforeEach(() => {
   runtime.call.mockReset();
   runtime.openPanel.mockReset();
   runtime.sourceTree.mockReset();
+  runtime.connect.mockReset();
+  runtime.ready.mockReset().mockResolvedValue(undefined);
+  runtime.send.mockReset().mockResolvedValue(undefined);
+  runtime.close.mockReset().mockResolvedValue(undefined);
+  runtime.connect.mockReturnValue({
+    ready: runtime.ready,
+    send: runtime.send,
+    close: runtime.close,
+  });
   runtime.sourceTree.mockResolvedValue({ children: [] });
   Object.defineProperty(document, "visibilityState", {
     configurable: true,
@@ -144,6 +159,8 @@ beforeEach(() => {
   });
   runtime.call.mockImplementation(
     async (method: string, input?: { id?: string; cursor?: unknown }) => {
+      if (method === "lead")
+        return { channelId: "mission-control-lead", contextId: "ctx-lead" };
       if (method === "overview") return overview();
       if (method === "taskDetail")
         return detail(input?.id === "two" ? second : first);
@@ -179,6 +196,37 @@ const refresh = async () => {
 };
 
 describe("Mission Control interaction ownership", () => {
+  it("sends a new idea to the existing lead conversation without reseeding it", async () => {
+    await open();
+    fireEvent.change(
+      screen.getByRole("textbox", {
+          name: "Idea for mission lead",
+        }),
+      {
+        target: { value: "Plan a launch" },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Send idea to mission lead" }),
+    );
+    await waitFor(() =>
+      expect(runtime.openPanel).toHaveBeenCalledWith("panels/chat", {
+        contextId: "ctx-lead",
+        stateArgs: { channelName: "mission-control-lead" },
+      }),
+    );
+    expect(runtime.send).toHaveBeenCalledWith("Plan a launch", {
+      idempotencyKey: expect.any(String),
+      tier: "secondary",
+    });
+    expect(runtime.close).toHaveBeenCalledOnce();
+    expect(runtime.connect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: "mission-control-lead",
+        contextId: "ctx-lead",
+      }),
+    );
+  });
   it("preserves an unsubmitted search draft when shared state refreshes", async () => {
     await open();
     fireEvent.change(screen.getByRole("textbox", { name: "Search tasks" }), {

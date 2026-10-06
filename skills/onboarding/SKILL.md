@@ -8,6 +8,15 @@ description: Open the state-aware setup overview, route selections to owner work
 Onboarding projects durable state from each capability owner. It doesn't keep
 completion flags, infer authority, or turn features into a checklist.
 
+## Welcome conversation
+
+The shipped chat declares `stateArgs.seed`: an authored welcome message with
+`<Video>` and a retained `openingRequest`. The welcome is real conversation
+history and can display before model credentials are connected. Channel creation
+owns installing it once; reopening or forking never replays onboarding actions.
+Do not resend the welcome or video. After the opening request is delivered,
+give a concise next step and open the state-aware overview below.
+
 ## Open the overview
 
 ```text

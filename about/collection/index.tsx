@@ -29,6 +29,7 @@ import {
   Pencil1Icon,
   ReloadIcon,
 } from "@radix-ui/react-icons";
+import { initializeConversation } from "@workspace/pubsub";
 import { contextId, panel, panelTree, rpc, type PanelHandle } from "@workspace/runtime";
 import { recoveryCoordinator } from "@workspace/runtime/internal/diagnostics";
 import { usePanelTheme, usePanelThemeConfig, useStateArgs } from "@workspace/react";
@@ -166,10 +167,14 @@ export default function CollectionPanel() {
       agentKey: stateArgs.agentKey ?? created.agentKey,
     };
   });
-  const initialPrompt = useRef(
-    stateArgs.initialPrompt ??
-      (stateArgs.startupTask ? promptForCollectionStartupTask(stateArgs.startupTask) : undefined)
-  );
+  const creationChannelConfig = useRef({
+    seed:
+      stateArgs.seed ??
+      (stateArgs.startupTask ? {
+            openingRequest: promptForCollectionStartupTask(stateArgs.startupTask),
+          }
+        : undefined),
+  });
   const chatRef = useRef<AgenticChatHandle | null>(null);
   const editingTitleRef = useRef(false);
   const savingTitleRef = useRef(false);
@@ -335,7 +340,14 @@ export default function CollectionPanel() {
     let cancelled = false;
     setAgentReady(false);
     setAgentError(null);
-    void launchAgentIntoChannel(rpc, {
+    void initializeConversation({
+      rpc,
+      channel: session.channelName,
+      contextId: resolvedContextId,
+      config: creationChannelConfig.current,
+    })
+      .then(() =>
+        launchAgentIntoChannel(rpc, {
       source: COLLECTION_AGENT_SOURCE,
       className: COLLECTION_AGENT_CLASS,
       key: session.agentKey,
@@ -349,7 +361,8 @@ export default function CollectionPanel() {
         systemPromptMode: "append",
         ...(stateArgs.agentConfig ?? {}),
       },
-    })
+    }),
+      )
       .then(() => {
         if (!cancelled) setAgentReady(true);
       })
@@ -497,7 +510,8 @@ export default function CollectionPanel() {
               onClick={() => investigate()}
               disabled={!agentReady || sending !== null}
             >
-              {sending === "collection" ? <Spinner size="1" /> : <MagicWandIcon />} Organize
+              {sending === "collection" ? <Spinner size="1" /> : <MagicWandIcon />}{" "}
+              Organize
             </Button>
           </Flex>
         </Flex>
@@ -543,8 +557,8 @@ export default function CollectionPanel() {
             {tree?.nodes.length === 0 ? (
               <Card>
                 <Text size="2" color="gray">
-                  Nothing collected yet. Child panels appear here recursively and are immediately
-                  available to the resident conductor.
+                  Nothing collected yet. Child panels appear here recursively
+                  and are immediately available to the resident conductor.
                 </Text>
               </Card>
             ) : null}
@@ -562,9 +576,7 @@ export default function CollectionPanel() {
                         {nodeLabel(node)}
                       </Text>
                       {node.childCount > 0 ? (
-                        <Badge size="1">
-                          {node.childCount}
-                        </Badge>
+                        <Badge size="1">{node.childCount}</Badge>
                       ) : null}
                     </Flex>
                     <Text as="div" size="1" color="gray" truncate>
@@ -675,8 +687,7 @@ export default function CollectionPanel() {
                 installedAgents={[
                   { agentId: COLLECTION_AGENT_CLASS, handle: COLLECTION_AGENT_HANDLE },
                 ]}
-                initialPrompt={initialPrompt.current}
-                forceInitialPrompt={Boolean(stateArgs.startupTask)}
+                channelConfig={creationChannelConfig.current}
                 features={FULL_AGENTIC_CHAT_FEATURES}
                 importLoader={importLoader}
               />

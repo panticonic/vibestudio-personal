@@ -54,7 +54,9 @@ describe("tour live actions", () => {
       expect(parsed.location.placement).toEqual({
         disposition: "side-if-room",
       });
-      expect(parsed.location.stateArgs).toEqual({ initialPrompt: prompt });
+      expect(parsed.location.stateArgs).toEqual({
+        seed: { openingRequest: prompt },
+      });
       expect(parsed.location.contextId).toBeUndefined();
       expect(parsed.location.ref).toBeUndefined();
     });

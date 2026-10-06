@@ -52,7 +52,7 @@ create dedicated workspaces with reviewed source. Do not conflate the two.
 Some provider configuration and host settings are shared across workspaces.
 
 Use the panel command conversation for reshaping this tour. The closing action
-uses `buildPanelLink("panels/chat", { disposition: "root", stateArgs: { initialPrompt } })`
+uses `buildPanelLink("panels/chat", { disposition: "root", stateArgs: { seed: { openingRequest } } })`
 to start a full chat; disclose that the prompt is sent on connection. For navigation,
 use `buildPanelLink` from `@workspace/runtime`: for example,
 `buildPanelLink("about/automations", { workspace: { role: "system" } })`.

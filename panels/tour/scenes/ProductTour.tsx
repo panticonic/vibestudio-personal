@@ -418,8 +418,10 @@ export function Closing() {
               placement: { disposition: "side-if-room" },
               title: "Your first tool",
               stateArgs: {
-                initialPrompt:
+                seed: {
+                  openingRequest:
                   "Help me build a small useful tool in this workspace for something I do every week. Ask me what that task is first, then propose the simplest useful version.",
+                },
               },
             })}
           >

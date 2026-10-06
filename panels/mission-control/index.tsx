@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createDurableObjectServiceClient,
   openPanel,
+  rpc,
 } from "@workspace/runtime";
 import {
   Orbit,
@@ -64,6 +65,7 @@ import {
   CommandPalette,
   dueLabel,
 } from "./components";
+import { connectViaRpc } from "@workspace/pubsub";
 import "./styles.css";
 
 const service = createDurableObjectServiceClient(PROTOCOL);
@@ -457,18 +459,28 @@ export default function MissionControl() {
         const lead = await call<{ channelId: string; contextId: string }>(
           "lead",
         );
+        if (prompt) {
+          const idempotencyKey = crypto.randomUUID();
+          const client = connectViaRpc({
+            rpc,
+            channel: lead.channelId,
+            contextId: lead.contextId,
+            clientId: `${rpc.selfId}:mission-lead:${idempotencyKey}`,
+            name: "Mission Control",
+            type: "headless",
+            replayMode: "skip",
+          });
+          try {
+            await client.ready();
+            await client.send(prompt, { idempotencyKey, tier: "secondary" });
+          } finally {
+            await client.close();
+          }
+        }
         await openPanel("panels/chat", {
           contextId: lead.contextId,
           stateArgs: {
-            channelName: lead.channelId,
-            ...(prompt
-              ? {
-                  initialPrompt: prompt,
-                  forceInitialPrompt: true,
-                  initialPromptIdempotencyKey: crypto.randomUUID(),
-                }
-              : {}),
-          },
+            channelName: lead.channelId },
         });
         setIdea("");
       },

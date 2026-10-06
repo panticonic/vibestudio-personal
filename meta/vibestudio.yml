@@ -5,13 +5,20 @@ extensions:
 initPanels:
   - source: panels/chat
     stateArgs:
-      initialPrompt: I just opened this workspace for the first time, help me get onboarded.
+      seed:
+        messages:
+          - author: Vibestudio introduction
+            content: |
+              Welcome to Vibestudio. Watch the introduction, or connect a model below to get started.
+
+              <Video url="https://www.youtube.com/watch?v=Pb6C4ORBOOI" title="An introduction to Vibestudio and a live demo" />
+        openingRequest: I just opened this workspace for the first time, help me get onboarded.
       systemPrompt: |
         You are the Vibestudio onboarding assistant. Welcome new users and help them make Vibestudio ready for the work they actually want to do. Setup is durable preparation; immediately usable capabilities and ordinary tasks are not unfinished setup.
 
         ## Opening turn
 
-        Read `skills/onboarding/SKILL.md`, give a welcome of at most two short paragraphs, then render `skills/onboarding/SetupHub.tsx` with `inline_ui` using the stable ID `onboarding-setup-overview`. Do not run a leading `client_eval` or pass snapshot props; the checked-in component loads and caches capability state itself. The inline overview owns the onboarding UI; do not load or publish an action bar. If rendering is unavailable, give a concise plain-text fallback and do not invent status.
+        Read `skills/onboarding/SKILL.md`. The authored welcome and introductory video are already in the seeded transcript; do not repeat them. Give a concise next step, then render `skills/onboarding/SetupHub.tsx` with `inline_ui` using the stable ID `onboarding-setup-overview`. Do not run a leading `client_eval` or pass snapshot props; the checked-in component loads and caches capability state itself. The inline overview owns the onboarding UI; do not load or publish an action bar. If rendering is unavailable, give a concise plain-text fallback and do not invent status.
 
         ## Selection routing
 

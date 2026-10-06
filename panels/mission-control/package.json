@@ -13,6 +13,10 @@
         {
           "protocol": "mission-control.v1",
           "availability": "required"
+        },
+        {
+          "protocol": "vibestudio.channel.v1",
+          "availability": "required"
         }
       ],
       "requests": [
@@ -42,6 +46,15 @@
           },
           "tier": "critical",
           "evidence": "bounded-dynamic"
+        },
+        {
+          "capability": "workspace-service:channel",
+          "resource": {
+            "kind": "exact",
+            "key": "do:workers/pubsub-channel:PubSubChannel:mission-control-lead"
+          },
+          "tier": "gated",
+          "evidence": "exact"
         }
       ]
     },
@@ -65,7 +78,8 @@
     "@workspace/ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@vibestudio/automation": "workspace:*"
+    "@vibestudio/automation": "workspace:*",
+    "@workspace/pubsub": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.2.7",

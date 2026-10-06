@@ -21,7 +21,7 @@ export interface CollectionOrchestrationState {
   /** Stable object key for the resident collection agent. */
   agentKey?: string;
   /** Optional one-shot task sent after the resident agent joins. */
-  initialPrompt?: string;
+  seed?: import("@workspace/pubsub").ConversationSeed;
   /** Structured first-run intent supplied by a collection creator. */
   startupTask?: CollectionStartupTask;
   /** Optional agent subscription overrides such as model or thinking level. */

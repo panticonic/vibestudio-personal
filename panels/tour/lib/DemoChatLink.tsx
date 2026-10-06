@@ -20,7 +20,7 @@ export function DemoChatLink({
           disposition: "child",
           placement: { disposition: "side-if-room" },
           title,
-          stateArgs: { initialPrompt: prompt },
+          stateArgs: { seed: { openingRequest: prompt } },
         })}
       >
         {label}
