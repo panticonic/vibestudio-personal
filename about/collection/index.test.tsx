@@ -76,8 +76,9 @@ it("preserves the chat input and draft through reconfiguration, failure, and ret
       contextId: "context",
     }),
   );
+  expect(fixtures.launch).toHaveBeenCalledTimes(1);
   expect(fixtures.initialize.mock.invocationCallOrder[0]).toBeLessThan(
-    fixtures.launch.mock.invocationCallOrder[0],
+    fixtures.launch.mock.invocationCallOrder[0]!,
   );
   let reject!: (cause: Error) => void;
   fixtures.launch.mockReturnValueOnce(
