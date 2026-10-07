@@ -17,6 +17,7 @@ const fixtures = vi.hoisted(() => ({
     agentKey: "agent",
   },
   launch: vi.fn(),
+  initialize: vi.fn(),
   set: vi.fn(async () => undefined),
   setTitle: vi.fn(async () => undefined),
 }));
@@ -46,6 +47,9 @@ vi.mock("@workspace/agentic-core", () => ({
   launchAgentIntoChannel: fixtures.launch,
   createPanelImportLoader: () => undefined,
 }));
+vi.mock("@workspace/pubsub", () => ({
+  initializeConversation: fixtures.initialize,
+}));
 vi.mock("@workspace/agentic-chat/chat", () => ({
   AgenticChat: () => <input aria-label="Chat draft" />,
 }));
@@ -53,6 +57,7 @@ vi.mock("@workspace/agentic-chat/chat", () => ({
 beforeEach(() => {
   fixtures.args.title = "Original";
   fixtures.launch.mockReset().mockResolvedValue(undefined);
+  fixtures.initialize.mockReset().mockResolvedValue(undefined);
   fixtures.set.mockClear();
   fixtures.set.mockImplementation(async (patch?: object) => {
     Object.assign(fixtures.args, patch);
@@ -65,6 +70,15 @@ it("preserves the chat input and draft through reconfiguration, failure, and ret
   const input = await screen.findByRole("textbox", { name: "Chat draft" });
   fireEvent.change(input, { target: { value: "Unsent draft" } });
   await waitFor(() => expect(screen.getByText("ready")).toBeTruthy());
+  expect(fixtures.initialize).toHaveBeenCalledWith(
+    expect.objectContaining({
+      channel: "collection-channel",
+      contextId: "context",
+    }),
+  );
+  expect(fixtures.initialize.mock.invocationCallOrder[0]).toBeLessThan(
+    fixtures.launch.mock.invocationCallOrder[0],
+  );
   let reject!: (cause: Error) => void;
   fixtures.launch.mockReturnValueOnce(
     new Promise((_, no) => {
