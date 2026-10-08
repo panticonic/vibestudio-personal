@@ -93,7 +93,9 @@ export function areSelectedImportsComplete(
   publicRequested: boolean,
   publicPhase: ImportJobPhase | null,
   protectedRequested: boolean,
-  protectedState: "running" | "complete" | "cancelled" | "failed" | null
+  protectedState:
+    | import("@vibestudio/browser-data/client").SensitiveBrowserImportStatus["state"]
+    | null
 ): boolean {
   if (!publicRequested && !protectedRequested) return false;
   return (

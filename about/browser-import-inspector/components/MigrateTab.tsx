@@ -107,6 +107,8 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
   );
   const [busy, setBusy] = useState<"preview" | "import" | "release" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [observationError, setObservationError] = useState<string | null>(null);
+  const displayedError = error ?? observationError;
   const [step, setStep] = useState<Step>("data");
   const [reimporting, setReimporting] = useState(false);
   const [released, setReleased] = useState(false);
@@ -154,27 +156,36 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
   }, [publicOperationId, job?.jobId, job?.phase]);
 
   useEffect(() => {
-    if (!sensitiveStatus || sensitiveStatus.state !== "running") return;
-    let consecutiveFailures = 0;
-    let timer: ReturnType<typeof setInterval>;
-    const observe = () => {
-      void observeSensitiveCheckpoint(browserData, sensitiveCheckpointStore)
-        .then((status) => {
-          consecutiveFailures = 0;
-          if (status) setSensitiveStatus(status);
-        })
-        .catch((cause) => {
-          consecutiveFailures += 1;
-          if (consecutiveFailures < POLL_FAILURES_BEFORE_GIVING_UP) return;
-          clearInterval(timer);
-          setError(
-            `Lost contact with the protected import while it was running: ${classifyError(cause).message}`
-          );
-        });
+    setObservationError(null);
+    if (
+      !sensitiveStatus ||
+      !["running", "applying", "application_failed"].includes(sensitiveStatus.state)
+    )
+      return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const observe = async () => {
+      try {
+        const status = await observeSensitiveCheckpoint(browserData, sensitiveCheckpointStore);
+        if (!active) return;
+        if (status) setSensitiveStatus(status);
+        setObservationError(null);
+      } catch (cause) {
+        if (!active) return;
+        setObservationError(
+          `Could not read protected import progress: ${classifyError(cause).message}. Your saved data is kept; progress will resume when contact returns.`
+        );
+      } finally {
+        // One owned status read at a time. The refresh clock observes progress;
+        // it never declares the import failed or cancels the underlying work.
+        if (active) timer = setTimeout(() => void observe(), 500);
+      }
     };
-    observe();
-    timer = setInterval(observe, 500);
-    return () => clearInterval(timer);
+    void observe();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
   }, [sensitiveStatus?.operationId, sensitiveStatus?.state]);
 
   const publicDataTypes = (): NonSensitiveBrowserImportDataType[] =>
@@ -274,12 +285,19 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
 
   const retrySensitiveImport = async () => {
     const checkpoint = readSensitiveImportCheckpoint();
-    if (!checkpoint || checkpoint.status.state !== "running") return;
+    if (
+      !checkpoint ||
+      !["running", "applying", "application_failed"].includes(checkpoint.status.state)
+    )
+      return;
     setBusy("import");
     setError(null);
     try {
       const status = await browserData.startSensitiveImport(checkpoint.request);
-      await writeSensitiveImportCheckpoint({ request: checkpoint.request, status });
+      await writeSensitiveImportCheckpoint({
+        request: checkpoint.request,
+        status,
+      });
       setSensitiveStatus(status);
     } catch (cause) {
       setError(classifyError(cause).message);
@@ -319,18 +337,21 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
       (entry.phase === "complete" || entry.phase === "partial")
   );
   const running =
-    (job !== null && !isTerminalImportPhase(job.phase)) || sensitiveStatus?.state === "running";
+    (job !== null && !isTerminalImportPhase(job.phase)) ||
+    (sensitiveStatus !== null && ["running", "applying"].includes(sensitiveStatus.state));
   const currentImportComplete = areSelectedImportsComplete(
     publicDataTypes().length > 0,
     job?.phase ?? null,
     sensitiveDataTypes().length > 0,
     sensitiveStatus?.state ?? null
   );
-  const imported = running ? false : currentImportComplete || importedBefore;
+  const hasCurrentImport = job !== null || sensitiveStatus !== null;
+  const imported = !running && (hasCurrentImport ? currentImportComplete : importedBefore);
   const hasCurrentResult = currentImportComplete;
   const showImportOptions =
     sensitiveStatus !== null &&
     sensitiveStatus.state !== "failed" &&
+    sensitiveStatus.state !== "application_failed" &&
     sensitiveStatus.state !== "cancelled" &&
     !reimporting &&
     (!job || isSuccessfulImportPhase(job.phase))
@@ -400,9 +421,9 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
                   Pick at least one category, or skip importing entirely.
                 </Text>
               )}
-              {error && (
+              {displayedError && (
                 <Callout.Root color="red" mt="3">
-                  <Callout.Text>{error}</Callout.Text>
+                  <Callout.Text>{displayedError}</Callout.Text>
                 </Callout.Root>
               )}
             </Card>
@@ -429,36 +450,67 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
                 readSensitiveImportCheckpoint()?.request,
                 props.selection
               )}
-              detail="Protected data stayed inside the trusted host; this panel receives aggregate counts only."
+              heading={
+                sensitiveStatus.state === "applying"
+                  ? "Data saved; applying cookies"
+                  : sensitiveStatus.state === "application_failed"
+                    ? "Data saved; cookies need attention"
+                    : undefined
+              }
+              detail={
+                sensitiveStatus.state === "applying"
+                  ? "Your browser data is saved. Applying cookies before completing the import…"
+                  : sensitiveStatus.state === "complete" &&
+                      sensitiveStatus.counts.some(
+                        (count) => count.dataType === "cookies" && count.stored > 0
+                      )
+                    ? "Cookies are applied. Save any work in already-open pages, then reload those pages to use the imported sessions."
+                    : sensitiveStatus.state === "cancelled"
+                      ? "Import cancelled. Any data already saved has been kept; cancellation does not remove browser data."
+                      : undefined
+              }
             />
           )}
-          {currentImportComplete && props.selection.source.transient && (
-            <Callout.Root color={released ? "green" : "amber"}>
-              <Flex justify="between" align="center" gap="3" wrap="wrap">
-                <Callout.Text>
-                  {released
-                    ? "Vibestudio's temporary copy has been removed. You can now delete the original export from Files or Downloads."
-                    : "This export can contain unencrypted browser data. Remove Vibestudio's temporary copy, then delete the original from Files or Downloads."}
-                </Callout.Text>
-                {!released && (
-                  <Button
-                    size="1"
-                    variant="soft"
-                    disabled={busy !== null}
-                    onClick={() => void releaseTransientExport()}
-                  >
-                    {busy === "release" ? <Spinner size="1" /> : null}
-                    Remove temporary copy
-                  </Button>
-                )}
-              </Flex>
+          {sensitiveStatus?.state === "application_failed" && (
+            <Callout.Root color="red">
+              <Callout.Text>{sensitiveStatus.error}</Callout.Text>
+              <Button onClick={() => void retrySensitiveImport()} disabled={busy !== null} mt="2">
+                Apply saved cookies
+              </Button>
             </Callout.Root>
           )}
-          {!showImportOptions && error && (
+          {props.selection.source.transient &&
+            (job === null || isTerminalImportPhase(job.phase)) &&
+            sensitiveStatus?.state !== "running" &&
+            (currentImportComplete ||
+              sensitiveStatus?.state === "applying" ||
+              sensitiveStatus?.state === "application_failed") && (
+              <Callout.Root color={released ? "green" : "amber"}>
+                <Flex justify="between" align="center" gap="3" wrap="wrap">
+                  <Callout.Text>
+                    {released
+                      ? "Vibestudio's temporary copy has been removed. You can now delete the original export from Files or Downloads."
+                      : "This export can contain unencrypted browser data. Remove Vibestudio's temporary copy, then delete the original from Files or Downloads."}
+                  </Callout.Text>
+                  {!released && (
+                    <Button
+                      size="1"
+                      variant="soft"
+                      disabled={busy !== null}
+                      onClick={() => void releaseTransientExport()}
+                    >
+                      {busy === "release" ? <Spinner size="1" /> : null}
+                      Remove temporary copy
+                    </Button>
+                  )}
+                </Flex>
+              </Callout.Root>
+            )}
+          {!showImportOptions && displayedError && (
             <Callout.Root color="red">
               <Flex justify="between" align="center" gap="3" wrap="wrap">
-                <Callout.Text>{error}</Callout.Text>
-                {sensitiveStatus?.state === "running" && (
+                <Callout.Text>{displayedError}</Callout.Text>
+                {sensitiveStatus && ["running", "applying"].includes(sensitiveStatus.state) && (
                   <Button
                     size="1"
                     variant="soft"
@@ -516,7 +568,9 @@ function readSensitiveImportCheckpoint(): SensitiveImportCheckpoint | null {
     !Array.isArray(request.dataTypes) ||
     !status ||
     status.operationId !== request.operationId ||
-    !["running", "complete", "cancelled", "failed"].includes(status.state)
+    !["running", "applying", "application_failed", "complete", "cancelled", "failed"].includes(
+      status.state
+    )
   ) {
     return null;
   }
@@ -586,16 +640,15 @@ export function sensitiveStatusAsJob(
   selection: ImportSourceSelection
 ): ImportJobSnapshot {
   const now = Date.now();
-  const phase =
-    status.state === "running"
-      ? "copying"
-      : status.state === "complete"
-        ? status.counts.some((count) => count.errors > 0)
-          ? "partial"
-          : "complete"
-        : status.state === "cancelled"
-          ? "cancelled"
-          : "failed";
+  const phase = ["running", "applying"].includes(status.state)
+    ? "copying"
+    : status.state === "complete"
+      ? status.counts.some((count) => count.errors > 0)
+        ? "partial"
+        : "complete"
+      : status.state === "cancelled"
+        ? "cancelled"
+        : "failed";
   return {
     jobId: status.operationId,
     hostId: selection.host.hostId,
@@ -606,7 +659,7 @@ export function sensitiveStatusAsJob(
     requestedDataTypes: request?.dataTypes ?? status.counts.map((count) => count.dataType),
     startedAt: now,
     updatedAt: now,
-    finishedAt: status.state === "running" ? undefined : now,
+    finishedAt: ["running", "applying"].includes(status.state) ? undefined : now,
     progress: status.counts.map((count) => ({
       ...count,
       itemsProcessed: count.read,
@@ -616,7 +669,7 @@ export function sensitiveStatusAsJob(
       return [`${count.skipped} cookies were skipped. Some website sign-ins may not transfer.`];
     }),
     error: status.error,
-    resumable: status.state === "running",
+    resumable: ["running", "applying", "application_failed"].includes(status.state),
   };
 }
 
@@ -957,11 +1010,12 @@ function ProgressCard(props: {
   mode: "preview" | "import";
   job: ImportJobSnapshot;
   detail?: string;
+  heading?: string;
   scope?: "all" | "public" | "protected";
 }) {
   const running = !isTerminalImportPhase(props.job.phase);
   const status = importStatusPresentation(props.job.phase, props.scope);
-  const title = props.mode === "preview" ? "Review" : status.heading;
+  const title = props.heading ?? (props.mode === "preview" ? "Review" : status.heading);
   const surfaceTone =
     props.mode !== "import"
       ? undefined
@@ -1487,11 +1541,7 @@ function WindowGroup(props: {
             </Badge>
           </Tooltip>
         )}
-        {selectedHere > 0 && (
-          <Badge size="1">
-            {selectedHere} selected
-          </Badge>
-        )}
+        {selectedHere > 0 && <Badge size="1">{selectedHere} selected</Badge>}
         <Box style={{ flex: 1 }} />
         {props.collapsed && (
           <Flex gap="1" align="center" style={{ minWidth: 0 }}>

@@ -52,8 +52,11 @@ export async function startSelectedImports(
   const pending = sensitiveSelection
     ? pendingSensitiveRequest(checkpointStore.read(), sensitiveSelection, createOperationId)
     : null;
+  const previous = checkpointStore.read();
   const pendingStatus: SensitiveBrowserImportStatus | null = pending
-    ? { operationId: pending.operationId, state: "running", counts: [] }
+    ? previous?.request.operationId === pending.operationId
+      ? previous.status
+      : { operationId: pending.operationId, state: "running", counts: [] }
     : null;
   if (pending && pendingStatus) {
     await checkpointStore.write({ request: pending, status: pendingStatus });
@@ -95,10 +98,14 @@ export async function observeSensitiveCheckpoint(
   checkpointStore: SensitiveCheckpointStore
 ): Promise<SensitiveBrowserImportStatus | null> {
   const checkpoint = checkpointStore.read();
-  if (!checkpoint || checkpoint.status.state !== "running") {
+  if (
+    !checkpoint ||
+    !["running", "applying", "application_failed"].includes(checkpoint.status.state)
+  ) {
     return checkpoint?.status ?? null;
   }
   const status = await client.observeSensitiveImport(checkpoint.request.operationId);
+  if (checkpointStore.read()?.request.operationId !== checkpoint.request.operationId) return null;
   await checkpointStore.write({ request: checkpoint.request, status });
   return status;
 }
@@ -114,7 +121,7 @@ export async function cancelSelectedImports(
       ? client.cancelImport(job.jobId).then(() => client.getImportJob(job.jobId))
       : Promise.resolve(job);
   const sensitivePromise =
-    sensitiveStatus?.state === "running"
+    sensitiveStatus && ["running", "applying", "application_failed"].includes(sensitiveStatus.state)
       ? client.cancelSensitiveImport(sensitiveStatus.operationId)
       : Promise.resolve(sensitiveStatus);
   const [publicResult, sensitiveResult] = await Promise.allSettled([
@@ -125,7 +132,10 @@ export async function cancelSelectedImports(
     sensitiveResult.status === "fulfilled" ? sensitiveResult.value : sensitiveStatus;
   const checkpoint = checkpointStore.read();
   if (checkpoint && nextSensitive && checkpoint.request.operationId === nextSensitive.operationId) {
-    await checkpointStore.write({ request: checkpoint.request, status: nextSensitive });
+    await checkpointStore.write({
+      request: checkpoint.request,
+      status: nextSensitive,
+    });
   }
   return {
     job: publicResult.status === "fulfilled" ? publicResult.value : job,
@@ -143,7 +153,7 @@ function pendingSensitiveRequest(
 ): SensitiveBrowserImportRequest {
   if (
     checkpoint &&
-    checkpoint.status.state === "running" &&
+    ["running", "applying", "application_failed"].includes(checkpoint.status.state) &&
     sameSelection(checkpoint.request, selection)
   ) {
     return checkpoint.request;

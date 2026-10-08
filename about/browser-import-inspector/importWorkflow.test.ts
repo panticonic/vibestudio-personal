@@ -84,7 +84,11 @@ describe("browser import workflow", () => {
         request,
         status: { operationId: "sealed-1", state: "running", counts: [] },
       });
-      return { operationId: request.operationId, state: "running", counts: [] };
+      return {
+        operationId: request.operationId,
+        state: "running",
+        counts: [],
+      };
     });
 
     const result = await startSelectedImports(
@@ -121,7 +125,11 @@ describe("browser import workflow", () => {
         h.store.write(checkpoint);
       }),
     };
-    const status = { operationId: "sealed-1", state: "complete" as const, counts: [] };
+    const status = {
+      operationId: "sealed-1",
+      state: "complete" as const,
+      counts: [],
+    };
     vi.mocked(h.client.startImport).mockResolvedValue(publicJob);
     vi.mocked(h.client.startSensitiveImport).mockResolvedValue(status);
     const report = vi.fn();
@@ -141,7 +149,10 @@ describe("browser import workflow", () => {
     expect(report).not.toHaveBeenCalled();
     releaseSave();
 
-    await expect(starting).resolves.toMatchObject({ errors: [], sensitiveStatus: status });
+    await expect(starting).resolves.toMatchObject({
+      errors: [],
+      sensitiveStatus: status,
+    });
     expect(report).toHaveBeenCalledWith({
       sensitiveStatus: {
         operationId: "sealed-1",
@@ -160,7 +171,11 @@ describe("browser import workflow", () => {
         finishPublic = resolve;
       })
     );
-    const status = { operationId: "sealed-1", state: "complete" as const, counts: [] };
+    const status = {
+      operationId: "sealed-1",
+      state: "complete" as const,
+      counts: [],
+    };
     vi.mocked(h.client.startSensitiveImport).mockResolvedValue(status);
     const report = vi.fn();
     let settled = false;
@@ -180,7 +195,10 @@ describe("browser import workflow", () => {
     expect(h.checkpoint?.status).toEqual(status);
     expect(settled).toBe(false);
     finishPublic(publicJob);
-    await expect(starting).resolves.toMatchObject({ errors: [], sensitiveStatus: status });
+    await expect(starting).resolves.toMatchObject({
+      errors: [],
+      sensitiveStatus: status,
+    });
   });
 
   it("does not start either import if its retry checkpoint cannot be saved", async () => {
@@ -275,5 +293,68 @@ describe("browser import workflow", () => {
     expect(result.errors).toHaveLength(1);
     expect(result.sensitiveStatus?.state).toBe("cancelled");
     expect(h.checkpoint?.status.state).toBe("cancelled");
+  });
+  it.each(["applying", "application_failed"] as const)(
+    "reuses a %s receipt without dropping saved counts",
+    async (state) => {
+      const h = harness();
+      const request = { ...sensitiveSelection, operationId: "saved-1" };
+      const status = {
+        operationId: "saved-1",
+        state,
+        counts: [
+          {
+            dataType: "cookies" as const,
+            read: 1,
+            stored: 1,
+            skipped: 0,
+            errors: 0,
+          },
+        ],
+        ...(state === "application_failed" ? { error: "Apply saved cookies" } : {}),
+      };
+      h.store.write({ request, status });
+      vi.mocked(h.client.startSensitiveImport).mockResolvedValue({
+        ...status,
+        state: "applying",
+      });
+      const report = vi.fn();
+      const createOperationId = vi.fn(() => "wrong-new-id");
+      await startSelectedImports(
+        h.client,
+        h.store,
+        null,
+        sensitiveSelection,
+        createOperationId,
+        report
+      );
+      expect(createOperationId).not.toHaveBeenCalled();
+      expect(report).toHaveBeenCalledWith({ sensitiveStatus: status });
+      expect(h.client.startSensitiveImport).toHaveBeenCalledWith(request);
+      expect(h.checkpoint?.status.counts).toEqual(status.counts);
+    }
+  );
+  it("discards a late observation after a different import takes ownership of the checkpoint", async () => {
+    const h = harness();
+    const first = {
+      request: { ...sensitiveSelection, operationId: "first" },
+      status: { operationId: "first", state: "running" as const, counts: [] },
+    };
+    h.store.write(first);
+    let finish!: (status: typeof first.status) => void;
+    vi.mocked(h.client.observeSensitiveImport).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const observation = observeSensitiveCheckpoint(h.client, h.store);
+    const second = {
+      request: { ...sensitiveSelection, operationId: "second" },
+      status: { operationId: "second", state: "running" as const, counts: [] },
+    };
+    h.store.write(second);
+    finish(first.status);
+    await expect(observation).resolves.toBeNull();
+    expect(h.checkpoint).toEqual(second);
   });
 });

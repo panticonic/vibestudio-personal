@@ -106,6 +106,7 @@ singletonObjects:
   - className: MissionControlStore
     key: main
     source: workers/mission-control-store
+minimumAppVersion: 0.1.84
 systemEpoch: 0
 template:
   dependencies:

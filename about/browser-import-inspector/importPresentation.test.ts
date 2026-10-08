@@ -320,4 +320,22 @@ describe("protected import outcomes", () => {
     );
     expect(job.phase).toBe("partial");
   });
+  it.each(["applying", "application_failed"] as const)(
+    "does not report migration complete for %s cookies",
+    (state) => {
+      expect(areSelectedImportsComplete(false, null, true, state)).toBe(false);
+      const job = sensitiveStatusAsJob(
+        {
+          operationId: "saved",
+          state,
+          counts: [{ dataType: "cookies", read: 1, stored: 1, skipped: 0, errors: 0 }],
+        },
+        undefined,
+        desktopSelection
+      );
+      expect(job.resumable).toBe(true);
+      expect(job.progress[0]?.stored).toBe(1);
+      expect(job.phase).not.toBe("complete");
+    }
+  );
 });
