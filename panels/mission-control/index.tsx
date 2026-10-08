@@ -33,6 +33,7 @@ import {
 } from "@workspace/ui/icons";
 import {
   PROTOCOL,
+  LEAD_CHANNEL_ID,
   STATUSES,
   STATUS_LABELS,
   PRIORITIES,
@@ -463,7 +464,7 @@ export default function MissionControl() {
           const idempotencyKey = crypto.randomUUID();
           const client = connectViaRpc({
             rpc,
-            channel: lead.channelId,
+            channel: LEAD_CHANNEL_ID,
             contextId: lead.contextId,
             clientId: `${rpc.selfId}:mission-lead:${idempotencyKey}`,
             name: "Mission Control",

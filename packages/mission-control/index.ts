@@ -3,6 +3,7 @@ import { triggerSchema } from "@vibestudio/workspace-contracts/automations";
 export type MissionTrigger = z.infer<typeof triggerSchema>;
 
 export const PROTOCOL = "mission-control.v1";
+export const LEAD_CHANNEL_ID = "mission-control-lead";
 export const STATUSES = [
   "inbox",
   "ready",

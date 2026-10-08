@@ -6,6 +6,7 @@ import {
 import { z } from "zod";
 import {
   projectInput,
+  LEAD_CHANNEL_ID,
   taskInput,
   viewInput,
   emptyView,
@@ -1100,7 +1101,7 @@ export class MissionControlStore extends DurableObjectBase {
       : null;
     if (this.leadLaunch) return this.leadLaunch;
     const launch = (async () => {
-      const channelId = "mission-control-lead";
+      const channelId = LEAD_CHANNEL_ID;
       await this.rpc.call("main", "runtime.createEntity", [
         {
           kind: "do",
@@ -1112,7 +1113,7 @@ export class MissionControlStore extends DurableObjectBase {
       const launched = await launchAgentIntoChannel(this.rpc, {
         source: SOURCE,
         className: CLASS,
-        key: "mission-control-lead",
+        key: LEAD_CHANNEL_ID,
         channelId,
         ...(retained ? { contextId: retained.contextId } : {}),
         config: {
