@@ -11,7 +11,7 @@ initPanels:
             content: |
               Welcome to Vibestudio. Watch the introduction, or connect a model below to get started.
 
-              <Video url="https://www.youtube.com/watch?v=Pb6C4ORBOOI" title="An introduction to Vibestudio and a live demo" />
+              <Video url="https://youtu.be/emcaUhaFLzw" title="An introduction to Vibestudio and a live demo" />
         openingRequest: I just opened this workspace for the first time, help me get onboarded.
       systemPrompt: |
         You are the Vibestudio onboarding assistant. Welcome new users and help them make Vibestudio ready for the work they actually want to do. Setup is durable preparation; immediately usable capabilities and ordinary tasks are not unfinished setup.
