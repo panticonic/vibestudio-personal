@@ -24,7 +24,7 @@ import {
 } from "./status.js";
 
 function dependencies(
-  overrides: Partial<OnboardingStatusDependencies> = {}
+  overrides: Partial<OnboardingStatusDependencies> = {},
 ): OnboardingStatusDependencies {
   return {
     github: vi.fn(async () => ({
@@ -51,14 +51,14 @@ function dependencies(
           defaultModel: "provider:model",
           defaultModelSource: "workspace",
           defaultAgentConfig: { model: "provider:model" },
-        }) as never
+        }) as never,
     ),
     localModelsStatus: vi.fn(
       async () =>
         ({
           fallback: { ready: false, warm: false },
           downloads: [],
-        }) as never
+        }) as never,
     ),
     localModelsList: vi.fn(async () => []),
     browserImportJobs: vi.fn(async () => []),
@@ -70,6 +70,38 @@ function dependencies(
 }
 
 describe("onboarding status adapters", () => {
+  it("does not require Codex when a different default model is ready", async () => {
+    const adapters = createStatusAdapters(dependencies());
+    await expect(adapters["ai-provider"]!()).resolves.toMatchObject({
+      state: "configured",
+      attention: "none",
+    });
+    await expect(adapters["agent-defaults"]!()).resolves.toMatchObject({
+      state: "configured",
+      attention: "none",
+    });
+  });
+
+  it("presents first-run model setup without declaring a provider repair or ready defaults", async () => {
+    const deps = dependencies();
+    const settings = await deps.modelSettings();
+    settings.catalog.models[0]!.availability = {
+      state: "needs-setup",
+      detail: "no-credential",
+    };
+    const adapters = createStatusAdapters(
+      dependencies({ modelSettings: async () => settings }),
+    );
+    for (const key of ["ai-provider", "agent-defaults"]) {
+      await expect(adapters[key]!()).resolves.toMatchObject({
+        state: "not-configured",
+        attention: "blocking",
+        summary:
+          "Choose an AI model and connect its provider, or set up a local model.",
+      });
+    }
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     credentialsMock.getClientConfigStatus.mockResolvedValue({
@@ -87,7 +119,7 @@ describe("onboarding status adapters", () => {
       },
     ]);
     credentialsMock.fetch.mockResolvedValue(
-      new Response(JSON.stringify({ email: "verified@example.test" }))
+      new Response(JSON.stringify({ email: "verified@example.test" })),
     );
     const adapter = createCredentialConnectionStatusAdapter(
       {
@@ -97,21 +129,21 @@ describe("onboarding status adapters", () => {
         verifyUrl: "https://www.googleapis.com/oauth2/v3/userinfo",
         identityField: "email",
       },
-      "Google Workspace"
+      "Google Workspace",
     );
 
     await expect(adapter()).resolves.toEqual(
       expect.objectContaining({
         state: "connected-unverified",
         verification: "unverified",
-      })
+      }),
     );
     await expect(adapter({ verify: true })).resolves.toEqual(
       expect.objectContaining({
         state: "connected",
         verification: "verified",
         summary: "Verified as verified@example.test.",
-      })
+      }),
     );
   });
 
@@ -125,21 +157,25 @@ describe("onboarding status adapters", () => {
         providerId: "example-provider",
         clientConfigId: "example-provider",
       },
-      "Example Provider"
+      "Example Provider",
     );
 
     await expect(adapter()).resolves.toEqual({
       state: "not-configured",
-      summary: "Example Provider needs provider setup before an account can connect.",
+      summary:
+        "Example Provider needs provider setup before an account can connect.",
       attention: "optional",
       rawStage: "needs-setup",
     });
   });
 
   it("describes the provider-specific search defaults", async () => {
-    await expect(createStatusAdapters(dependencies())["web-search"]!()).resolves.toEqual({
+    await expect(
+      createStatusAdapters(dependencies())["web-search"]!(),
+    ).resolves.toEqual({
       state: "using-defaults",
-      summary: "Codex agents use subscription search; other agents use built-in DuckDuckGo.",
+      summary:
+        "Codex agents use subscription search; other agents use built-in DuckDuckGo.",
       attention: "none",
       rawStage: "duckduckgo",
     });
@@ -155,16 +191,16 @@ describe("onboarding status adapters", () => {
               connected: true,
               verified: false,
               verification: { valid: false, error: "unauthorized" },
-            }) as never
+            }) as never,
         ),
-      })
+      }),
     );
     await expect(adapters["github"]!({ verify: true })).resolves.toEqual(
       expect.objectContaining({
         state: "needs-attention",
         verification: "failed",
         attention: "blocking",
-      })
+      }),
     );
   });
 
@@ -174,12 +210,12 @@ describe("onboarding status adapters", () => {
     const localModelsStatus = vi.fn(defaults.localModelsStatus);
     const localModelsList = vi.fn(defaults.localModelsList);
     const adapter = createStatusAdapters(
-      dependencies({ localModelsStatus, localModelsList, hasSkill })
+      dependencies({ localModelsStatus, localModelsList, hasSkill }),
     )["local-models"]!;
 
     await expect(adapter()).resolves.toEqual({
       state: "using-defaults",
-      summary: "Cloud models remain available; no local model is installed.",
+      summary: "No local model is installed; local inference is optional.",
       attention: "none",
       rawStage: "not-installed",
     });
@@ -197,17 +233,23 @@ describe("update assistant preferences", () => {
           ({
             state: "paused",
             charter: { trigger: { kind: "schedule", everyMs: 21600000 } },
-          }) as Awaited<ReturnType<OnboardingStatusDependencies["updateAssistant"]>>
+          }) as Awaited<
+            ReturnType<OnboardingStatusDependencies["updateAssistant"]>
+          >,
       ),
     });
-    expect(await createStatusAdapters(deps)["workspace-updates"]!()).toMatchObject({
+    expect(
+      await createStatusAdapters(deps)["workspace-updates"]!(),
+    ).toMatchObject({
       state: "configured",
       attention: "none",
       rawStage: "paused",
     });
   });
   it("does not claim monitoring is on before provisioning completes", async () => {
-    expect(await createStatusAdapters(dependencies())["workspace-updates"]!()).toMatchObject({
+    expect(
+      await createStatusAdapters(dependencies())["workspace-updates"]!(),
+    ).toMatchObject({
       state: "unknown",
       rawStage: "not-provisioned",
     });

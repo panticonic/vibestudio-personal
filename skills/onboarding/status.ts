@@ -5,9 +5,15 @@ import {
   MODEL_SETTINGS_SERVICE_PROTOCOL,
   type ModelSettingsSnapshot,
 } from "@workspace/model-catalog/catalog";
-import type { LocalModelEntry, LocalModelsStatus } from "@workspace/model-catalog/localModels";
+import type {
+  LocalModelEntry,
+  LocalModelsStatus,
+} from "@workspace/model-catalog/localModels";
 import type { ImportJobSnapshot } from "@vibestudio/browser-data";
-import type { CredentialConnectionObserver, SetupPresentationState } from "./catalog";
+import type {
+  CredentialConnectionObserver,
+  SetupPresentationState,
+} from "./catalog";
 
 export interface CapabilityOnboardingStatusResult {
   state: SetupPresentationState;
@@ -48,19 +54,23 @@ const loadRuntime = () => import("@workspace/runtime");
 
 function activeCredentials(
   all: readonly StoredCredentialSummary[],
-  providerIds: readonly string[]
+  providerIds: readonly string[],
 ): StoredCredentialSummary[] {
   return all.filter(
     (credential) =>
       !credential.revokedAt &&
       typeof credential.metadata?.["providerId"] === "string" &&
-      providerIds.includes(credential.metadata["providerId"])
+      providerIds.includes(credential.metadata["providerId"]),
   );
 }
 
-async function githubStatus(opts: { verify?: boolean } = {}): Promise<GitHubOnboardingStatus> {
+async function githubStatus(
+  opts: { verify?: boolean } = {},
+): Promise<GitHubOnboardingStatus> {
   const { credentials } = await loadRuntime();
-  const primary = activeCredentials(await credentials.listStoredCredentials(), ["github"])[0];
+  const primary = activeCredentials(await credentials.listStoredCredentials(), [
+    "github",
+  ])[0];
   if (!primary) {
     return { stage: "needs-token", connected: false, verified: false };
   }
@@ -69,13 +79,15 @@ async function githubStatus(opts: { verify?: boolean } = {}): Promise<GitHubOnbo
       stage: "connected",
       connected: true,
       verified: false,
-      ...(primary.accountIdentity?.username ? { login: primary.accountIdentity.username } : {}),
+      ...(primary.accountIdentity?.username
+        ? { login: primary.accountIdentity.username }
+        : {}),
     };
   }
   const response = await credentials.fetch(
     "https://api.github.com/user",
     { method: "GET", headers: { accept: "application/vnd.github+json" } },
-    { credentialId: primary.id }
+    { credentialId: primary.id },
   );
   if (!response.ok) {
     return {
@@ -95,12 +107,16 @@ async function githubStatus(opts: { verify?: boolean } = {}): Promise<GitHubOnbo
   };
 }
 
-async function activeSearchProvider(): Promise<"duckduckgo" | "tavily" | "brave" | "exa"> {
+async function activeSearchProvider(): Promise<
+  "duckduckgo" | "tavily" | "brave" | "exa"
+> {
   const { credentials } = await loadRuntime();
   const providers = new Set(
-    activeCredentials(await credentials.listStoredCredentials(), ["tavily", "brave", "exa"]).map(
-      (credential) => credential.metadata?.["providerId"]
-    )
+    activeCredentials(await credentials.listStoredCredentials(), [
+      "tavily",
+      "brave",
+      "exa",
+    ]).map((credential) => credential.metadata?.["providerId"]),
   );
   if (providers.has("tavily")) return "tavily";
   if (providers.has("brave")) return "brave";
@@ -110,18 +126,23 @@ async function activeSearchProvider(): Promise<"duckduckgo" | "tavily" | "brave"
 
 export function createDefaultStatusDependencies(): OnboardingStatusDependencies {
   let modelSettings:
-    | Promise<ReturnType<(typeof import("@workspace/runtime"))["createDurableObjectServiceClient"]>>
+    | Promise<
+        ReturnType<
+          (typeof import("@workspace/runtime"))["createDurableObjectServiceClient"]
+        >
+      >
     | undefined;
   const modelSettingsClient = () =>
-    (modelSettings ??= loadRuntime().then(({ createDurableObjectServiceClient }) =>
-      createDurableObjectServiceClient(MODEL_SETTINGS_SERVICE_PROTOCOL)
+    (modelSettings ??= loadRuntime().then(
+      ({ createDurableObjectServiceClient }) =>
+        createDurableObjectServiceClient(MODEL_SETTINGS_SERVICE_PROTOCOL),
     ));
   let installedSkills: Promise<ReadonlySet<string>> | undefined;
   const skills = () =>
     (installedSkills ??= loadRuntime().then(({ callMain }) =>
       callMain<SkillCatalogEntry[]>("workspace.listSkills").then(
-        (entries) => new Set(entries.map((entry) => entry.skillPath))
-      )
+        (entries) => new Set(entries.map((entry) => entry.skillPath)),
+      ),
     ));
   return {
     github: githubStatus,
@@ -132,30 +153,40 @@ export function createDefaultStatusDependencies(): OnboardingStatusDependencies 
       return extensions.invoke(
         "@workspace-extensions/local-models",
         "status",
-        []
+        [],
       ) as Promise<LocalModelsStatus>;
     },
     localModelsList: async () => {
       const { extensions } = await loadRuntime();
-      return extensions.invoke("@workspace-extensions/local-models", "listModels", []) as Promise<
-        LocalModelEntry[]
-      >;
+      return extensions.invoke(
+        "@workspace-extensions/local-models",
+        "listModels",
+        [],
+      ) as Promise<LocalModelEntry[]>;
     },
-    browserImportJobs: async () => (await loadRuntime()).browserData.listImportJobs(),
+    browserImportJobs: async () =>
+      (await loadRuntime()).browserData.listImportJobs(),
     updateAssistant: async () =>
       missionRecordSchema
         .nullable()
         .parse(
           await (
             await loadRuntime()
-          ).extensions.invoke("@workspace-extensions/templates", "updateAssistant", [])
+          ).extensions.invoke(
+            "@workspace-extensions/templates",
+            "updateAssistant",
+            [],
+          ),
         ),
     activeSearchProvider,
     hasSkill: async (skillPath) => (await skills()).has(skillPath),
   };
 }
 
-function unavailable(summary: string, rawStage: string): CapabilityOnboardingStatusResult {
+function unavailable(
+  summary: string,
+  rawStage: string,
+): CapabilityOnboardingStatusResult {
   return {
     state: "unavailable",
     summary,
@@ -166,7 +197,7 @@ function unavailable(summary: string, rawStage: string): CapabilityOnboardingSta
 
 export function createCredentialConnectionStatusAdapter(
   observer: CredentialConnectionObserver,
-  title: string
+  title: string,
 ): CapabilityOnboardingStatusAdapter {
   return async (opts = {}) => {
     const { credentials } = await loadRuntime();
@@ -190,7 +221,9 @@ export function createCredentialConnectionStatusAdapter(
       };
     }
     const identity =
-      primary.accountIdentity?.email ?? primary.accountIdentity?.username ?? undefined;
+      primary.accountIdentity?.email ??
+      primary.accountIdentity?.username ??
+      undefined;
     if (!opts.verify || !observer.verifyUrl) {
       return {
         state: "connected-unverified",
@@ -205,7 +238,7 @@ export function createCredentialConnectionStatusAdapter(
     const response = await credentials.fetch(
       observer.verifyUrl,
       { method: "GET" },
-      { credentialId: primary.id }
+      { credentialId: primary.id },
     );
     if (!response.ok) {
       return {
@@ -225,7 +258,9 @@ export function createCredentialConnectionStatusAdapter(
     return {
       state: "connected",
       verification: "verified",
-      summary: verifiedIdentity ? `Verified as ${verifiedIdentity}.` : `${title} verified.`,
+      summary: verifiedIdentity
+        ? `Verified as ${verifiedIdentity}.`
+        : `${title} verified.`,
       attention: "none",
       rawStage: "verified",
     };
@@ -234,7 +269,7 @@ export function createCredentialConnectionStatusAdapter(
 
 function githubResult(
   status: GitHubOnboardingStatus,
-  verify: boolean
+  verify: boolean,
 ): CapabilityOnboardingStatusResult {
   if (status.stage === "error") {
     return unavailable("GitHub status is unavailable right now.", status.stage);
@@ -252,7 +287,9 @@ function githubResult(
     return {
       state: "connected",
       verification: "verified",
-      summary: status.login ? `Verified as ${status.login}.` : "GitHub verified.",
+      summary: status.login
+        ? `Verified as ${status.login}.`
+        : "GitHub verified.",
       attention: "none",
       rawStage: status.stage,
     };
@@ -276,8 +313,12 @@ function githubResult(
   };
 }
 
-function aiProviderResult(settings: ModelSettingsSnapshot): CapabilityOnboardingStatusResult {
-  const selected = settings.catalog.models.find((model) => model.ref === settings.defaultModel);
+function aiProviderResult(
+  settings: ModelSettingsSnapshot,
+): CapabilityOnboardingStatusResult {
+  const selected = settings.catalog.models.find(
+    (model) => model.ref === settings.defaultModel,
+  );
   if (!selected) {
     return {
       state: "unknown",
@@ -305,8 +346,14 @@ function aiProviderResult(settings: ModelSettingsSnapshot): CapabilityOnboarding
   }
   if (availability === "needs-setup") {
     return {
-      state: "needs-attention",
-      summary: `${selected.name} needs a usable provider connection.`,
+      state:
+        selected.availability.detail === "credential-expired"
+          ? "needs-attention"
+          : "not-configured",
+      summary:
+        selected.availability.detail === "credential-expired"
+          ? `${selected.name}'s provider connection needs renewal. Choose any available model or reconnect.`
+          : "Choose an AI model and connect its provider, or set up a local model.",
       attention: "blocking",
       rawStage: selected.availability.detail,
     };
@@ -319,7 +366,11 @@ function aiProviderResult(settings: ModelSettingsSnapshot): CapabilityOnboarding
   };
 }
 
-function agentDefaultsResult(settings: ModelSettingsSnapshot): CapabilityOnboardingStatusResult {
+function agentDefaultsResult(
+  settings: ModelSettingsSnapshot,
+): CapabilityOnboardingStatusResult {
+  const provider = aiProviderResult(settings);
+  if (provider.attention === "blocking") return provider;
   if (settings.defaultModelSource === "workspace") {
     return {
       state: "configured",
@@ -338,9 +389,11 @@ function agentDefaultsResult(settings: ModelSettingsSnapshot): CapabilityOnboard
 
 function localModelsResult(
   status: LocalModelsStatus,
-  models: LocalModelEntry[]
+  models: LocalModelEntry[],
 ): CapabilityOnboardingStatusResult {
-  const ready = models.filter((model) => model.state === "ready" || model.state === "startable");
+  const ready = models.filter(
+    (model) => model.state === "ready" || model.state === "startable",
+  );
   if (ready.length > 0 || status.fallback.ready) {
     return {
       state: "configured",
@@ -349,7 +402,10 @@ function localModelsResult(
       rawStage: status.fallback.warm ? "warm" : "ready",
     };
   }
-  if (models.some((model) => model.state === "downloading") || status.downloads.length > 0) {
+  if (
+    models.some((model) => model.state === "downloading") ||
+    status.downloads.length > 0
+  ) {
     return {
       state: "in-progress",
       summary: "A local model is downloading.",
@@ -367,7 +423,7 @@ function localModelsResult(
   }
   return {
     state: "using-defaults",
-    summary: "Cloud models remain available; no local model is installed.",
+    summary: "No local model is installed; local inference is optional.",
     attention: "none",
     rawStage: "not-installed",
   };
@@ -384,7 +440,9 @@ const activeImportPhases = new Set([
   "reconciling",
 ]);
 
-function browserImportResult(jobs: ImportJobSnapshot[]): CapabilityOnboardingStatusResult {
+function browserImportResult(
+  jobs: ImportJobSnapshot[],
+): CapabilityOnboardingStatusResult {
   if (jobs.length === 0) {
     return {
       state: "not-configured",
@@ -422,7 +480,7 @@ function browserImportResult(jobs: ImportJobSnapshot[]): CapabilityOnboardingSta
 }
 
 export function createStatusAdapters(
-  deps: OnboardingStatusDependencies = createDefaultStatusDependencies()
+  deps: OnboardingStatusDependencies = createDefaultStatusDependencies(),
 ): Readonly<Record<string, CapabilityOnboardingStatusAdapter>> {
   return {
     "workspace-updates": async () => {
@@ -453,28 +511,37 @@ export function createStatusAdapters(
     },
     github: async (opts) =>
       (await deps.hasSkill("skills/github/SKILL.md"))
-        ? githubResult(await deps.github({ verify: opts?.verify === true }), opts?.verify === true)
+        ? githubResult(
+            await deps.github({ verify: opts?.verify === true }),
+            opts?.verify === true,
+          )
         : unavailable(
             "GitHub setup is unavailable because its base capability owner could not be loaded.",
-            "owner-unavailable"
+            "owner-unavailable",
           ),
     "ai-provider": async () => aiProviderResult(await deps.modelSettings()),
-    "agent-defaults": async () => agentDefaultsResult(await deps.modelSettings()),
+    "agent-defaults": async () =>
+      agentDefaultsResult(await deps.modelSettings()),
     "local-models": async () =>
-      localModelsResult(await deps.localModelsStatus(), await deps.localModelsList()),
-    "browser-environment": async () => browserImportResult(await deps.browserImportJobs()),
+      localModelsResult(
+        await deps.localModelsStatus(),
+        await deps.localModelsList(),
+      ),
+    "browser-environment": async () =>
+      browserImportResult(await deps.browserImportJobs()),
     "web-search": async () => {
       if (!(await deps.hasSkill("skills/web-research/SKILL.md"))) {
         return unavailable(
           "Alternative web search setup is unavailable because its capability owner could not be loaded.",
-          "owner-unavailable"
+          "owner-unavailable",
         );
       }
       const provider = await deps.activeSearchProvider();
       return provider === "duckduckgo"
         ? {
             state: "using-defaults",
-            summary: "Codex agents use subscription search; other agents use built-in DuckDuckGo.",
+            summary:
+              "Codex agents use subscription search; other agents use built-in DuckDuckGo.",
             attention: "none",
             rawStage: provider,
           }

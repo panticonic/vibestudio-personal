@@ -1,5 +1,3 @@
-defaultAgentConfig:
-  model: openai-codex:gpt-6.1-sol
 extensions:
   - source: extensions/browser-data
 initPanels:
