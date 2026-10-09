@@ -55,7 +55,7 @@ export default function BrowserImportInspector() {
 
   const changeTab = (value: string) => {
     setTab(value);
-    panel.stateArgs.set({ ...panel.stateArgs.get(), activeTab: value });
+    panel.stateArgs.patch({ activeTab: value });
   };
 
   return (

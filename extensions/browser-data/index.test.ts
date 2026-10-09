@@ -759,13 +759,24 @@ describe("@workspace-extensions/browser-data", () => {
                 errors: 0,
               },
             ],
+            version: "v1",
           };
         }
         if (method === "browserEnvironment.observeSensitiveImport") {
-          return { operationId: args[0], state: "complete", counts: [] };
+          return {
+            operationId: args[0],
+            state: "complete",
+            counts: [],
+            version: "v2",
+          };
         }
         if (method === "browserEnvironment.cancelSensitiveImport") {
-          return { operationId: args[0], state: "cancelled", counts: [] };
+          return {
+            operationId: args[0],
+            state: "cancelled",
+            counts: [],
+            version: "v2",
+          };
         }
         return [];
       },
@@ -795,6 +806,7 @@ describe("@workspace-extensions/browser-data", () => {
       counts: [
         { dataType: "cookies", read: 2, stored: 2, skipped: 0, errors: 0 },
       ],
+      version: "v1",
     });
     expect(rpcCall).toHaveBeenCalledWith(
       "main",
@@ -809,12 +821,21 @@ describe("@workspace-extensions/browser-data", () => {
         operationId: "sensitive-op-1",
         state: "complete",
         counts: [],
+        version: "v2",
       },
+    );
+    await api.observeSensitiveImport("sensitive-op-1", { afterVersion: "v1" });
+    expect(rpcCall).toHaveBeenCalledWith(
+      "main",
+      "browserEnvironment.observeSensitiveImport",
+      "sensitive-op-1",
+      { afterVersion: "v1" },
     );
     await expect(api.cancelSensitiveImport("sensitive-op-1")).resolves.toEqual({
       operationId: "sensitive-op-1",
       state: "cancelled",
       counts: [],
+      version: "v2",
     });
     await expect(
       api.openBrowserPrivacyManager("export"),
@@ -893,7 +914,6 @@ describe("@workspace-extensions/browser-data", () => {
       parentSlotId: null,
       initialEntry: {
         stateArgs: {
-          title: "Chrome \u00b7 Imported Tabs",
           origin: "Chrome \u00b7 browser import",
           startupTask: {
             kind: "title-browser-import-windows",
@@ -909,16 +929,18 @@ describe("@workspace-extensions/browser-data", () => {
       parentSlotId: result.root!.id,
       initialEntry: {
         contextId: "ctx-panel-1",
-        stateArgs: { title: "Window 1" },
       },
     });
     expect(collectionCalls[2]?.[2]).toMatchObject({
       parentSlotId: result.root!.id,
       initialEntry: {
         contextId: "ctx-panel-1",
-        stateArgs: { title: "Window 2" },
       },
     });
+    for (const call of collectionCalls) {
+      const entry = (call[2] as { initialEntry: { stateArgs?: object } }).initialEntry;
+      expect(entry.stateArgs ?? {}).not.toHaveProperty("title");
+    }
 
     const tabParents = rpcCall.mock.calls
       .filter(

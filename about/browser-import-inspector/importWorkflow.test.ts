@@ -82,12 +82,13 @@ describe("browser import workflow", () => {
     vi.mocked(h.client.startSensitiveImport).mockImplementation(async (request) => {
       expect(h.checkpoint).toEqual({
         request,
-        status: { operationId: "sealed-1", state: "running", counts: [] },
+        status: { operationId: "sealed-1", state: "running", counts: [], version: "unobserved" },
       });
       return {
         operationId: request.operationId,
         state: "running",
         counts: [],
+        version: "v1",
       };
     });
 
@@ -129,6 +130,7 @@ describe("browser import workflow", () => {
       operationId: "sealed-1",
       state: "complete" as const,
       counts: [],
+      version: "v1",
     };
     vi.mocked(h.client.startImport).mockResolvedValue(publicJob);
     vi.mocked(h.client.startSensitiveImport).mockResolvedValue(status);
@@ -158,6 +160,7 @@ describe("browser import workflow", () => {
         operationId: "sealed-1",
         state: "running",
         counts: [],
+        version: "unobserved",
       },
     });
     expect(h.checkpoint?.status).toEqual(status);
@@ -175,6 +178,7 @@ describe("browser import workflow", () => {
       operationId: "sealed-1",
       state: "complete" as const,
       counts: [],
+      version: "v1",
     };
     vi.mocked(h.client.startSensitiveImport).mockResolvedValue(status);
     const report = vi.fn();
@@ -244,6 +248,7 @@ describe("browser import workflow", () => {
       operationId: "sealed-1",
       state: "running",
       counts: [],
+      version: "v1",
     });
     await startSelectedImports(
       h.client,
@@ -262,24 +267,35 @@ describe("browser import workflow", () => {
       operationId: "sealed-1",
       state: "complete",
       counts: [],
+      version: "v1",
     });
     await expect(observeSensitiveCheckpoint(h.client, h.store)).resolves.toMatchObject({
       state: "complete",
     });
+    expect(h.client.observeSensitiveImport).toHaveBeenLastCalledWith("sealed-1", undefined);
     expect(h.checkpoint?.status.state).toBe("complete");
+    h.store.write({
+      request: { ...sensitiveSelection, operationId: "sealed-1" },
+      status: { operationId: "sealed-1", state: "running", counts: [], version: "v2" },
+    });
+    await observeSensitiveCheckpoint(h.client, h.store, "v2");
+    expect(h.client.observeSensitiveImport).toHaveBeenLastCalledWith("sealed-1", {
+      afterVersion: "v2",
+    });
   });
 
   it("attempts public and protected cancellation independently and preserves each result", async () => {
     const h = harness();
     h.store.write({
       request: { ...sensitiveSelection, operationId: "sealed-1" },
-      status: { operationId: "sealed-1", state: "running", counts: [] },
+      status: { operationId: "sealed-1", state: "running", counts: [], version: "v1" },
     });
     vi.mocked(h.client.cancelImport).mockRejectedValue(new Error("public failed"));
     vi.mocked(h.client.cancelSensitiveImport).mockResolvedValue({
       operationId: "sealed-1",
       state: "cancelled",
       counts: [],
+      version: "v1",
     });
 
     const result = await cancelSelectedImports(
@@ -312,6 +328,7 @@ describe("browser import workflow", () => {
           },
         ],
         ...(state === "application_failed" ? { error: "Apply saved cookies" } : {}),
+        version: "v1",
       };
       h.store.write({ request, status });
       vi.mocked(h.client.startSensitiveImport).mockResolvedValue({
@@ -338,7 +355,7 @@ describe("browser import workflow", () => {
     const h = harness();
     const first = {
       request: { ...sensitiveSelection, operationId: "first" },
-      status: { operationId: "first", state: "running" as const, counts: [] },
+      status: { operationId: "first", state: "running" as const, counts: [], version: "v1" },
     };
     h.store.write(first);
     let finish!: (status: typeof first.status) => void;
@@ -350,7 +367,7 @@ describe("browser import workflow", () => {
     const observation = observeSensitiveCheckpoint(h.client, h.store);
     const second = {
       request: { ...sensitiveSelection, operationId: "second" },
-      status: { operationId: "second", state: "running" as const, counts: [] },
+      status: { operationId: "second", state: "running" as const, counts: [], version: "v1" },
     };
     h.store.write(second);
     finish(first.status);

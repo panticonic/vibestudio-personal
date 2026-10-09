@@ -450,11 +450,18 @@ export async function activate(ctx: ExtensionContextLike) {
     ),
     observeSensitiveImport: guarded(
       "observeSensitiveImport",
-      async (operationId: string): Promise<SensitiveBrowserImportStatus> => {
+      async (
+        operationId: string,
+        options?: { afterVersion?: string }
+      ): Promise<SensitiveBrowserImportStatus> => {
         const { identity } = await currentIdentity();
         await ensureImportHosts(identity);
         assertSensitiveImportOperationId(operationId);
-        return ctx.rpc.call("main", "browserEnvironment.observeSensitiveImport", operationId);
+        return options?.afterVersion === undefined
+          ? ctx.rpc.call("main", "browserEnvironment.observeSensitiveImport", operationId)
+          : ctx.rpc.call("main", "browserEnvironment.observeSensitiveImport", operationId, {
+              afterVersion: options.afterVersion,
+            });
       }
     ),
     cancelSensitiveImport: guarded(
@@ -733,7 +740,7 @@ async function openTabsAsPanels(
       title,
       focus: false,
       ...(options.contextId ? { contextId: options.contextId } : {}),
-      stateArgs: { title, origin, ...(options.stateArgs ?? {}) },
+      stateArgs: { origin, ...(options.stateArgs ?? {}) },
     });
     const observation = await panel.observe();
     return {

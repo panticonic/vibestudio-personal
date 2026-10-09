@@ -1,3 +1,4 @@
+import { createJsonMergePatch } from "@vibestudio/shared/panelStateArgs";
 import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
@@ -108,6 +109,7 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
   const [busy, setBusy] = useState<"preview" | "import" | "release" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [observationError, setObservationError] = useState<string | null>(null);
+  const [observationAttempt, setObservationAttempt] = useState(0);
   const displayedError = error ?? observationError;
   const [step, setStep] = useState<Step>("data");
   const [reimporting, setReimporting] = useState(false);
@@ -157,36 +159,34 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
 
   useEffect(() => {
     setObservationError(null);
-    if (
-      !sensitiveStatus ||
-      !["running", "applying", "application_failed"].includes(sensitiveStatus.state)
-    )
-      return;
+    if (!sensitiveStatus || !["running", "applying"].includes(sensitiveStatus.state)) return;
     let active = true;
-    let timer: ReturnType<typeof setTimeout> | null = null;
     const observe = async () => {
-      try {
-        const status = await observeSensitiveCheckpoint(browserData, sensitiveCheckpointStore);
-        if (!active) return;
-        if (status) setSensitiveStatus(status);
-        setObservationError(null);
-      } catch (cause) {
-        if (!active) return;
-        setObservationError(
-          `Could not read protected import progress: ${classifyError(cause).message}. Your saved data is kept; progress will resume when contact returns.`
+      // The first read returns the host's current status; each later read
+      // waits on the version the host returned until the import changes.
+      let afterVersion: string | undefined;
+      while (active) {
+        const status = await observeSensitiveCheckpoint(
+          browserData,
+          sensitiveCheckpointStore,
+          afterVersion
         );
-      } finally {
-        // One owned status read at a time. The refresh clock observes progress;
-        // it never declares the import failed or cancels the underlying work.
-        if (active) timer = setTimeout(() => void observe(), 500);
+        if (!active || !status) return;
+        setSensitiveStatus(status);
+        if (!["running", "applying"].includes(status.state)) return;
+        afterVersion = status.version;
       }
     };
-    void observe();
+    observe().catch((cause) => {
+      if (!active) return;
+      setObservationError(
+        `Could not read protected import progress: ${classifyError(cause).message}. Your saved data is kept; retry to resume progress.`
+      );
+    });
     return () => {
       active = false;
-      if (timer) clearTimeout(timer);
     };
-  }, [sensitiveStatus?.operationId, sensitiveStatus?.state]);
+  }, [sensitiveStatus?.operationId, sensitiveStatus?.state, observationAttempt]);
 
   const publicDataTypes = (): NonSensitiveBrowserImportDataType[] =>
     [...types].filter(
@@ -299,6 +299,7 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
         status,
       });
       setSensitiveStatus(status);
+      setObservationAttempt((attempt) => attempt + 1);
     } catch (cause) {
       setError(classifyError(cause).message);
     } finally {
@@ -580,9 +581,11 @@ function readSensitiveImportCheckpoint(): SensitiveImportCheckpoint | null {
 async function writeSensitiveImportCheckpoint(
   checkpoint: SensitiveImportCheckpoint
 ): Promise<void> {
-  await panel.stateArgs.set({
-    ...panel.stateArgs.get(),
-    sensitiveImport: checkpoint,
+  await panel.stateArgs.patch({
+    sensitiveImport: createJsonMergePatch(
+      panel.stateArgs.get<{ sensitiveImport?: SensitiveImportCheckpoint }>().sensitiveImport ?? {},
+      checkpoint,
+    ),
   });
 }
 

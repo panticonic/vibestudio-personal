@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 vi.mock("@workspace/runtime", () => ({
   panel: {
-    stateArgs: { get: () => ({}), set: () => undefined },
+    stateArgs: { get: () => ({}), patch: () => undefined },
   },
   browserData: {},
 }));
@@ -233,7 +233,7 @@ describe("sealed sensitive import presentation", () => {
 
     expect(
       sensitiveStatusAsJob(
-        { operationId: "sensitive-1", state: "running", counts: [count] },
+        { operationId: "sensitive-1", state: "running", counts: [count], version: "v1" },
         request,
         desktopSelection
       )
@@ -245,14 +245,14 @@ describe("sealed sensitive import presentation", () => {
     });
     expect(
       sensitiveStatusAsJob(
-        { operationId: "sensitive-1", state: "cancelled", counts: [count] },
+        { operationId: "sensitive-1", state: "cancelled", counts: [count], version: "v1" },
         request,
         desktopSelection
       ).phase
     ).toBe("cancelled");
     expect(
       sensitiveStatusAsJob(
-        { operationId: "sensitive-1", state: "complete", counts: [count] },
+        { operationId: "sensitive-1", state: "complete", counts: [count], version: "v1" },
         request,
         desktopSelection
       ).phase
@@ -264,6 +264,7 @@ describe("sealed sensitive import presentation", () => {
           state: "failed",
           counts: [count],
           error: "vault write failed",
+          version: "v1",
         },
         request,
         desktopSelection
@@ -298,6 +299,7 @@ describe("protected import outcomes", () => {
             errors: 0,
           },
         ],
+        version: "v1",
       },
       undefined,
       desktopSelection
@@ -314,6 +316,7 @@ describe("protected import outcomes", () => {
         operationId: "cookies",
         state: "complete",
         counts: [{ dataType: "cookies", read: 4, stored: 3, skipped: 0, errors: 1 }],
+        version: "v1",
       },
       undefined,
       desktopSelection
@@ -329,6 +332,7 @@ describe("protected import outcomes", () => {
           operationId: "saved",
           state,
           counts: [{ dataType: "cookies", read: 1, stored: 1, skipped: 0, errors: 0 }],
+          version: "v1",
         },
         undefined,
         desktopSelection

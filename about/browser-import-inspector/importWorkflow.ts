@@ -56,7 +56,8 @@ export async function startSelectedImports(
   const pendingStatus: SensitiveBrowserImportStatus | null = pending
     ? previous?.request.operationId === pending.operationId
       ? previous.status
-      : { operationId: pending.operationId, state: "running", counts: [] }
+      : // Local placeholder until the host answers; its version is never sent back.
+        { operationId: pending.operationId, state: "running", counts: [], version: "unobserved" }
     : null;
   if (pending && pendingStatus) {
     await checkpointStore.write({ request: pending, status: pendingStatus });
@@ -93,9 +94,14 @@ export async function startSelectedImports(
   };
 }
 
+/**
+ * Read the checkpointed import's aggregate status. Pass the `version` of a
+ * status the host returned to wait for its next change instead of re-reading.
+ */
 export async function observeSensitiveCheckpoint(
   client: BrowserDataClient,
-  checkpointStore: SensitiveCheckpointStore
+  checkpointStore: SensitiveCheckpointStore,
+  afterVersion?: string
 ): Promise<SensitiveBrowserImportStatus | null> {
   const checkpoint = checkpointStore.read();
   if (
@@ -104,7 +110,10 @@ export async function observeSensitiveCheckpoint(
   ) {
     return checkpoint?.status ?? null;
   }
-  const status = await client.observeSensitiveImport(checkpoint.request.operationId);
+  const status = await client.observeSensitiveImport(
+    checkpoint.request.operationId,
+    afterVersion === undefined ? undefined : { afterVersion }
+  );
   if (checkpointStore.read()?.request.operationId !== checkpoint.request.operationId) return null;
   await checkpointStore.write({ request: checkpoint.request, status });
   return status;
