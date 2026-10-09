@@ -505,6 +505,16 @@ export async function activate(ctx: ExtensionContextLike) {
       const persisted = await callStore<ImportJobSnapshot | null>("getImportJob", jobId);
       return persisted ? orphanedImportJob(persisted) : null;
     }),
+    observeImportJob: guarded("observeImportJob", async (
+      jobId: string, options?: { afterVersion?: string }
+    ) => {
+      const { identity } = await currentIdentity();
+      if (!jobId || jobId.length > 200) throw new Error("Import operation ID is required");
+      return coordinator.observeJob(identity, jobId, {
+        afterVersion: options?.afterVersion,
+        signal: ctx.invocation.signal?.() ?? undefined,
+      });
+    }),
     listImportJobs: guarded("listImportJobs", async () => {
       const { identity } = await currentIdentity();
       const live = coordinator.listJobs(identity);

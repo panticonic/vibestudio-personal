@@ -29,6 +29,7 @@ import {
   Pencil1Icon,
   ReloadIcon,
 } from "@radix-ui/react-icons";
+import { EventsClient } from "@vibestudio/service-schemas/clients/eventsClient";
 import { initializeConversation } from "@workspace/pubsub";
 import { contextId, panel, panelTree, rpc, type PanelHandle } from "@workspace/runtime";
 import { recoveryCoordinator } from "@workspace/runtime/internal/diagnostics";
@@ -182,6 +183,7 @@ export default function CollectionPanel() {
   const savingTitleRef = useRef(false);
   const editingNoteRef = useRef(false);
   const refreshInFlight = useRef<Promise<void> | null>(null);
+  const refreshPending = useRef(false);
 
   const persist = useCallback(
     (patch: Partial<CollectionStateArgs>) => panel.stateArgs.patch(patch),
@@ -198,8 +200,13 @@ export default function CollectionPanel() {
   }, [persist, session, stateArgs.agentKey, stateArgs.channelName]);
 
   const refresh = useCallback((): Promise<void> => {
-    if (refreshInFlight.current) return refreshInFlight.current;
+    if (refreshInFlight.current) {
+      refreshPending.current = true;
+      return refreshInFlight.current;
+    }
     const pending = (async () => {
+      do {
+      refreshPending.current = false;
       try {
         const [page, persisted, path] = await Promise.all([
           panelTree.page({
@@ -238,6 +245,7 @@ export default function CollectionPanel() {
       } catch (cause) {
         setError(errorMessage(cause));
       }
+      } while (refreshPending.current);
     })();
     refreshInFlight.current = pending;
     void pending.finally(() => {
@@ -302,17 +310,18 @@ export default function CollectionPanel() {
   }, [loadingMembers, refresh, tree]);
 
   useEffect(() => {
-    void refresh();
-    const unsubscribe = panel.onChildCreated(() => void refresh());
-    return unsubscribe;
-  }, [refresh]);
-
-  // Mutations may originate in the resident agent or another client. Revision
-  // comparison makes this a cheap convergence fallback; the authoritative
-  // recursive snapshot, rather than local incremental bookkeeping, wins.
-  useEffect(() => {
-    const timer = setInterval(() => void refresh(), 2_000);
-    return () => clearInterval(timer);
+    const events = new EventsClient(rpc);
+    let active = true;
+    const off = events.on("panel-tree-invalidated", () => { if (active) void refresh(); });
+    void events.subscribe("panel-tree-invalidated").then(() => {
+      if (active) return refresh();
+      return undefined;
+    }).catch((cause) => { if (active) setError(errorMessage(cause)); });
+    return () => {
+      active = false;
+      off();
+      void events.unsubscribeAll().catch((cause) => console.error("Collection watch release failed", cause));
+    };
   }, [refresh]);
 
   const descendants = useMemo(

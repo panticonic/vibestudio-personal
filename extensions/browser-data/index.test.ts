@@ -670,6 +670,10 @@ describe("@workspace-extensions/browser-data", () => {
       dataTypes: ["bookmarks"],
     }, "public-operation");
     expect(result.phase).toBe("complete");
+    const observed = await api.observeImportJob(result.jobId);
+    expect(observed).toEqual({ job: result, version: expect.any(String) });
+    await expect(api.observeImportJob(result.jobId, { afterVersion: observed.version }))
+      .resolves.toEqual(observed);
     await vi.waitFor(async () => {
       expect(
         ((await api.getImportJob(result.jobId)) as { phase?: string } | null)

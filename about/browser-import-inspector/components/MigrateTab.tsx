@@ -72,9 +72,6 @@ import {
   type SensitiveImportCheckpoint,
 } from "../importWorkflow";
 
-/** Transient RPC hiccups are common; a persistent failure is not. */
-const POLL_FAILURES_BEFORE_GIVING_UP = 3;
-
 /** Above this many tabs the window groups start collapsed. */
 const AUTO_COLLAPSE_TABS = 25;
 const SENSITIVE_DATA_TYPES = new Set<string>(["cookies", "passwords", "formFill"]);
@@ -134,28 +131,25 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
   useEffect(() => {
     const jobId = publicOperationId ?? job?.jobId;
     if (!jobId || (job?.jobId === jobId && isTerminalImportPhase(job.phase))) return;
-    // A poll that throws must not become an unhandled rejection every 500ms.
-    // Losing the extension mid-import is exactly when the panel has to stay
-    // legible, so report the failure and stop asking rather than spinning.
-    let consecutiveFailures = 0;
-    const timer = setInterval(() => {
-      void browserData
-        .getImportJob(jobId)
-        .then((next) => {
-          consecutiveFailures = 0;
-          if (next) setJob(next);
-        })
-        .catch((cause) => {
-          consecutiveFailures += 1;
-          if (consecutiveFailures < POLL_FAILURES_BEFORE_GIVING_UP) return;
-          clearInterval(timer);
-          setError(
-            `Lost contact with the import while it was running: ${classifyError(cause).message}`
-          );
+    const observation = new AbortController();
+    void (async () => {
+      let afterVersion: string | undefined;
+      while (!observation.signal.aborted) {
+        const next = await browserData.observeImportJob(jobId, {
+          afterVersion, signal: observation.signal,
         });
-    }, 500);
-    return () => clearInterval(timer);
-  }, [publicOperationId, job?.jobId, job?.phase]);
+        if (observation.signal.aborted) return;
+        setJob(next.job);
+        if (isTerminalImportPhase(next.job.phase)) return;
+        afterVersion = next.version;
+      }
+    })().catch((cause) => {
+      if (!observation.signal.aborted) setError(
+        `Lost contact with the import while it was running: ${classifyError(cause).message}`
+      );
+    });
+    return () => observation.abort();
+  }, [publicOperationId, job?.jobId]);
 
   useEffect(() => {
     setObservationError(null);

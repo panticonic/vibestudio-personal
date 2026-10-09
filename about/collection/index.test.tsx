@@ -12,6 +12,8 @@ import CollectionPanel from "./index";
 
 const fixtures = vi.hoisted(() => ({
   slotTitle: "Original",
+  changed: null as null | (() => void),
+  releaseWatch: vi.fn(async () => {}),
   args: {
     channelName: "collection-channel",
     agentKey: "agent",
@@ -22,6 +24,13 @@ const fixtures = vi.hoisted(() => ({
   setTitle: vi.fn(async (title: string) => {
     fixtures.slotTitle = title;
   }),
+}));
+vi.mock("@vibestudio/service-schemas/clients/eventsClient", () => ({
+  EventsClient: class {
+    on(_event: string, callback: () => void) { fixtures.changed = callback; return () => { fixtures.changed = null; }; }
+    subscribe() { return Promise.resolve(); }
+    unsubscribeAll = fixtures.releaseWatch;
+  },
 }));
 vi.mock("@workspace/runtime", () => ({
   contextId: "context",
@@ -112,4 +121,18 @@ it("preserves the chat input and draft through reconfiguration, failure, and ret
   await waitFor(() => expect(screen.getByText("ready")).toBeTruthy());
   expect(screen.getByRole("textbox", { name: "Chat draft" })).toBe(input);
   expect(input).toHaveProperty("value", "Unsent draft");
+});
+
+it("refreshes another client's title change from tree invalidation and releases its watch", async () => {
+  const view = render(<CollectionPanel />);
+  await screen.findByText("Original");
+  await act(async () => {
+    fixtures.slotTitle = "Changed elsewhere";
+    fixtures.changed!();
+  });
+  await screen.findByText("Changed elsewhere");
+  fixtures.releaseWatch.mockClear();
+  view.unmount();
+  expect(fixtures.changed).toBeNull();
+  expect(fixtures.releaseWatch).toHaveBeenCalledOnce();
 });

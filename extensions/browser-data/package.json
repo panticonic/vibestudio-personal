@@ -274,6 +274,7 @@
             "cancelImport",
             "resumeImport",
             "getImportJob",
+            "observeImportJob",
             "listImportJobs",
             "listOpenTabs",
             "openTabsAsPanels",
