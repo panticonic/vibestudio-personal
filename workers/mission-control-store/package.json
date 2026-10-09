@@ -82,6 +82,40 @@
           "**/*.test.ts"
         ]
       }
+    ],
+    "services": [
+      {
+        "action": "organize projects and agentic work",
+        "authority": {
+          "binding": {
+            "declaredFor": [
+              "panels/mission-control",
+              "workers/mission-agent"
+            ]
+          },
+          "principals": [
+            "host",
+            "user",
+            "code",
+            "session",
+            "mission"
+          ]
+        },
+        "description": "Projects, tasks, saved views and links to agent execution.",
+        "durableObject": {
+          "className": "MissionControlStore"
+        },
+        "name": "mission-control",
+        "notability": "everyday",
+        "presentation": {
+          "domain": "automation",
+          "verb": "manage"
+        },
+        "protocols": [
+          "mission-control.v1"
+        ],
+        "title": "Mission Control"
+      }
     ]
   },
   "dependencies": {

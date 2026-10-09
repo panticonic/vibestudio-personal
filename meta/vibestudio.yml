@@ -42,66 +42,12 @@ providers:
   browserData:
     extension: extensions/browser-data
 services:
-  - action: organize projects and agentic work
-    authority:
-      binding:
-        declaredFor:
-          - panels/mission-control
-          - workers/mission-agent
-      principals:
-        - host
-        - user
-        - code
-        - session
-        - mission
-    description: Projects, tasks, saved views and links to agent execution.
-    durableObject:
-      className: MissionControlStore
-    name: mission-control
-    notability: everyday
-    presentation:
-      domain: automation
-      verb: manage
-    protocols:
-      - mission-control.v1
+  - name: mission-control
     source: workers/mission-control-store
-    title: Mission Control
-  - action: use browser history, bookmarks, downloads, and preferences
-    authority:
-      binding: declared
-      principals:
-        - host
-        - user
-        - code
-    description: Access your browser history, bookmarks, downloads, and saved preferences.
-    durableObject:
-      className: BrowserDataDO
-    name: browser.data
-    notability: everyday
-    presentation:
-      domain: web
-      verb: see
-    protocols:
-      - vibestudio.browser-data.v1
+  - name: browser.data
     source: workers/browser-data
-    title: Browser data
-  - action: use the tour’s fictional reading-list sample
-    authority:
-      principals:
-        - host
-        - code
-    description: A read-only sample for trying real capability approvals. No personal data or external services.
-    durableObject:
-      className: TourSample
-    name: tour-sample
-    notability: everyday
-    presentation:
-      domain: files
-      verb: see
-    protocols:
-      - vibestudio.tour-sample.v1
+  - name: tour-sample
     source: workers/tour-sample
-    title: Tour sample
 singletonObjects:
   - className: MissionControlStore
     key: main
@@ -113,27 +59,3 @@ template:
     - url: git+https://github.com/panticonic/vibestudio-base.git
   description: Your private projects, browsing and personal work.
   name: Personal
-  repositories:
-    - about/bookmarks
-    - about/browser-import-inspector
-    - about/collection
-    - about/credentials
-    - about/downloads
-    - about/history
-    - about/local-models
-    - about/permissions
-    - about/search
-    - extensions/browser-data
-    - meta
-    - packages/collection-orchestration
-    - packages/mission-control
-    - panels/mission-control
-    - panels/tour
-    - skills/github
-    - skills/memory
-    - skills/onboarding
-    - workers/browser-data
-    - workers/explorer-agent
-    - workers/mission-agent
-    - workers/mission-control-store
-    - workers/tour-sample
