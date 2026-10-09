@@ -11,7 +11,7 @@ import "@workspace/agentic-chat/styles.css";
 vi.mock(import("./observation.js"), () => ({
   openSetupObservation: vi.fn(() => ({
     ready: Promise.resolve(),
-    completion: new Promise(() => {}),
+    completion: new Promise<void>(() => {}),
     close: async () => undefined,
   })),
 }));

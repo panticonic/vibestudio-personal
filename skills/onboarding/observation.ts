@@ -143,7 +143,7 @@ export function openSetupObservation(
           (!primary || failure.error !== primary.error),
       )
       .map((failure) => failure.error);
-  const completion = Promise.all(tasks)
+  const completion: Promise<void> = Promise.all(tasks)
     .catch(async (error: unknown) => {
       originalFailure = { error };
       rejectReady(error);
