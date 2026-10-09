@@ -42,9 +42,13 @@ describe("collection orchestration", () => {
       rootPanelId: "panel:tree/imported",
       title: "Imported tabs",
     });
-    expect(prompt).toContain('parentSlotId: "panel:tree/imported"');
-    expect(prompt).toContain("page.revision");
-    expect(prompt).toContain("movePanel");
+    expect(prompt).toContain('panelTree.walk("panel:tree/imported", { limit: 500 })');
+    expect(prompt).not.toContain("page.revision");
+    expect(prompt).toContain("{ node, handle, depth }");
+    expect(prompt).not.toContain("stateArgs.title");
+    expect(prompt).toContain("await handle.setTitle(title, { explicit: true })");
+    expect(prompt).toContain("await handle.movePanel(newParentId)");
+    expect(prompt).not.toContain("node.handle");
     expect(prompt).toContain("about/collection/SKILL.md");
     expect(prompt).not.toContain("Panels in this collection");
   });
@@ -55,6 +59,7 @@ describe("collection orchestration", () => {
     expect(prompt).toContain("window collection");
     expect(prompt).toContain("do not materialize");
     expect(prompt).toContain("Do not rename browser leaves");
+    expect(prompt).not.toContain("stateArgs.title");
     expect(
       promptForCollectionStartupTask({
         kind: "title-browser-import-windows",

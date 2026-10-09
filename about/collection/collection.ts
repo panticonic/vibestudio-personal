@@ -7,8 +7,6 @@
 import type { CollectionOrchestrationState } from "@workspace/collection-orchestration";
 
 export interface CollectionStateArgs extends CollectionOrchestrationState {
-  /** Display name; also pushed to the panel title when the user edits it. */
-  title?: string;
   /** Free-form notes about the collection as a whole. */
   note?: string;
   /** Per-child notes, keyed by panel id. */

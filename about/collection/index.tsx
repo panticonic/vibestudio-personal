@@ -149,7 +149,9 @@ export default function CollectionPanel() {
   const appTheme = usePanelThemeConfig();
   const stateArgs = useStateArgs<CollectionStateArgs>();
   const resolvedContextId = requireContextId(contextId);
-  const [title, setTitle] = useState(stateArgs.title ?? "Collection");
+  // The slot title is the collection's only title; null until first read.
+  const [slotTitle, setSlotTitle] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [note, setNote] = useState(stateArgs.note ?? "");
   const [notes, setNotes] = useState<Record<string, string>>(stateArgs.notes ?? {});
@@ -182,7 +184,7 @@ export default function CollectionPanel() {
   const refreshInFlight = useRef<Promise<void> | null>(null);
 
   const persist = useCallback(
-    (patch: Partial<CollectionStateArgs>) => panel.stateArgs.set(patch),
+    (patch: Partial<CollectionStateArgs>) => panel.stateArgs.patch(patch),
     []
   );
 
@@ -195,27 +197,17 @@ export default function CollectionPanel() {
     );
   }, [persist, session, stateArgs.agentKey, stateArgs.channelName]);
 
-  // The creator passes the label through stateArgs; keep the slot's semantic
-  // title explicit so a nested collection remains intelligible in its parent.
-  const titledFor = useRef<string | null>(null);
-  useEffect(() => {
-    const wanted = stateArgs.title?.trim();
-    if (!wanted || titledFor.current === wanted) return;
-    titledFor.current = wanted;
-    setTitle(wanted);
-    void panel.setTitle(wanted, { explicit: true }).catch((cause) => setError(errorMessage(cause)));
-  }, [stateArgs.title]);
-
   const refresh = useCallback((): Promise<void> => {
     if (refreshInFlight.current) return refreshInFlight.current;
     const pending = (async () => {
       try {
-        const [page, persisted] = await Promise.all([
+        const [page, persisted, path] = await Promise.all([
           panelTree.page({
             group: { kind: "children", parentSlotId: panel.slotId },
             limit: 50,
           }),
           panelTree.get(panel.slotId).stateArgs.get<CollectionStateArgs>(),
+          panelTree.path(panel.slotId),
         ]);
         const nodes = page.entries.map((entry) => ({
           handle: entry.handle,
@@ -237,9 +229,8 @@ export default function CollectionPanel() {
         setNotes((current) =>
           JSON.stringify(current) === JSON.stringify(persistedNotes) ? current : persistedNotes
         );
-        if (!editingTitleRef.current && !savingTitleRef.current && persisted.title?.trim()) {
-          setTitle(persisted.title.trim());
-        }
+        const observedTitle = path?.entries.at(-1)?.node.title.trim();
+        if (!savingTitleRef.current) setSlotTitle(observedTitle || "Collection");
         if (!editingNoteRef.current) {
           setNote(persisted.note ?? "");
         }
@@ -330,13 +321,17 @@ export default function CollectionPanel() {
   );
 
   const systemPrompt = useMemo(
-    () => buildCollectionAgentSystemPrompt({ rootPanelId: panel.slotId, title }),
-    [title]
+    () =>
+      slotTitle === null
+        ? null
+        : buildCollectionAgentSystemPrompt({ rootPanelId: panel.slotId, title: slotTitle }),
+    [slotTitle]
   );
 
   // A collection owns one resident general-purpose agent. Re-subscribing the
   // stable key is the recovery path as well as first bootstrap.
   useEffect(() => {
+    if (systemPrompt === null) return;
     let cancelled = false;
     setAgentReady(false);
     setAgentError(null);
@@ -386,9 +381,10 @@ export default function CollectionPanel() {
     const next = title.trim() || "Collection";
     editingTitleRef.current = false;
     savingTitleRef.current = true;
-    setTitle(next);
+    setSlotTitle(next);
     setEditingTitle(false);
-    void Promise.all([persist({ title: next }), panel.setTitle(next, { explicit: true })])
+    void panel
+      .setTitle(next, { explicit: true })
       .catch((cause) => setError(errorMessage(cause)))
       .finally(() => {
         savingTitleRef.current = false;
@@ -402,7 +398,7 @@ export default function CollectionPanel() {
       const persisted = await root.stateArgs.get<CollectionStateArgs>();
       const next = withMemberNote(persisted.notes, panelId, value);
       setNotes(next);
-      await root.stateArgs.set({ notes: next });
+      await root.stateArgs.patch({ notes: { [panelId]: value.trim() || null } });
     } catch (cause) {
       setError(errorMessage(cause));
       await refresh();
@@ -465,7 +461,6 @@ export default function CollectionPanel() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") commitTitle();
                 if (event.key === "Escape") {
-                  setTitle(stateArgs.title ?? "Collection");
                   setEditingTitle(false);
                   editingTitleRef.current = false;
                 }
@@ -475,7 +470,7 @@ export default function CollectionPanel() {
           ) : (
             <Flex align="center" gap="2" style={{ minWidth: 0 }}>
               <Heading size="5" truncate>
-                {title}
+                {slotTitle ?? "Collection"}
               </Heading>
               <IconButton
                 size="1"
@@ -483,6 +478,7 @@ export default function CollectionPanel() {
                 aria-label="Rename collection"
                 onClick={() => {
                   editingTitleRef.current = true;
+                  setTitle(slotTitle ?? "Collection");
                   setEditingTitle(true);
                 }}
               >
@@ -678,7 +674,7 @@ export default function CollectionPanel() {
                 channelName={session.channelName}
                 contextId={resolvedContextId}
                 metadata={{
-                  name: `${title} conductor`,
+                  name: `${slotTitle ?? "Collection"} conductor`,
                   type: "panel",
                   handle: "collection",
                 }}

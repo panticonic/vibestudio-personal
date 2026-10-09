@@ -11,28 +11,34 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import CollectionPanel from "./index";
 
 const fixtures = vi.hoisted(() => ({
+  slotTitle: "Original",
   args: {
-    title: "Original",
     channelName: "collection-channel",
     agentKey: "agent",
   },
   launch: vi.fn(),
   initialize: vi.fn(),
   set: vi.fn(async () => undefined),
-  setTitle: vi.fn(async () => undefined),
+  setTitle: vi.fn(async (title: string) => {
+    fixtures.slotTitle = title;
+  }),
 }));
 vi.mock("@workspace/runtime", () => ({
   contextId: "context",
   rpc: {},
   panel: {
     slotId: "collection",
-    stateArgs: { set: fixtures.set },
+    stateArgs: { patch: fixtures.set },
     setTitle: fixtures.setTitle,
     onChildCreated: () => () => {},
   },
   panelTree: {
     page: async () => ({ revision: 1, entries: [] }),
     get: () => ({ stateArgs: { get: async () => fixtures.args } }),
+    path: async () => ({
+      revision: 1,
+      entries: [{ node: { slotId: "collection", title: fixtures.slotTitle } }],
+    }),
   },
 }));
 vi.mock("@workspace/runtime/internal/diagnostics", () => ({
@@ -55,7 +61,8 @@ vi.mock("@workspace/agentic-chat/chat", () => ({
 }));
 
 beforeEach(() => {
-  fixtures.args.title = "Original";
+  fixtures.slotTitle = "Original";
+  fixtures.setTitle.mockClear();
   fixtures.launch.mockReset().mockResolvedValue(undefined);
   fixtures.initialize.mockReset().mockResolvedValue(undefined);
   fixtures.set.mockClear();
@@ -91,6 +98,10 @@ it("preserves the chat input and draft through reconfiguration, failure, and ret
   fireEvent.change(title, { target: { value: "Renamed" } });
   fireEvent.keyDown(title, { key: "Enter" });
   await waitFor(() => expect(fixtures.launch).toHaveBeenCalledTimes(2));
+  expect(fixtures.setTitle).toHaveBeenCalledWith("Renamed", { explicit: true });
+  expect(fixtures.set).not.toHaveBeenCalledWith(
+    expect.objectContaining({ title: expect.anything() }),
+  );
   expect(screen.getByRole("textbox", { name: "Chat draft" })).toBe(input);
   expect(input).toHaveProperty("value", "Unsent draft");
   await act(async () => reject(new Error("Agent unavailable")));

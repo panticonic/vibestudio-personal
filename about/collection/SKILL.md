@@ -5,82 +5,62 @@ description: Inspect, annotate, automate, title, group, move, or recursively reo
 
 # Collection conductor
 
-The collection system prompt supplies a stable `rootPanelId`. That id defines
-the scope; a list of panel ids in chat does not. Traverse only the sibling
-groups needed for the task, one bounded page at a time:
+The collection system prompt gives you a stable `rootPanelId`. That ID defines
+your scope; a list of panel IDs in chat does not. Walk the subtree with a work
+limit:
 
 ```ts
 import { panelTree } from "@workspace/runtime";
 
-const pending = [rootPanelId];
-const workLimit = 500;
-let visited = 0;
-while (pending.length && visited < workLimit) {
-  const parentSlotId = pending.shift()!;
-  let cursor: string | undefined;
-  let revision: number | undefined;
-  do {
-    const page = await panelTree.page({
-      group: { kind: "children", parentSlotId },
-      ...(cursor ? { cursor } : {}),
-      limit: 100,
-    });
-    if (revision !== undefined && page.revision !== revision) {
-      throw new Error("Panel tree changed during traversal; restart from the first page");
-    }
-    revision = page.revision;
-    for (const { node, handle } of page.entries) {
-      console.log(handle.id, handle.title, node.childCount);
-      if (node.childCount > 0) pending.push(handle.id);
-      if (++visited >= workLimit) break;
-    }
-    cursor = page.nextCursor ?? undefined;
-  } while (cursor && visited < workLimit);
+for await (const { node, handle, depth } of panelTree.walk(rootPanelId, {
+  limit: 500,
+})) {
+  console.log(depth, handle.id, handle.title, node.childCount);
 }
 ```
 
-Choose an explicit work limit appropriate to the request; ask for narrower
-scope instead of silently crossing it. `node.childCount === 0` means
-structurally childless, not necessarily a browser panel. After a create, move,
-close, or batch rename, restart affected sibling groups at their first page.
-Compare `revision` between pages to detect changes made by the user, another
-agent, or another client. Never maintain a parallel complete tree in eval
-state.
+The walk is breadth-first, follows page cursors, and restarts when the tree
+changes mid-walk (because of the user, another agent, or another client)
+without yielding a panel twice. Pick a limit that fits the request. If you
+receive `limit` entries the subtree may hold more; ask the user to narrow the
+scope instead of silently going past it. `node.childCount === 0` means the
+panel has no children; it does not mean the panel is a browser panel. After a
+create, move, close, or batch rename, walk again rather than reusing old
+entries. Never keep a full copy of the tree in eval state.
 
 ## Titles and notes
 
-Use semantic titles for navigation, not descriptions:
+Use titles that help navigation, not descriptions. `handle` is the entry's
+handle from the walk:
 
 ```ts
-await node.handle.setTitle("Gmail · Support inbox", { explicit: true });
+await handle.setTitle("Gmail · Support inbox", { explicit: true });
 ```
 
-An explicit title survives inferred document-title changes. Prefer existing
-page title and URL metadata. Do not materialize every deferred browser panel
-just to replace an already-useful title.
+An explicit title is kept when the document's own title changes. Prefer the
+existing page title and URL metadata. Do not load every deferred browser panel
+just to replace a title that is already useful.
 
-When the target itself is a collection panel, also merge
-`{ title: "…" }` into its state args. The explicit slot title is what its
-parent renders; `stateArgs.title` is what the collection renders internally.
+A collection panel shows its slot title, so `setTitle` alone renames it
+everywhere.
 
 Notes for a collection scope live in the root collection's `stateArgs.notes`
-map, keyed by stable panel slot id. Merge rather than replace unrelated state:
+map, keyed by stable panel slot ID. Merge into it so unrelated state is kept:
 
 ```ts
 const root = panelTree.get(rootPanelId);
-const state = await root.stateArgs.get<{ notes?: Record<string, string> }>();
-await root.stateArgs.set({
-  notes: { ...(state.notes ?? {}), [targetPanelId]: "Needs account selection" },
+await root.stateArgs.patch({
+  notes: { [targetPanelId]: "Needs account selection" },
 });
 ```
 
-Remove an obsolete key by writing a rebuilt map without it; do not put
-workspace context ids or other authority data in state args.
+To remove an obsolete note, write the map back without that key. Do not put
+workspace context IDs or other permission data in state args.
 
 ## Grouping and moving
 
-Create a nested collection only for a stable, useful concept—not merely
-because several URLs share a hostname:
+Create a nested collection only for a stable, useful concept, not just because
+several URLs share a hostname:
 
 ```ts
 import { openPanel } from "@workspace/runtime";
@@ -91,71 +71,80 @@ const group = await openPanel("about/collection", {
   title: "Release engineering",
   focus: false,
   stateArgs: {
-    title: "Release engineering",
     note: "Builds, CI runs, and release artifacts",
   },
 });
 ```
 
-Collection descendants created for semantic grouping share the root
-collection's orchestration context. This lets every recursive collection
-conductor supervise that subtree without a prompt per panel. Do not omit
-`contextId` and accidentally mint an unrelated context for a nested collection.
+Nested collections created for grouping share the root collection's
+orchestration context. That lets every collection conductor in the subtree
+supervise it without a permission prompt per panel. Always pass `contextId`;
+leaving it out creates an unrelated context for the nested collection.
 
-Move or reorder existing panels with their handles:
+Move or reorder existing panels with their handles. With no placement, the
+panel goes to the top of the new parent; pass `{ beforeSlotId }` or
+`{ afterSlotId }` to place it next to a sibling:
 
 ```ts
-await target.handle.movePanel(group.id, 0);
+await handle.movePanel(group.id);
+await handle.movePanel(group.id, { afterSlotId: siblingId });
 ```
 
 Rules:
 
 - Never move the scope root into its own subtree.
-- Preserve useful imported-window structure unless a semantic organization is
-  clearly better.
-- Moving a collection moves its recursive subtree; do not separately move its
-  descendants.
-- Refresh after a structural batch and verify the resulting parent ids and
+- Keep useful imported-window structure unless a semantic grouping is clearly
+  better.
+- Moving a collection moves its whole subtree; do not move its descendants
+  separately.
+- After a structural batch, refresh and check the resulting parent IDs and
   order.
-- Keep ambiguous panels where they are and ask the user instead of inventing a
+- Leave ambiguous panels where they are and ask the user instead of inventing a
   taxonomy.
 
-Tree placement is not capability inheritance. Collection-owned recursive
-subtrees share an explicit orchestration context, and panels spawned by the
-collection, its bound agent, or that agent's eval are also creator-controlled
-through immutable runtime ancestry. Both relationships make ordinary
-coordination prompt-free. An unrelated panel moved into the collection retains
-its original context and provenance; reparenting it does not silently give the
-collection runtime or CDP control. Its first cross-context operation uses the
-normal exact requester/target-context approval, whose scoped grant is reusable
-for that context rather than prompting per operation.
+Where a panel sits in the tree does not determine what it may do. Two
+relationships give the collection prompt-free control:
+
+- Nested collections in the subtree share the root's orchestration context.
+- Panels spawned by the collection, its bound agent, or that agent's eval are
+  tied to their creator through immutable runtime ancestry.
+
+An unrelated panel moved into the collection keeps its original context and
+provenance. Moving it there does not give the collection runtime or CDP control
+over it. The first cross-context operation on it asks for the normal approval
+for that requester and target context; the resulting grant covers that context,
+so later operations do not prompt again.
 
 ## Browser automation
 
-Tree inspection, semantic renaming, notes, and moving do not require a browser
-runtime. Use CDP only when page content is needed:
+Inspecting the tree, renaming, notes, and moving do not need a browser runtime.
+Use CDP only when you need page content:
 
 ```ts
-const browserNodes = scope.descendants.filter((node) => node.handle.kind === "browser");
-const page = await browserNodes[0].handle.cdp.page();
-console.log(await page.title(), page.url());
+const browserEntries = [];
+for await (const entry of panelTree.walk(rootPanelId, { limit: 200 })) {
+  if (entry.node.kind === "browser") browserEntries.push(entry);
+}
+const cdpSession = await browserEntries[0].handle.cdp.session();
+const cdpPage = cdpSession.page;
+console.log(await cdpPage.title(), cdpPage.url());
 ```
 
-CDP materializes a deferred target. A mass import is intentionally unloaded,
-so never connect every leaf with an unbounded `Promise.all`. Work in small
-batches (normally 2–4), retain per-panel failures, and refresh the subtree
-between batches if the user may be editing it concurrently.
+Connecting CDP loads a deferred panel. Mass imports are left unloaded on
+purpose, so never connect every leaf with an unbounded `Promise.all`. Work in
+small batches (usually 2–4), record failures per panel, and refresh the subtree
+between batches if the user may be editing it at the same time.
 
-Reuse one CDP page for the current runtime incarnation. If `observe()` reports
-a different `runtimeEntityId` after navigation or rebuild, discard the old page
-and acquire a new one.
+Reuse one CDP page while the panel's runtime stays the same. If `observe()`
+reports a different `runtimeEntityId` after navigation or a rebuild, drop the
+old page and get a new one.
 
 ## Completion
 
 After changing a collection:
 
 1. Refresh the subtree.
-2. Verify titles, parent ids, and child order from the new snapshot.
+2. Check titles, parent IDs, and child order in the new snapshot.
 3. Report structural changes separately from content automation.
-4. Mention panels left ambiguous and any CDP failures without aborting the
-   rest of the batch.
+4. List panels you left ambiguous and any CDP failures; a failure on one panel
+   does not stop the rest of the batch.
