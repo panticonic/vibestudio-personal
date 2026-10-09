@@ -2,10 +2,19 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { Theme } from "@radix-ui/themes";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import SetupHub from "./SetupHub";
+import SetupHub from "./SetupHub.js";
+import { openSetupObservation } from "./observation.js";
 import type { SetupCapabilitySnapshot } from "./snapshot";
 import "@radix-ui/themes/styles.css";
 import "@workspace/agentic-chat/styles.css";
+
+vi.mock(import("./observation.js"), () => ({
+  openSetupObservation: vi.fn(() => ({
+    ready: Promise.resolve(),
+    completion: new Promise(() => {}),
+    close: async () => undefined,
+  })),
+}));
 
 afterEach(cleanup);
 
@@ -72,6 +81,8 @@ describe("SetupHub responsiveness", () => {
       </NarrowInlineUi>,
     );
 
+    expect(vi.isMockFunction(openSetupObservation)).toBe(true);
+    expect(openSetupObservation).toHaveBeenCalledTimes(1);
     const content = screen.getByTestId("inline-ui-content");
     const bounds = content.getBoundingClientRect();
     const overflowers = [content, ...content.querySelectorAll<HTMLElement>("*")]

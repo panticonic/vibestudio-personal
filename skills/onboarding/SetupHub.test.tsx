@@ -16,6 +16,12 @@ import {
 const loaders = vi.hoisted(() => ({
   capabilities: vi.fn(),
   execute: vi.fn(),
+  observe: vi.fn(),
+  changed: () => {},
+}));
+
+vi.mock("./observation.js", () => ({
+  openSetupObservation: loaders.observe,
 }));
 
 vi.mock("./snapshot.js", () => ({
@@ -81,6 +87,14 @@ function setupScope(
 }
 
 beforeEach(() => {
+  loaders.observe.mockReset().mockImplementation((changed) => {
+    loaders.changed = changed;
+    return {
+      ready: Promise.resolve(),
+      completion: new Promise(() => {}),
+      close: vi.fn(async () => undefined),
+    };
+  });
   loaders.capabilities.mockReset();
   loaders.capabilities.mockResolvedValue({ catalog, snapshot: snapshots });
   loaders.execute.mockReset();
@@ -156,7 +170,9 @@ describe("SetupHub", () => {
       </Theme>,
     );
 
-    const setup = view.getByRole("button", { name: "Set up" }) as HTMLButtonElement;
+    const setup = view.getByRole("button", {
+      name: "Set up",
+    }) as HTMLButtonElement;
     await waitFor(() => expect(setup.disabled).toBe(false));
     fireEvent.click(setup);
 
@@ -272,4 +288,66 @@ describe("SetupHub", () => {
       view.queryByText(/featured workspaces|workspace catalog/i),
     ).toBeNull();
   });
+});
+
+it("admits the owner observations before reading and retains invalidations during a read", async () => {
+  let admit!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    admit = resolve;
+  });
+  const close = vi.fn(async () => undefined);
+  loaders.observe.mockImplementation((changed) => {
+    loaders.changed = changed;
+    return { ready, completion: new Promise(() => {}), close };
+  });
+  const view = render(
+    <Theme>
+      <SetupHub chat={{ send: vi.fn() }} scope={setupScope()} />
+    </Theme>,
+  );
+  expect(loaders.capabilities).not.toHaveBeenCalled();
+  admit();
+  await waitFor(() => expect(loaders.capabilities).toHaveBeenCalledTimes(1));
+  let finish!: (value: unknown) => void;
+  loaders.capabilities.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  loaders.changed();
+  await waitFor(() => expect(loaders.capabilities).toHaveBeenCalledTimes(2));
+  loaders.changed();
+  loaders.changed();
+  finish({ catalog, snapshot: snapshots });
+  await waitFor(() => expect(loaders.capabilities).toHaveBeenCalledTimes(3));
+  view.unmount();
+  expect(close).toHaveBeenCalledTimes(1);
+});
+
+it("keeps observation failures visible until the user retries the live updates", async () => {
+  let fail!: (error: unknown) => void;
+  const completion = new Promise<void>((_resolve, reject) => {
+    fail = reject;
+  });
+  loaders.observe.mockImplementationOnce(() => ({
+    ready: Promise.resolve(),
+    completion,
+    close: async () => undefined,
+  }));
+  const view = render(
+    <Theme>
+      <SetupHub chat={{ send: vi.fn() }} scope={setupScope()} />
+    </Theme>,
+  );
+  await waitFor(() => expect(loaders.capabilities).toHaveBeenCalledTimes(1));
+  fail(new Error("model owner disconnected"));
+  await view.findByText("Live setup updates paused: model owner disconnected");
+  fireEvent.click(view.getByRole("button", { name: "Refresh setup overview" }));
+  await waitFor(() => expect(loaders.observe).toHaveBeenCalledTimes(2));
+  await waitFor(() =>
+    expect(
+      view.queryByText("Live setup updates paused: model owner disconnected"),
+    ).toBeNull(),
+  );
 });

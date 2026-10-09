@@ -10,6 +10,10 @@
         {
           "protocol": "vibestudio.models.v1",
           "availability": "required"
+        },
+        {
+          "protocol": "vibestudio.missions.v1",
+          "availability": "required"
         }
       ]
     }
@@ -24,6 +28,7 @@
   },
   "dependencies": {
     "@vibestudio/browser-data": "workspace:*",
+    "@vibestudio/rpc": "workspace:*",
     "@vibestudio/service-schemas": "workspace:*",
     "@vibestudio/shared": "workspace:*",
     "@workspace/model-catalog": "workspace:*",

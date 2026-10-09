@@ -1,3 +1,4 @@
+import { openSetupObservation } from "./observation.js";
 import { OperationNotice } from "@workspace/ui/feedback";
 import {
   Badge,
@@ -328,11 +329,51 @@ export default function SetupHub({
     [saveCache],
   );
 
-  // Mounting always refreshes owner state. Re-rendering the stable inline UI
-  // changes renderedAt, which is the agent's explicit external refresh signal.
+  const [observationAttempt, setObservationAttempt] = useState(0);
+  const [observationError, setObservationError] = useState<string | null>(null);
   useEffect(() => {
-    void refreshCapabilities();
-  }, [inlineUi?.renderedAt, refreshCapabilities]);
+    let active = true;
+    setObservationError(null);
+    let running = false;
+    let dirty = false;
+    const refresh = async () => {
+      dirty = true;
+      if (running) return;
+      running = true;
+      try {
+        while (dirty && active) {
+          dirty = false;
+          await refreshCapabilities();
+        }
+      } finally {
+        running = false;
+      }
+    };
+    const observation = openSetupObservation(() => {
+      void refresh();
+    });
+    const failed = (cause: unknown) => {
+      if (active)
+        setObservationError(
+          `Live setup updates paused: ${cause instanceof Error ? cause.message : String(cause)}`,
+        );
+    };
+    void observation.ready
+      .then(async () => {
+        if (active) await refresh();
+      })
+      .catch(failed);
+    void observation.completion.catch(failed);
+    return () => {
+      active = false;
+      ++capabilityRequest.current;
+      void observation
+        .close()
+        .catch((cause) =>
+          console.error("SetupHub observation release failed", cause),
+        );
+    };
+  }, [inlineUi?.renderedAt, refreshCapabilities, observationAttempt]);
 
   // The click is the user's own gesture, so client-owned routes (About pages,
   // panels, shell surfaces) open here. Only routes owned by an agent workflow
@@ -393,13 +434,15 @@ export default function SetupHub({
           <Button
             size="1"
             variant="soft"
-            onClick={() => void refreshCapabilities()}
+            onClick={() => setObservationAttempt((attempt) => attempt + 1)}
           >
             <ReloadIcon /> Try again
           </Button>
         ) : null}
-        {error ? (
-          <OperationNotice intent="error">{error}</OperationNotice>
+        {(observationError ?? error) ? (
+          <OperationNotice intent="error">
+            {observationError ?? error}
+          </OperationNotice>
         ) : null}
       </Flex>
     );
@@ -443,7 +486,7 @@ export default function SetupHub({
           size="1"
           variant="ghost"
           disabled={pending !== null || loadingCapabilities}
-          onClick={() => void refreshCapabilities()}
+          onClick={() => setObservationAttempt((attempt) => attempt + 1)}
           aria-label="Refresh setup overview"
         >
           <BusyReloadIcon busy={loadingCapabilities} />
@@ -477,7 +520,11 @@ export default function SetupHub({
         </Callout.Root>
       )}
 
-      {error ? <OperationNotice intent="error">{error}</OperationNotice> : null}
+      {(observationError ?? error) ? (
+        <OperationNotice intent="error">
+          {observationError ?? error}
+        </OperationNotice>
+      ) : null}
       {notice ? (
         <OperationNotice intent="warning">{notice}</OperationNotice>
       ) : null}
@@ -506,9 +553,7 @@ export default function SetupHub({
                 snapshot={byId.get(definition.id)!}
                 pending={pending}
                 refreshing={loadingCapabilities}
-                onAction={(entry, action) =>
-                  void selectAction(entry, action)
-                }
+                onAction={(entry, action) => void selectAction(entry, action)}
               />
             ))}
           </Flex>
