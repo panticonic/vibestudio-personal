@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactElement } from "react";
 import { Slider } from "@radix-ui/themes";
 import { panel, buildPanelLink } from "@workspace/runtime";
 import { Choices, Figure, SceneFrame } from "../lib/Scene";
+import type { SceneId } from "../deck";
 import { createShellSurfaceLink } from "@vibestudio/shared/shellSurface";
 import { ApprovalDemo } from "../lib/ApprovalDemo";
 import { DemoChatLink } from "../lib/DemoChatLink";
@@ -53,7 +54,7 @@ function AskAgent({ prompt, label }: { prompt: string; label: string }) {
 export function Opening() {
   return (
     <SceneFrame
-      eyebrow="01 · Make it yours"
+      scene="opening"
       title={
         <>
           Software you can change <em>by asking.</em>
@@ -109,7 +110,7 @@ export function Workspaces() {
   const boundary = WORKSPACE_BOUNDARIES[selected];
   return (
     <SceneFrame
-      eyebrow="03 · Capabilities & security"
+      scene="workspaces"
       title={
         <>
           Rich environments. <em>Explicit trust boundaries.</em>
@@ -150,7 +151,7 @@ export function Websites() {
   const [mode, setMode] = useState<"connect" | "install">("connect");
   return (
     <SceneFrame
-      eyebrow="04 · Websites & apps"
+      scene="websites"
       title={
         <>
           Connect a website. Or give an app <em>its own workspace.</em>
@@ -259,7 +260,7 @@ export function Continuum() {
   );
   return (
     <SceneFrame
-      eyebrow="02 · Apps meet agents"
+      scene="continuum"
       title={
         <>
           From apps with agents <em>to agents with interfaces.</em>
@@ -356,7 +357,7 @@ export function Continuum() {
 export function Automations() {
   return (
     <SceneFrame
-      eyebrow="05 · Automations"
+      scene="automations"
       title={
         <>
           Ask once. <em>Let it repeat.</em>
@@ -398,7 +399,7 @@ export function Automations() {
 export function Closing() {
   return (
     <SceneFrame
-      eyebrow="06 · Your first tool"
+      scene="closing"
       title={
         <>
           Start with something <em>you wish existed.</em>
@@ -436,3 +437,13 @@ export function Closing() {
     </SceneFrame>
   );
 }
+
+/** Each deck scene's component; the deck owns their order. */
+export const SCENE_COMPONENTS: Record<SceneId, () => ReactElement> = {
+  opening: Opening,
+  continuum: Continuum,
+  workspaces: Workspaces,
+  websites: Websites,
+  automations: Automations,
+  closing: Closing,
+};

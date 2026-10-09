@@ -1,18 +1,20 @@
 import type { ReactNode } from "react";
+import { sceneEyebrow, type SceneId } from "../deck";
 
 export interface SceneFrameProps {
-  eyebrow: string;
+  /** The scene's registry id; its numbered eyebrow derives from the deck. */
+  scene: SceneId;
   title: ReactNode;
   lede?: ReactNode;
   children?: ReactNode;
 }
 
 /** The typographic frame every scene shares: eyebrow, title, lede, then figures. */
-export function SceneFrame({ eyebrow, title, lede, children }: SceneFrameProps) {
+export function SceneFrame({ scene, title, lede, children }: SceneFrameProps) {
   return (
     <section className="scene" aria-labelledby="scene-title">
       <header>
-        <div className="scene__eyebrow">{eyebrow}</div>
+        <div className="scene__eyebrow">{sceneEyebrow(scene)}</div>
         <h1 className="scene__title" id="scene-title">
           {title}
         </h1>

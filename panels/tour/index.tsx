@@ -6,7 +6,7 @@
  * and presenter-notes state live in the panel's state args
  * (`{ scene?: string; notes?: boolean }`, scene ids from ./deck.ts), so
  * reopening the panel resumes where you were and an agent can drive the deck
- * (`panel.stateArgs.setForPanel(id, { scene: "continuum" })`). Unknown scene
+ * (`panel.stateArgs.patchForPanel(id, { scene: "continuum" })`). Unknown scene
  * ids fall back to the opening scene.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,15 +25,8 @@ import {
   useStateArgs,
 } from "@workspace/react";
 import { VibestudioLogo } from "@workspace/ui/brand";
-import { DECK, sceneIndex } from "./deck";
-import {
-  Opening,
-  Workspaces,
-  Websites,
-  Continuum,
-  Automations,
-  Closing,
-} from "./scenes/ProductTour";
+import { DECK, sceneIndex, sceneNumber } from "./deck";
+import { SCENE_COMPONENTS } from "./scenes/ProductTour";
 
 type TourStateArgs = {
   scene?: string;
@@ -64,7 +57,9 @@ function Tour() {
   // cannot persist state args; host-published changes (an agent driving the
   // deck, a reopen) win whenever they arrive.
   const [args, setArgs] = useState<TourStateArgs>(hostArgs);
+  const latestArgs = useRef(hostArgs);
   useEffect(() => {
+    latestArgs.current = hostArgs;
     setArgs(hostArgs);
   }, [hostArgs]);
   const isMobile = useIsMobile();
@@ -75,15 +70,13 @@ function Tour() {
 
   const [present, setPresent] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  // Always persist the complete snapshot: state-arg updates are read-merge-write
-  // on the client, so two quick partial writes could clobber each other.
+  // Update local presentation immediately; the state owner serializes patches.
   const update = useCallback((updates: TourStateArgs) => {
-    setArgs((current) => {
-      const next = { ...current, ...updates };
-      void panel.stateArgs.set(next).catch((error: unknown) => {
-        console.warn("tour: could not persist state args", error);
-      });
-      return next;
+    const next = { ...latestArgs.current, ...updates };
+    latestArgs.current = next;
+    setArgs(next);
+    void panel.stateArgs.patch(updates).catch((error: unknown) => {
+      console.warn("tour: could not persist state args", error);
     });
   }, []);
   const goToIndex = useCallback(
@@ -188,26 +181,7 @@ function Tour() {
   );
   useAgentState("tour", agentState);
 
-  let content;
-  switch (scene.id) {
-    case "opening":
-      content = <Opening />;
-      break;
-    case "workspaces":
-      content = <Workspaces />;
-      break;
-    case "websites":
-      content = <Websites />;
-      break;
-    case "continuum":
-      content = <Continuum />;
-      break;
-    case "automations":
-      content = <Automations />;
-      break;
-    default:
-      content = <Closing />;
-  }
+  const SceneContent = SCENE_COMPONENTS[scene.id];
 
   return (
     <div
@@ -233,9 +207,7 @@ function Tour() {
               aria-current={i === index}
               onClick={() => goToIndex(i)}
             >
-              <span className="tour-rail__num">
-                {String(i + 1).padStart(2, "0")}
-              </span>
+              <span className="tour-rail__num">{sceneNumber(i)}</span>
               <span>{item.title}</span>
             </button>
           ))}
@@ -248,7 +220,7 @@ function Tour() {
       )}
       <div className="tour-main">
         <div className="tour-stage" ref={stageRef} key={scene.id}>
-          {content}
+          <SceneContent />
         </div>
         <nav className="tour-footer" aria-label="Tour navigation">
           <button

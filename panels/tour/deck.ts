@@ -1,10 +1,13 @@
-/** Scene ids are persisted panel state. */
+/**
+ * The single scene registry: order, navigation labels, numbered eyebrows, and
+ * presenter notes all derive from it. Scene ids are persisted panel state.
+ */
 export interface SceneMeta {
   id: string;
   title: string;
-  notes: string[];
+  notes: readonly string[];
 }
-export const DECK: readonly SceneMeta[] = [
+export const DECK = [
   {
     id: "opening",
     title: "Make it yours",
@@ -44,7 +47,7 @@ export const DECK: readonly SceneMeta[] = [
   },
   {
     id: "automations",
-    title: "Let it repeat",
+    title: "Automations",
     notes: [
       "Run a project pulse opens a full child chat and sends a request to launch a manual continuing automation and run it once. It reads actual branch status, not a simulated result. The ordinary automation pill owns results, history and controls. Recurrence requires a later explicit request.",
       "Automations can run prompts, scripts, or service methods. Show the real definition and controls in Automations. Unattended access remains scoped.",
@@ -58,8 +61,18 @@ export const DECK: readonly SceneMeta[] = [
       "Ordinary workspace review and permission rules still apply.",
     ],
   },
-];
+] as const satisfies readonly SceneMeta[];
+export type SceneId = (typeof DECK)[number]["id"];
 export function sceneIndex(id: string | undefined): number {
   const index = DECK.findIndex((scene) => scene.id === id);
   return index < 0 ? 0 : index;
+}
+/** The two-digit scene number shown in the rail and the eyebrow, e.g. "05". */
+export function sceneNumber(index: number): string {
+  return String(index + 1).padStart(2, "0");
+}
+/** The numbered eyebrow for a scene, e.g. "05 · Automations". */
+export function sceneEyebrow(id: SceneId): string {
+  const index = sceneIndex(id);
+  return `${sceneNumber(index)} · ${DECK[index]!.title}`;
 }

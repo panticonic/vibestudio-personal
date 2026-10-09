@@ -49,7 +49,14 @@ describe("tour sample", () => {
       ),
       0,
     );
-    const service = config.top.services?.find(
+    const selection = config.top.services?.find(
+      (entry) => entry.name === "tour-sample",
+    );
+    expect(selection).toEqual({
+      source: "workers/tour-sample",
+      name: "tour-sample",
+    });
+    const service = manifest.vibestudio.services.find(
       (entry) => entry.name === "tour-sample",
     );
     expect(service?.authority.principals).toEqual(["host", "code"]);
