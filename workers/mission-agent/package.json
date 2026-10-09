@@ -293,6 +293,7 @@
     "@panticonic/pi-chord": "1.1.0-vibestudio.1",
     "@panticonic/pi-durable": "1.1.0-vibestudio.1",
     "@workspace/mission-control": "workspace:*",
+    "@vibestudio/automation": "workspace:*",
     "@vibestudio/workspace-contracts": "workspace:*",
     "@vibestudio/service-schemas": "workspace:*",
     "@workspace-workers/agent-worker": "workspace:*"
