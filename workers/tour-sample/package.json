@@ -45,7 +45,32 @@
           ]
         }
       ]
-    }
+    },
+    "services": [
+      {
+        "action": "use the tour’s fictional reading-list sample",
+        "authority": {
+          "principals": [
+            "host",
+            "code"
+          ]
+        },
+        "description": "A read-only sample for trying real capability approvals. No personal data or external services.",
+        "durableObject": {
+          "className": "TourSample"
+        },
+        "name": "tour-sample",
+        "notability": "everyday",
+        "presentation": {
+          "domain": "files",
+          "verb": "see"
+        },
+        "protocols": [
+          "vibestudio.tour-sample.v1"
+        ],
+        "title": "Tour sample"
+      }
+    ]
   },
   "dependencies": {
     "@workspace/runtime": "workspace:*"

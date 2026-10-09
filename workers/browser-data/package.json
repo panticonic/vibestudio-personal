@@ -63,7 +63,34 @@
           "evidence": "intentional-broad"
         }
       ]
-    }
+    },
+    "services": [
+      {
+        "action": "use browser history, bookmarks, downloads, and preferences",
+        "authority": {
+          "binding": "declared",
+          "principals": [
+            "host",
+            "user",
+            "code"
+          ]
+        },
+        "description": "Access your browser history, bookmarks, downloads, and saved preferences.",
+        "durableObject": {
+          "className": "BrowserDataDO"
+        },
+        "name": "browser.data",
+        "notability": "everyday",
+        "presentation": {
+          "domain": "web",
+          "verb": "see"
+        },
+        "protocols": [
+          "vibestudio.browser-data.v1"
+        ],
+        "title": "Browser data"
+      }
+    ]
   },
   "dependencies": {
     "@vibestudio/shared": "workspace:*",
