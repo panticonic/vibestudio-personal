@@ -324,7 +324,15 @@ export default function MissionControl() {
       return true;
     } catch (error) {
       setError(message(error));
-      if (reload) await refresh().catch(() => {});
+      if (reload) {
+        try {
+          await refresh();
+        } catch (refreshError) {
+          setError(
+            `${message(error)} The view could not refresh: ${message(refreshError)}`,
+          );
+        }
+      }
       return false;
     } finally {
       operations.current.delete(scopeKey);
@@ -749,9 +757,9 @@ export default function MissionControl() {
         </a>
         <div className="mc-space-label">
           Your workspace{" "}
-          <span className="mc-healthy">
+          <span className={data || !error ? "mc-healthy" : "mc-healthy mc-failed"}>
             <i />
-            {data ? "Loaded" : "Loading"}
+            {data ? "Ready" : error ? "Couldn’t load" : "Loading"}
           </span>
         </div>
         <button
@@ -1466,6 +1474,17 @@ export default function MissionControl() {
                 ? "Refresh to try loading this workspace again."
                 : "Loading your projects, tasks, and saved views."}
             </p>
+            {error && (
+              <button
+                className="mc-primary"
+                onClick={() => {
+                  setError("");
+                  refresh().catch((reason) => setError(message(reason)));
+                }}
+              >
+                Try again
+              </button>
+            )}
           </div>
         ) : !data.projects.some((project) => !project.archived) ? (
           <div className="mc-empty">

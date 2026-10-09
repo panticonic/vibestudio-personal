@@ -10,7 +10,7 @@ import { copyJson } from "@panticonic/pi-chord";
 import type { ToolRegistration } from "@panticonic/pi-durable";
 import { authorNativeTool } from "@workspace/harness";
 import { PROTOCOL, type Automation } from "@workspace/mission-control";
-import { compileMissionAuthorityPlan, prepareMissionEdit, type MissionRecord } from "@vibestudio/automation/mission";
+import { createMissionsClient } from "@vibestudio/automation/mission";
 import { missionCharterSchema } from "@vibestudio/service-schemas/missions";
 import { triggerSchema } from "@vibestudio/workspace-contracts/automations";
 import { z } from "zod";
@@ -125,25 +125,15 @@ Always read before editing, preserve independent fields, and report original fai
       },
       trigger: parsed.trigger,
     });
-    const missions = createDurableObjectServiceClient(
-      this.rpc,
-      "vibestudio.missions.v1",
-    );
+    const missions = createMissionsClient(this.rpc);
     const defaultId = `mission-control-task:${parsed.taskId}`;
     const installed = parsed.automationId
-      ? await missions.call<
-          Automation & Pick<MissionRecord, "charter" | "authorityPlan" | "seeded">
-        >("get", parsed.automationId)
-      : await missions.call<
-          | (Automation & Pick<MissionRecord, "charter" | "authorityPlan" | "seeded">)
-          | null
-        >("getDefault", defaultId);
+      ? await missions.get(parsed.automationId)
+      : await missions.getDefault(defaultId);
     if (!installed) {
-      const authorityPlan = await compileMissionAuthorityPlan(this.rpc, charter.execution);
-      return missions.call<Automation>("provisionDefault", defaultId, {
+      return missions.provisionDefault(defaultId, {
         name: parsed.name,
         charter,
-        authorityPlan,
       });
     }
     const current = installed;
@@ -153,11 +143,10 @@ Always read before editing, preserve independent fields, and report original fai
       );
     if (JSON.stringify(current.charter) === JSON.stringify(charter))
       return current;
-    const patch = await prepareMissionEdit(this.rpc, current, {
+    return missions.edit(current.missionId, {
       name: parsed.name,
       charter,
     });
-    return missions.call<Automation>("edit", current.missionId, patch);
   }
 }
 

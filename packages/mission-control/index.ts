@@ -194,7 +194,7 @@ export type Automation = {
   nextRunAt?: number;
   runCount: number;
   charter: { trigger: MissionTrigger };
-  authority: { requestIds: string[]; grantIds: string[]; denialIds: string[] };
+  authority: { requestIds: readonly string[]; grantIds: readonly string[]; denialIds: readonly string[] };
 };
 export type TaskDetail = {
   activity: TaskEvent[];

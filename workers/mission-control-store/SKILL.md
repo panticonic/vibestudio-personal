@@ -5,32 +5,33 @@ description: Maintain Mission Control projects, task cards, saved views, and can
 
 # Mission Control domain
 
-`MissionControlStore` owns planning records; `MissionsDO` owns every execution
-and schedule. Keep that boundary: never introduce a second run ledger,
-transcript store, scheduler, heartbeat, timeout, or alternate agent loop here.
+`MissionControlStore` holds planning records; `MissionsDO` runs every execution
+and schedule. Do not add a second run ledger, transcript store, scheduler,
+heartbeat, timeout, or agent loop here.
 
-Read a card before updating it and supply its observed revision. Preserve
-independent fields and re-read conflicts. Dependencies are a directed acyclic
-graph across workspace projects; moving a task preserves its identity, links
-and run history. Card work state and executor lifecycle state are distinct.
+Read a card before updating it and pass the revision you read. Leave fields you
+are not changing alone, and re-read on conflict. Dependencies form a directed
+acyclic graph across workspace projects. Moving a task keeps its identity,
+links, and run history. A card's work state is separate from its executor's
+lifecycle state.
 
 Use the paginated `overview` for the shared presentation view and `taskOptions`
-for choices independent of filters. `taskDetail` reads one exact task's
-canonical automation and paged run ledger. Persist only automation identity,
-never copies of run status or chat transcripts.
+for choices that don't depend on filters. `taskDetail` reads one task's
+automation and its paged run ledger. Store only the automation's identity; never
+copy run status or chat transcripts.
 
-The stable executor prompt names task identity and reads current domain state
-at run start. Recurring cards represent a series: Done accepts the preceding
-occurrence, and the next admitted scheduled occurrence may begin new work.
-Cancelled cards and archived projects stop work. Dependency acceptance still
-gates every occurrence.
+The executor prompt is stable: it names the task and reads current domain state
+when the run starts. A recurring card represents a series. Marking it Done
+accepts the previous occurrence, and the next scheduled occurrence that is
+admitted may start new work. Cancelled cards and archived projects stop work.
+Every occurrence still waits for its dependencies to be accepted.
 
-Cancellation belongs to MissionsDO, including admission and preparation;
-mark the task cancelled only after its canonical cancellation returns. A
-failed join leaves the original failure visible and the card actionable.
-Archive only after execution commands, live runs, and enabled recurrence have
-stopped. Retain task history across archive and restore.
+`MissionsDO` handles cancellation, including during admission and preparation.
+Mark the task cancelled only after that cancellation returns. If joining the
+cancelled run fails, the original failure stays visible and the card stays
+actionable. Archive only after execution commands, live runs, and enabled
+recurrence have stopped. Task history is kept across archive and restore.
 
-Run focused tests through the host's template projection, as documented in
-the panel README. Inspect the real exact-unit build report for source,
-manifest and authority diagnostics before attempting runtime calls.
+Run focused tests through the host's template projection, as described in the
+panel README. Check the unit's build report for source, manifest, and permission
+diagnostics before trying runtime calls.
