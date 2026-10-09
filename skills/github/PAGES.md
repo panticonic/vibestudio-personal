@@ -1,13 +1,13 @@
 # Publish a workspace-enabled website
 
-Use the existing GitHub setup, semantic VCS and Git Bridge. Pages adds a public
-website to a repository; it does not supply workspace credentials to that site.
-The same App component and portable runtime work in an installed panel and a
-connected website. See [website development](../workspace-dev/WEBSITES.md).
+Use the existing GitHub setup, semantic VCS, and Git Bridge. Pages adds a public
+website to a repository; it does not give that site any workspace credentials.
+The same App component and portable runtime work both in an installed panel and
+in a connected website. See [website development](../workspace-dev/WEBSITES.md).
 
 ## Build and review
 
-Use the Host developer scaffold to vendor an exact standalone SDK:
+Use the Host developer scaffold to vendor a pinned standalone SDK:
 
 ```sh
 pnpm build:website-runtime --out-dir /tmp/website-sdk
@@ -17,30 +17,33 @@ npm ci
 npm run build
 ```
 
-The public output is `docs/`, with relative asset URLs, `.nojekyll` and the
+The public output is `docs/`, with relative asset URLs, `.nojekyll`, and the
 content-hashed build manifest. Review the generated source and output together,
-including the SDK artifact and lockfile. Test ordinary browsing under a project
-path such as `/my-website/`, then connection and denial in Vibestudio. These are
-Host commands; do not present them as workspace eval exports.
+including the SDK artifact and lockfile. Test normal browsing under a project
+path such as `/my-website/`, then test connecting and denying access in
+Vibestudio. These are Host commands; do not present them as workspace eval
+exports.
 
-Bring the reviewed repository into a dedicated managed project using ordinary
-workspace authoring/import, then commit and publish it to protected main through
-[Vibestudio VCS](../vibestudio-vcs/SKILL.md). Review the complete repository's
-public file inventory, not only `docs/`: a public repository also exposes source
-and its Git history. Retain the reviewed `mainEventId` and build manifest's
-`buildId`. Credentials, workspace transcripts and private source do not belong
-in this public repository.
+Bring the reviewed repository into its own managed project through normal
+workspace authoring or import, then commit and publish it to protected main
+through [Vibestudio VCS](../vibestudio-vcs/SKILL.md). Review every public file in
+the repository, not only `docs/`: a public repository also exposes its source
+and Git history. Keep the reviewed `mainEventId` and the build manifest's
+`buildId`. Credentials, workspace transcripts, and private source must not go
+into this public repository.
 
 ## Connect GitHub and publish the repository
 
-Use `GitHubSetup` from the [GitHub skill](SKILL.md), selecting **Publish websites**
-(`publish-pages`). That component owns account, repository access and any repair;
-never ask for tokens in chat. Keep its concrete credential ID for the operation.
+Use `GitHubSetup` from the [GitHub skill](SKILL.md) and select **Publish
+websites** (`publish-pages`). The component handles the account, repository
+access, and any repair; never ask for tokens in chat. Keep the credential ID it
+returns for the steps below.
 
-Use the existing `publishToGitHub` helper with explicit repository name, audience,
-and `expectedMainEventId`. This comparison is enforced at the actual protected
-source export. Unrelated workspace configuration changes are allowed; changed repository contents
-require reviewing the new source before trying again.
+Call the existing `publishToGitHub` helper with an explicit repository name,
+visibility (`private`), and `expectedMainEventId`. The event ID is checked at
+the moment protected source is exported. Unrelated workspace configuration
+changes are allowed; if the repository contents changed, review the new source
+before trying again.
 
 ```ts
 import { publishToGitHub } from "@workspace-skills/github";
@@ -54,22 +57,28 @@ const published = await publishToGitHub({
 });
 ```
 
-Persist the successful result before continuing. A failed repository-creation
-response must not trigger a blind second `publishToGitHub` call. Inspect the
-existing target and Git Bridge status; its error identifies a created repository
-and the remaining configuration or push step. Use normal Git Bridge recovery
-for that same repository. Never force-push to make publication pass.
+Publication is resumable. If a step fails or its result is lost, fix the
+reported cause and call `publishToGitHub` again with the same input: it finds
+the repository it already created, keeps the recorded remote, and pushes only
+what is missing. Calling it again after success returns the same publication
+record (`owner`, `branch`, `headCommit`). A different name for an already
+published repository path is refused. Never force-push to make publication
+succeed.
 
 ## Enable and verify Pages
 
-After a successful push, retain this exact publication record. Use the actual
-repository name selected above and the returned owner, branch and commit; never
-infer a deployed URL from a title or username.
+Use the repository name chosen above and the owner, branch, and commit that
+`publishToGitHub` returned; never guess a deployed URL from a title or
+username.
 
 ```ts
-import { enableGitHubPages, observeGitHubPages } from "@workspace-skills/github";
+import {
+  enableGitHubPages,
+  observeGitHubPages,
+} from "@workspace-skills/github";
 
-if (!published.pushed || !published.headCommit) throw new Error("Finish Git push first");
+if (!published.pushed || !published.headCommit)
+  throw new Error("Finish Git push first");
 const publication = {
   owner: published.owner,
   repository: "my-website",
@@ -77,37 +86,37 @@ const publication = {
   commit: published.headCommit,
   buildId: reviewedBuildId,
 };
-// Persist publication before the configuration request.
 const observation = await enableGitHubPages(publication, { credentialId });
 ```
 
 This configures the existing branch's `/docs` source. It refuses to replace an
-existing workflow or different Pages source. Repository-scoped Pages access uses
-the same credential system as GitHub setup. Permission failures return the
-bounded `publish-pages` repair choice; a denial does not trigger broader access.
+existing workflow or a different Pages source. Repository-scoped Pages access
+uses the same credential system as GitHub setup. A permission failure returns
+the limited `publish-pages` repair choice; a denial never escalates to broader
+access.
 
-Only `state: "deployed"` means verification succeeded: the GitHub build must match
-the retained commit, and the public manifest and every listed asset must match
-the retained build identity. `building`, `failed`, `unverified` and
-`not-configured` are distinct results. Display their reason where present.
+Only `state: "deployed"` means verification succeeded: the GitHub build must
+match the recorded commit, and the public manifest and every listed asset must
+match the recorded build. `building`, `failed`, `unverified`, and
+`not-configured` are separate results. Show their reason when there is one.
 
-Retry `observeGitHubPages(publication, { credentialId })` to watch an uncertain
-or pending deployment. Observation creates nothing and changes no configuration.
-If configuration itself was interrupted, retry `enableGitHubPages` with the same
-record; source creation reconciles an already successful request.
+Call `observeGitHubPages(publication, { credentialId })` again to follow an
+uncertain or pending deployment. Observing creates nothing and changes no
+configuration. If configuration itself was interrupted, retry
+`enableGitHubPages` with the same record; it recognizes a request that already
+succeeded.
 
 ## Update
 
-Build, review and publish the changed source to protected main. Push through
-`git.pushUpstream(repoPath, { expectedMainEventId: reviewedMainEventId })`, retain
-the returned `headCommit` with the new `buildId`, then observe that exact record.
-Keep automatic upstream push disabled for this reviewed publication workflow.
-Do not rebuild or create another repository merely because Pages is still busy.
+Build, review, and publish the changed source to protected main. Push with
+`git.pushUpstream(repoPath, { expectedMainEventId: reviewedMainEventId })`, keep
+the returned `headCommit` together with the new `buildId`, then observe that
+record. Keep automatic upstream push disabled for this reviewed workflow. Do not
+rebuild or create another repository just because Pages is still building.
 
-GitHub project paths on one owner domain share a web origin. Remembered workspace
-access applies to that origin, not just one repository path. A dedicated custom
-origin is needed for an independent website trust identity.
+GitHub project paths under one owner domain share a web origin. Remembered
+workspace access applies to the whole origin, not just one repository path. A
+website that needs its own trust identity needs its own custom origin.
 
-Live public deployment and iOS connection acceptance still require verification
-in their real environments; successful local builds and mocked API tests do not
-establish those outcomes.
+Live public deployment and iOS connection still have to be verified in their
+real environments; local builds and mocked API tests do not prove them.
