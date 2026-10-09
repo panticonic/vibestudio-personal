@@ -72,12 +72,13 @@ describe("onboarding catalog", () => {
     ).toBe("Browser import");
   });
 
-  it("routes Local Models through its shipped panel instead of a nonexistent skill", () => {
+  it("routes Local Models to its System-owned About page", () => {
     const localModels = onboardingCatalog.find(
       (entry) => entry.id === "configuration.local-models"
     );
     expect(localModels?.ownerSkillPath).toBeUndefined();
-    expect(localModels?.actions?.setup).toEqual({ via: "panel", path: "about/local-models" });
+    expect(localModels?.actions?.setup).toEqual({ via: "about-page", page: "local-models" });
+    expect(localModels?.actions?.change).toEqual({ via: "about-page", page: "local-models" });
   });
 
   it("offers recurring work as a ready capability owned by Automations", () => {

@@ -636,7 +636,11 @@ function CredentialsPage() {
             </Flex>
             <Text size="2" color="gray">
               Looking for lasting app or agent access?{" "}
-              <Link href={buildPanelLink("about/permissions")}>Review saved permissions</Link>.
+              <Link
+                href={buildPanelLink("about/permissions", { workspace: { role: "system" } })}
+              >
+                Review saved permissions
+              </Link>.
             </Text>
           </Flex>
         </Section>

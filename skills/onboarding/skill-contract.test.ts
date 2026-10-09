@@ -35,6 +35,17 @@ describe("onboarding skill handoff", () => {
     expect(skill).not.toContain("vibestudio-template-examples.git");
   });
 
+  it("leaves client routes to the component and hands the agent the routed selection", () => {
+    for (const doc of ["SKILL.md", "GETTING_STARTED.md"]) {
+      const text = fs
+        .readFileSync(new URL(doc, import.meta.url), "utf8")
+        .replace(/\s+/gu, " ");
+      expect(text).toContain("`selection`");
+      expect(text).not.toContain('from "@workspace-skills/onboarding"');
+      expect(text).not.toMatch(/In `client_eval`|through `client_eval`/u);
+    }
+  });
+
   it("hands recurring-work intent to the Automations owner", () => {
     const skill = fs
       .readFileSync(new URL("SKILL.md", import.meta.url), "utf8")

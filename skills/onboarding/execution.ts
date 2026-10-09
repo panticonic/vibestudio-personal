@@ -1,8 +1,5 @@
-import { callMain, openPanel } from "@workspace/runtime";
-import {
-  PanelOperationError,
-  type PanelRuntimeFailure,
-} from "@vibestudio/shared/panel/observation";
+import { callMain, openPanel, PanelOperationError } from "@workspace/runtime";
+import type { PanelRuntimeFailure } from "@vibestudio/shared/panel/observation";
 import {
   resolveOnboardingSelection,
   type OnboardingInteraction,
@@ -10,13 +7,16 @@ import {
 } from "./routing";
 import type { ShellNavigationTarget } from "./catalog";
 import { readInstalledOnboardingCatalog } from "./snapshot";
+import type { ShellSurfaceDescriptor } from "@vibestudio/shared/shellSurface";
 
 export interface OnboardingExecutionDependencies {
   openWorkspacePanel: (source: string) => Promise<{
     id: string;
     readiness?: "ready" | "unconfirmed";
   }>;
-  openShellSurface: (target: ShellNavigationTarget) => Promise<void>;
+  openShellSurface: (
+    target: ShellNavigationTarget | Extract<ShellSurfaceDescriptor, { kind: "about" }>
+  ) => Promise<void>;
   readCatalog?: typeof readInstalledOnboardingCatalog;
 }
 
@@ -66,9 +66,11 @@ async function openNavigationPanel(
 }
 
 /**
- * Execute only routes owned by the inviting panel/client. Owner-skill,
- * model-settings, and conversational routes are returned to the agent so their
- * existing domain workflows remain authoritative.
+ * Execute only routes owned by the client: About pages, workspace panels, and
+ * shell surfaces. SetupHub calls this from the user's click, which is the
+ * authority for that navigation. Owner-skill, model-settings, and
+ * conversational routes come back unhandled; SetupHub sends them to the agent
+ * so their domain workflows remain authoritative.
  */
 export async function executeOnboardingSelection(
   interaction: OnboardingInteraction,
@@ -77,7 +79,8 @@ export async function executeOnboardingSelection(
   const catalog = await (dependencies.readCatalog ?? readInstalledOnboardingCatalog)();
   const route = resolveOnboardingSelection(interaction, catalog);
   if (route.target.via === "about-page") {
-    return openNavigationPanel(`about/${route.target.page}`, route.target, dependencies);
+    await dependencies.openShellSurface({ kind: "about", page: route.target.page });
+    return { handled: true, target: route.target };
   }
   if (route.target.via === "panel") {
     return openNavigationPanel(route.target.path, route.target, dependencies);

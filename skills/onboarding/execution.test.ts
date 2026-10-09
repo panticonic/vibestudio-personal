@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { panelFailure, PanelOperationError } from "@vibestudio/shared/panel/observation";
 
-vi.mock("@workspace/runtime", () => ({
+vi.mock("@workspace/runtime", async () => ({
   callMain: vi.fn(async (method: string) => (method === "workspace.listSkills" ? [] : undefined)),
   openPanel: vi.fn(),
+  PanelOperationError: (await import("@vibestudio/shared/panel/observation")).PanelOperationError,
 }));
 
 import { openPanel } from "@workspace/runtime";
@@ -61,8 +62,30 @@ describe("executeOnboardingSelection", () => {
       kind: "settings",
       section: "devices",
     });
-    expect(deps.openWorkspacePanel).toHaveBeenCalledWith("about/credentials");
+    expect(deps.openShellSurface).toHaveBeenCalledWith({
+      kind: "about",
+      page: "credentials",
+    });
     expect(deps.openWorkspacePanel).toHaveBeenCalledWith("about/browser-import-inspector");
+  });
+
+  it("opens the Local Models About page in its owning workspace", async () => {
+    const deps = dependencies();
+
+    await expect(
+      executeOnboardingSelection(
+        onboardingInteraction("configuration.local-models", "setup"),
+        deps
+      )
+    ).resolves.toEqual({
+      handled: true,
+      target: { via: "about-page", page: "local-models" },
+    });
+    expect(deps.openShellSurface).toHaveBeenCalledWith({
+      kind: "about",
+      page: "local-models",
+    });
+    expect(deps.openWorkspacePanel).not.toHaveBeenCalled();
   });
 
   it("returns the committed panel receipt when readiness cannot be confirmed", async () => {

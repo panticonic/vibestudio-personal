@@ -26,6 +26,7 @@ import {
   type SetupCapabilitySnapshot,
 } from "./snapshot";
 import { onboardingInteraction } from "./routing";
+import { executeOnboardingSelection } from "./execution";
 
 interface SetupHubProps {
   chat: {
@@ -215,7 +216,7 @@ function SetupRow({
                 >
                   {pending === `${definition.id}:${action}` ? (
                     <>
-                      <BusyReloadIcon busy /> Sending…
+                      <BusyReloadIcon busy /> Opening…
                     </>
                   ) : (
                     actionLabels[action]
@@ -240,7 +241,7 @@ function SetupRow({
               {pending === `${definition.id}:${snapshot.nextAction}` ? (
                 <>
                   <BusyReloadIcon busy />
-                  {snapshot.nextAction === "check" ? "Checking…" : "Sending…"}
+                  {snapshot.nextAction === "check" ? "Checking…" : "Opening…"}
                 </>
               ) : (
                 actionLabels[snapshot.nextAction]
@@ -269,6 +270,7 @@ export default function SetupHub({
   const [loadingCapabilities, setLoadingCapabilities] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const capabilityRequest = useRef(0);
   const byId = new Map(snapshots.map((snapshot) => [snapshot.id, snapshot]));
   const definitions = catalog.filter((entry) => byId.has(entry.id));
@@ -332,7 +334,10 @@ export default function SetupHub({
     void refreshCapabilities();
   }, [inlineUi?.renderedAt, refreshCapabilities]);
 
-  async function sendInteraction(
+  // The click is the user's own gesture, so client-owned routes (About pages,
+  // panels, shell surfaces) open here. Only routes owned by an agent workflow
+  // become a chat message, carrying the routed selection.
+  async function selectAction(
     definition: OnboardingCapabilityDefinition,
     action: SetupAction,
   ) {
@@ -346,17 +351,27 @@ export default function SetupHub({
       return;
     }
     const key = `${definition.id}:${action}`;
+    const label = readableAction(definition, action);
     setPending(key);
     setError(null);
+    setNotice(null);
     try {
-      await chat.send(readableAction(definition, action), {
-        metadata: {
-          interaction: onboardingInteraction(definition.id, action),
-        },
-      });
+      const interaction = onboardingInteraction(definition.id, action);
+      const selection = await executeOnboardingSelection(interaction);
+      if (selection.handled) {
+        if (selection.readiness === "unconfirmed") {
+          setNotice(
+            `${definition.title} opened but did not confirm it is ready${
+              selection.failure ? `: ${selection.failure.message}` : "."
+            }`,
+          );
+        }
+        return;
+      }
+      await chat.send(label, { metadata: { interaction, selection } });
     } catch (error) {
       setError(
-        `Couldn't send “${readableAction(definition, action)}”: ${error instanceof Error ? error.message : String(error)}`,
+        `Couldn't complete “${label}”: ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
       setPending(null);
@@ -463,12 +478,15 @@ export default function SetupHub({
       )}
 
       {error ? <OperationNotice intent="error">{error}</OperationNotice> : null}
+      {notice ? (
+        <OperationNotice intent="warning">{notice}</OperationNotice>
+      ) : null}
 
       {pending ? (
         <OperationNotice>
           {pending.endsWith(":check")
             ? "Checking this connection…"
-            : "Waiting for your setup request to be accepted…"}
+            : "Opening your selection…"}
         </OperationNotice>
       ) : null}
       {sections.map(([category, title]) => {
@@ -489,7 +507,7 @@ export default function SetupHub({
                 pending={pending}
                 refreshing={loadingCapabilities}
                 onAction={(entry, action) =>
-                  void sendInteraction(entry, action)
+                  void selectAction(entry, action)
                 }
               />
             ))}
@@ -541,7 +559,7 @@ export default function SetupHub({
               size="1"
               variant="soft"
               disabled={pending !== null}
-              onClick={() => void sendInteraction(definition, "explore")}
+              onClick={() => void selectAction(definition, "explore")}
             >
               {definition.title}
             </Button>

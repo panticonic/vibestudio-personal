@@ -58,9 +58,9 @@ export type ShellNavigationTarget = Extract<
 
 export type SetupActionTarget =
   | { via: "owner-skill" }
-  | { via: "about-page"; page: "credentials" | "permissions" }
+  | { via: "about-page"; page: "credentials" | "permissions" | "local-models" }
   | { via: "model-settings" }
-  | { via: "panel"; path: "about/local-models" | "about/browser-import-inspector" }
+  | { via: "panel"; path: "about/browser-import-inspector" }
   | { via: "shell-navigation"; target: ShellNavigationTarget }
   | { via: "conversation" };
 
@@ -108,7 +108,7 @@ export const onboardingCatalog: readonly OnboardingCapabilityDefinition[] = [
   {
     id: "configuration.workspace-updates",
     title: "Workspace update assistant",
-    summary: "Automatic upstream monitoring. Change the schedule or turn it off with your agent.",
+    summary: "Keeps your workspace up to date with its template. Ask your agent to change the schedule or turn it off.",
     category: "personalization",
     role: "optional-configuration",
     scope: "user-workspace",
@@ -194,8 +194,8 @@ export const onboardingCatalog: readonly OnboardingCapabilityDefinition[] = [
     scope: "server",
     tier: "direct",
     actions: {
-      setup: { via: "panel", path: "about/local-models" },
-      change: { via: "panel", path: "about/local-models" },
+      setup: { via: "about-page", page: "local-models" },
+      change: { via: "about-page", page: "local-models" },
     },
     visibility: "secondary",
     setup: {
@@ -282,7 +282,7 @@ export const onboardingCatalog: readonly OnboardingCapabilityDefinition[] = [
   {
     id: "contextual.slack",
     title: "Slack",
-    summary: "Available when a dependable Slack owner workflow and status read are installed.",
+    summary: "Connect Slack so your agent can work with your channels once Slack setup is available.",
     category: "connections",
     role: "contextual-setup",
     scope: "channel",
@@ -484,17 +484,17 @@ function parseActionTarget(value: unknown, label: string): SetupActionTarget {
   if (via === "about-page") {
     return {
       via,
-      page: oneOf(source["page"], ["credentials", "permissions"] as const, `${label}.page`),
+      page: oneOf(
+        source["page"],
+        ["credentials", "permissions", "local-models"] as const,
+        `${label}.page`
+      ),
     };
   }
   if (via === "panel") {
     return {
       via,
-      path: oneOf(
-        source["path"],
-        ["about/local-models", "about/browser-import-inspector"] as const,
-        `${label}.path`
-      ),
+      path: oneOf(source["path"], ["about/browser-import-inspector"] as const, `${label}.path`),
     };
   }
   if (via === "shell-navigation") {

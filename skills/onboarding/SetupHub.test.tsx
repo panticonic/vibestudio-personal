@@ -15,10 +15,15 @@ import {
 
 const loaders = vi.hoisted(() => ({
   capabilities: vi.fn(),
+  execute: vi.fn(),
 }));
 
 vi.mock("./snapshot.js", () => ({
   composeOnboardingCapabilities: loaders.capabilities,
+}));
+
+vi.mock("./execution.js", () => ({
+  executeOnboardingSelection: loaders.execute,
 }));
 
 const googleCapability: OnboardingCapabilityDefinition = {
@@ -78,6 +83,7 @@ function setupScope(
 beforeEach(() => {
   loaders.capabilities.mockReset();
   loaders.capabilities.mockResolvedValue({ catalog, snapshot: snapshots });
+  loaders.execute.mockReset();
 });
 
 describe("SetupHub", () => {
@@ -102,7 +108,13 @@ describe("SetupHub", () => {
     await waitFor(() => expect(view.getByText("Refresh")).toBeTruthy());
   });
 
-  it("sends recurring-work intent with its stable catalog identity", async () => {
+  it("sends recurring-work intent with its stable catalog identity and route", async () => {
+    const selection = {
+      handled: false,
+      target: { via: "conversation" },
+      ownerSkillPath: "skills/automations/SKILL.md",
+    };
+    loaders.execute.mockResolvedValue(selection);
     const send = vi.fn(async () => undefined);
     const view = render(
       <Theme>
@@ -123,9 +135,41 @@ describe("SetupHub", () => {
             action: "explore",
             targetId: "capability.automations",
           },
+          selection,
         },
       }),
     );
+  });
+
+  it("opens client-owned routes itself without messaging the agent", async () => {
+    loaders.execute.mockResolvedValue({
+      handled: true,
+      target: {
+        via: "shell-navigation",
+        target: { kind: "settings", section: "devices" },
+      },
+    });
+    const send = vi.fn(async () => undefined);
+    const view = render(
+      <Theme>
+        <SetupHub scope={setupScope()} chat={{ send }} />
+      </Theme>,
+    );
+
+    const setup = view.getByRole("button", { name: "Set up" }) as HTMLButtonElement;
+    await waitFor(() => expect(setup.disabled).toBe(false));
+    fireEvent.click(setup);
+
+    await waitFor(() =>
+      expect(loaders.execute).toHaveBeenCalledWith({
+        source: "onboarding-setup-hub",
+        kind: "onboarding-capability",
+        action: "setup",
+        targetId: "connection.device",
+      }),
+    );
+    await waitFor(() => expect(setup.disabled).toBe(false));
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("reports a missing base owner without inventing an install action", async () => {
