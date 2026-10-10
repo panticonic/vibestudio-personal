@@ -93,6 +93,7 @@
     ]
   },
   "dependencies": {
+    "@workspace-workers/tour-sample": "workspace:*",
     "@radix-ui/themes": "^3.3.0",
     "@vibestudio/shared": "workspace:*",
     "@workspace/react": "workspace:*",
@@ -102,5 +103,8 @@
     "@workspace/ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vibestudio/service-schemas": "workspace:*"
   }
 }

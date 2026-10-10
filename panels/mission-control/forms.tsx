@@ -1,3 +1,4 @@
+import { missionControlRpcMethods } from "@workspace-workers/mission-control-store/contract";
 import {
   createContext,
   useCallback,
@@ -51,7 +52,7 @@ import {
 } from "@vibestudio/automation/cronSchedule";
 import type { ZodIssue } from "zod";
 
-const service = createDurableObjectServiceClient(PROTOCOL);
+const service = createDurableObjectServiceClient(PROTOCOL, missionControlRpcMethods);
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 const mergeTasks = (items: Task[]) => [
@@ -657,10 +658,7 @@ export function DependencyPicker({
       setLoading(true);
       setError("");
       try {
-        const page = await service.call<{
-          tasks: Task[];
-          cursor: string | null;
-        }>("taskOptions", {
+        const page = await service.call("taskOptions", {
           query,
           ...(nextCursor ? { cursor: nextCursor } : {}),
         });
@@ -693,7 +691,7 @@ export function DependencyPicker({
   useEffect(() => {
     let active = true;
     void Promise.allSettled(
-      dependencies.map((id) => service.call<Task>("getTask", { id })),
+      dependencies.map((id) => service.call("getTask", { id })),
     ).then((results) => {
       if (!active) return;
       const tasks: Task[] = [];

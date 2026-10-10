@@ -29,13 +29,8 @@ export interface CollectionOrchestrationState {
 }
 
 export interface CollectionOrchestrationRpc {
-  call<T = unknown>(targetId: string, method: string, args: unknown[]): Promise<T>;
-  stream(
-    targetId: string,
-    method: string,
-    args: unknown[],
-    options?: { signal?: AbortSignal }
-  ): Promise<Response>;
+  call: import("@vibestudio/rpc").RpcCaller["call"];
+  stream: import("@vibestudio/rpc").RpcCaller["stream"];
   selfId: string;
 }
 

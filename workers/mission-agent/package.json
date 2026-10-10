@@ -296,11 +296,16 @@
     "@vibestudio/automation": "workspace:*",
     "@vibestudio/workspace-contracts": "workspace:*",
     "@vibestudio/service-schemas": "workspace:*",
-    "@workspace-workers/agent-worker": "workspace:*"
+    "@workspace-workers/agent-worker": "workspace:*",
+    "@vibestudio/shared": "workspace:*"
   },
   "devDependencies": {
     "@vibestudio/rpc": "workspace:*",
     "@workspace/agentic-protocol": "workspace:*",
     "vitest": "^3.2.7"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./contract": "./contract.ts"
   }
 }

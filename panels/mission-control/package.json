@@ -70,6 +70,7 @@
     "entry": "index.tsx"
   },
   "dependencies": {
+    "@workspace-workers/mission-control-store": "workspace:*",
     "@workspace/runtime": "workspace:*",
     "@workspace/mission-control": "workspace:*",
     "@vibestudio/workspace-contracts": "workspace:*",

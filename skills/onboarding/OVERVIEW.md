@@ -140,7 +140,10 @@ state.
 
 Durable Objects are the normal application database. Each DO instance has its
 own SQLite through `this.sql`, and panels, apps, and agents call its declared
-service methods through `workers.resolveService(...)` and `rpc.call(...)`. The
+service methods through `workers.resolveService(...)` and the provider's
+receiver-owned RPC descriptor table. Direct `rpc.call` takes that descriptor
+and the matching argument tuple; it does not accept a caller-invented result
+type. The
 eval `db` is private scratch storage for the agent's EvalDO, not a shared app
 database.
 

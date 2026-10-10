@@ -1,3 +1,5 @@
+import { missionControlRpcMethods } from "@workspace-workers/mission-control-store/contract";
+import { createMissionsClient } from "@vibestudio/service-schemas/clients/missionsClient";
 import { AiChatWorker } from "@workspace-workers/agent-worker";
 import {
   rpc,
@@ -10,7 +12,7 @@ import { copyJson } from "@panticonic/pi-chord";
 import type { ToolRegistration } from "@panticonic/pi-durable";
 import { authorNativeTool } from "@workspace/harness";
 import { PROTOCOL, type Automation } from "@workspace/mission-control";
-import { createMissionsClient } from "@vibestudio/automation/mission";
+
 import { missionCharterSchema } from "@vibestudio/service-schemas/missions";
 import { triggerSchema } from "@vibestudio/workspace-contracts/automations";
 import { z } from "zod";
@@ -68,7 +70,7 @@ Always read before editing, preserve independent fields, and report original fai
             .parse(args.operation);
           const service = createDurableObjectServiceClient(
             execution?.rpc ?? this.rpc,
-            PROTOCOL,
+            PROTOCOL, missionControlRpcMethods,
           );
           const result = await service.call(operation, args.input ?? {});
           return {

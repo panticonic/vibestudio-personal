@@ -314,5 +314,8 @@
     "@vibestudio/browser-data": "workspace:*",
     "@vibestudio/browser-import": "workspace:*",
     "@workspace/collection-orchestration": "workspace:*"
+  },
+  "devDependencies": {
+    "@vibestudio/service-schemas": "workspace:*"
   }
 }

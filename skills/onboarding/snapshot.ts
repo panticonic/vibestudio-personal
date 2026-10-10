@@ -1,7 +1,6 @@
 import {
   composeOnboardingCatalog,
   type OnboardingCapabilityDefinition,
-  type OnboardingSkillEntry,
   type OnboardingRole,
   type OnboardingScope,
   type OnboardingTier,
@@ -15,27 +14,27 @@ import {
 } from "./status";
 
 interface OnboardingHostTopologySnapshot {
-  devices: {
-    availability: "available" | "unknown";
-    pairedDeviceCount: number;
-    thisDevicePaired: boolean;
-  };
-  remote: {
-    availability: "available" | "unknown";
-    route: "local" | "remote";
-    workspaceCount: number;
-  };
+  devices:
+    | {
+        availability: "unknown";
+      }
+    | {
+        availability: "available";
+        pairedDeviceCount: number;
+        thisDevicePaired: boolean;
+      };
+  remote:
+    | {
+        availability: "unknown";
+        route: "local" | "remote";
+      }
+    | {
+        availability: "available";
+        route: "local" | "remote";
+        workspaceCount: number;
+      };
 }
 
-interface AuthorityPreflightResult {
-  decision: "allowed" | "acquirable" | "denied";
-}
-
-interface SkillCatalogEntry {
-  skillPath: string;
-}
-
-type RuntimeCallMain = (typeof import("@workspace/runtime"))["callMain"];
 type RuntimeModule = typeof import("@workspace/runtime");
 
 export interface SetupCapabilitySnapshot {
@@ -72,7 +71,9 @@ export interface OnboardingSnapshotDependencies {
 function currentConnectionRoute(serverUrl: string): "local" | "remote" {
   try {
     const hostname = new URL(serverUrl).hostname;
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
+    return hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1"
       ? "local"
       : "remote";
   } catch {
@@ -80,58 +81,27 @@ function currentConnectionRoute(serverUrl: string): "local" | "remote" {
   }
 }
 
-async function canReadHubControl(
-  callMain: RuntimeCallMain,
-  method: "listDevices" | "listWorkspaces"
-): Promise<boolean> {
-  try {
-    const result = await callMain<AuthorityPreflightResult>("authority.preflight", {
-      service: "hubControl",
-      method,
-      args: [],
-    });
-    return result.decision === "allowed";
-  } catch {
-    return false;
-  }
-}
-
-async function readHostTopology(runtime: RuntimeModule): Promise<OnboardingHostTopologySnapshot> {
-  // These are intentionally optional setup reads. Preflight avoids sending a
-  // gated call that is guaranteed to fail (and would be noisy over Electron's
-  // IPC handler) while preserving the honest Unknown state until the user has
-  // explicitly granted access through the relevant workflow.
-  const { callMain, gatewayConfig } = runtime;
-  const [canReadDevices, canReadWorkspaces] = await Promise.all([
-    canReadHubControl(callMain, "listDevices"),
-    canReadHubControl(callMain, "listWorkspaces"),
-  ]);
-  const [devices, workspaces] = await Promise.all([
-    canReadDevices
-      ? callMain<{ devices: unknown[] }>("hubControl.listDevices").catch(() => null)
-      : Promise.resolve(null),
-    canReadWorkspaces
-      ? callMain<unknown[]>("hubControl.listWorkspaces").catch(() => null)
-      : Promise.resolve(null),
-  ]);
-  const deviceList = devices?.devices ?? null;
-  const workspaceList = workspaces;
+async function readHostTopology(
+  runtime: RuntimeModule,
+): Promise<OnboardingHostTopologySnapshot> {
+  // Account-wide device pairing and workspace catalog reads belong to hub
+  // account control, which is not exposed on the main RPC route. Until a
+  // reviewed workspace-scoped projection exists, keep those counts unknown.
+  const { gatewayConfig } = runtime;
   return {
-    devices: {
-      availability: deviceList ? "available" : "unknown",
-      pairedDeviceCount: deviceList?.length ?? 0,
-      thisDevicePaired: deviceList !== null && deviceList.length > 0,
-    },
+    devices: { availability: "unknown" },
     remote: {
-      availability: workspaceList ? "available" : "unknown",
+      availability: "unknown",
       route: currentConnectionRoute(gatewayConfig?.serverUrl ?? ""),
-      workspaceCount: workspaceList?.length ?? 0,
     },
   };
 }
 
-async function hasSkill(runtime: RuntimeModule, skillPath: string): Promise<boolean> {
-  const entries = await runtime.callMain<SkillCatalogEntry[]>("workspace.listSkills");
+async function hasSkill(
+  runtime: RuntimeModule,
+  skillPath: string,
+): Promise<boolean> {
+  const entries = await runtime.callMain("workspace.listSkills");
   return entries.some((entry) => entry.skillPath === skillPath);
 }
 
@@ -139,14 +109,14 @@ export async function readInstalledOnboardingCatalog(): Promise<
   readonly OnboardingCapabilityDefinition[]
 > {
   const { callMain } = await import("@workspace/runtime");
-  const entries = await callMain<OnboardingSkillEntry[]>("workspace.listSkills");
+  const entries = await callMain("workspace.listSkills");
   return composeOnboardingCatalog(entries);
 }
 
 function nextAction(
   state: SetupPresentationState,
   role: OnboardingRole,
-  actions: Readonly<Partial<Record<SetupAction, unknown>>>
+  actions: Readonly<Partial<Record<SetupAction, unknown>>>,
 ): SetupAction | undefined {
   if (state === "connected-unverified") {
     if (actions.check) return "check";
@@ -171,7 +141,7 @@ function unknownSnapshot(
   scope: OnboardingScope,
   tier: OnboardingTier,
   observedAt: string,
-  actions: Readonly<Partial<Record<SetupAction, unknown>>>
+  actions: Readonly<Partial<Record<SetupAction, unknown>>>,
 ): SetupCapabilitySnapshot {
   return {
     id,
@@ -190,10 +160,12 @@ function hostSnapshots(
   catalog: readonly OnboardingCapabilityDefinition[],
   host: OnboardingHostTopologySnapshot,
   mobileOwnerAvailable: boolean,
-  observedAt: string
+  observedAt: string,
 ): SetupCapabilitySnapshot[] {
   const device = catalog.find((entry) => entry.id === "connection.device")!;
-  const remote = catalog.find((entry) => entry.id === "connection.remote-server")!;
+  const remote = catalog.find(
+    (entry) => entry.id === "connection.remote-server",
+  )!;
   const deviceActions = device.actions ?? {};
   const remoteActions = remote.actions ?? {};
 
@@ -210,7 +182,13 @@ function hostSnapshots(
         observedAt,
       }
     : host.devices.availability === "unknown"
-      ? unknownSnapshot(device.id, device.scope, device.tier, observedAt, deviceActions)
+      ? unknownSnapshot(
+          device.id,
+          device.scope,
+          device.tier,
+          observedAt,
+          deviceActions,
+        )
       : {
           id: device.id,
           state: host.devices.thisDevicePaired ? "connected" : "not-configured",
@@ -229,10 +207,17 @@ function hostSnapshots(
 
   const remoteSnapshot: SetupCapabilitySnapshot =
     host.remote.availability === "unknown"
-      ? unknownSnapshot(remote.id, remote.scope, remote.tier, observedAt, remoteActions)
+      ? unknownSnapshot(
+          remote.id,
+          remote.scope,
+          remote.tier,
+          observedAt,
+          remoteActions,
+        )
       : {
           id: remote.id,
-          state: host.remote.route === "remote" ? "connected" : "not-configured",
+          state:
+            host.remote.route === "remote" ? "connected" : "not-configured",
           summary:
             host.remote.route === "remote"
               ? `Connected to a remote server with ${host.remote.workspaceCount} visible workspace${host.remote.workspaceCount === 1 ? "" : "s"}.`
@@ -250,31 +235,48 @@ function hostSnapshots(
 
 export async function composeOnboardingSnapshot(
   options: ComposeOnboardingSnapshotOptions = {},
-  dependencies: OnboardingSnapshotDependencies = {}
+  dependencies: OnboardingSnapshotDependencies = {},
 ): Promise<SetupCapabilitySnapshot[]> {
   const observedAt = (dependencies.now?.() ?? new Date()).toISOString();
   const catalog =
-    dependencies.catalog ?? (await (dependencies.readCatalog ?? readInstalledOnboardingCatalog)());
+    dependencies.catalog ??
+    (await (dependencies.readCatalog ?? readInstalledOnboardingCatalog)());
   const declaredAdapters = Object.fromEntries(
     catalog.flatMap((entry) =>
       entry.setup?.observer
-        ? [[entry.id, createCredentialConnectionStatusAdapter(entry.setup.observer, entry.title)]]
-        : []
-    )
+        ? [
+            [
+              entry.id,
+              createCredentialConnectionStatusAdapter(
+                entry.setup.observer,
+                entry.title,
+              ),
+            ],
+          ]
+        : [],
+    ),
   );
   const adapters = {
     ...createStatusAdapters(),
     ...declaredAdapters,
     ...(dependencies.adapters ?? {}),
   };
-  const directEntries = catalog.filter((entry) => entry.setup && entry.tier === "direct");
+  const directEntries = catalog.filter(
+    (entry) => entry.setup && entry.tier === "direct",
+  );
 
   const direct = await Promise.all(
     directEntries.map(async (entry): Promise<SetupCapabilitySnapshot> => {
       const actions = entry.actions ?? {};
       const adapter = adapters[entry.setup!.statusAdapter ?? entry.id];
       if (!adapter) {
-        return unknownSnapshot(entry.id, entry.scope, entry.tier, observedAt, actions);
+        return unknownSnapshot(
+          entry.id,
+          entry.scope,
+          entry.tier,
+          observedAt,
+          actions,
+        );
       }
       try {
         const result = await adapter({
@@ -289,9 +291,15 @@ export async function composeOnboardingSnapshot(
           observedAt,
         };
       } catch {
-        return unknownSnapshot(entry.id, entry.scope, entry.tier, observedAt, actions);
+        return unknownSnapshot(
+          entry.id,
+          entry.scope,
+          entry.tier,
+          observedAt,
+          actions,
+        );
       }
-    })
+    }),
   );
 
   let host: SetupCapabilitySnapshot[];
@@ -312,7 +320,13 @@ export async function composeOnboardingSnapshot(
     host = catalog
       .filter((entry) => entry.setup && entry.tier === "host-topology")
       .map((entry) =>
-        unknownSnapshot(entry.id, entry.scope, entry.tier, observedAt, entry.actions ?? {})
+        unknownSnapshot(
+          entry.id,
+          entry.scope,
+          entry.tier,
+          observedAt,
+          entry.actions ?? {},
+        ),
       );
   }
 
@@ -330,10 +344,14 @@ export async function composeOnboardingSnapshot(
  */
 export async function composeOnboardingCapabilities(
   options: ComposeOnboardingSnapshotOptions = {},
-  dependencies: OnboardingSnapshotDependencies = {}
+  dependencies: OnboardingSnapshotDependencies = {},
 ): Promise<OnboardingCapabilitiesOverview> {
   const catalog =
-    dependencies.catalog ?? (await (dependencies.readCatalog ?? readInstalledOnboardingCatalog)());
-  const snapshot = await composeOnboardingSnapshot(options, { ...dependencies, catalog });
+    dependencies.catalog ??
+    (await (dependencies.readCatalog ?? readInstalledOnboardingCatalog)());
+  const snapshot = await composeOnboardingSnapshot(options, {
+    ...dependencies,
+    catalog,
+  });
   return { catalog, snapshot };
 }

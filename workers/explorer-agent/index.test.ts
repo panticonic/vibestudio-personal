@@ -8,6 +8,9 @@ import type {
 import type { AgentToolExecutionContext } from "@workspace/agentic-do";
 import { executeTool } from "@workspace/harness/testing/native-tool";
 import type { RpcClient } from "@vibestudio/rpc";
+import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
+import { fsMethods } from "@vibestudio/service-schemas/fs";
+import { vcsMethods } from "@vibestudio/service-schemas/vcs";
 import { ExplorerAgentWorker } from "./index.js";
 class TestExplorerAgentWorker extends ExplorerAgentWorker {
   participant(): ParticipantDescriptor {
@@ -65,7 +68,7 @@ class TestExplorerAgentWorker extends ExplorerAgentWorker {
   }
 }
 const resources: Array<
-  Awaited<ReturnType<typeof createNativeVesselTestDO<TestExplorerAgentWorker>>>
+  Awaited<ReturnType<typeof createNativeVesselTestDO<typeof TestExplorerAgentWorker>>>
 > = [];
 async function createExplorer() {
   const resource = await createNativeVesselTestDO(TestExplorerAgentWorker);
@@ -117,39 +120,65 @@ describe("ExplorerAgentWorker", () => {
     worker.prepareChannel();
     let pushAttempts = 0;
     const calls: string[] = [];
-    const rpc = {
-      call: async <T>(_target: string, method: string): Promise<T> => {
+    const rpc = schemaRpcMock({
+      call: async (
+        _target: string,
+        method: string,
+        args: unknown[] = [],
+      ): Promise<unknown> => {
         calls.push(method);
         if (method === "vcs.status") {
           const statusCalls = calls.filter(
             (value) => value === "vcs.status",
           ).length;
-          return (
+          return vcsMethods.status.returns.parse(
             statusCalls === 1
               ? {
+                  contextId: (args[0] as { contextId: string }).contextId,
+                  committed: { kind: "event", eventId: "base" },
                   clean: true,
                   workingHead: { kind: "event", eventId: "base" },
                   mainEventId: "main-0",
+                  mainRelation: "at",
+                  workingCounts: { applications: 0, workUnits: 0, changes: 0 },
                 }
               : {
+                  contextId: (args[0] as { contextId: string }).contextId,
+                  committed: { kind: "event", eventId: "base" },
                   clean: false,
                   workingHead: { kind: "application", applicationId: "app-1" },
                   mainEventId: "main-0",
+                  mainRelation: "at",
+                  workingCounts: { applications: 1, workUnits: 0, changes: 1 },
                 }
-          ) as T;
+          );
         }
         if (method === "vcs.commit") {
-          return { event: { kind: "event", eventId: "commit-1" } } as T;
+          const contextId = (args[0] as { contextId: string }).contextId;
+          return vcsMethods.commit.returns.parse({
+            contextId,
+            event: { kind: "event", eventId: "commit-1" },
+            committedApplicationIds: ["app-1"],
+            integrationSourceEventIds: [],
+          });
         }
         if (method === "vcs.push") {
           pushAttempts += 1;
           if (pushAttempts === 1) throw new Error("publication unavailable");
-          return { eventId: "commit-1", mainEventId: "main-1" } as T;
+          return vcsMethods.push.returns.parse({
+            contextId: (args[0] as { contextId: string }).contextId,
+            eventId: "commit-1",
+            mainEventId: "main-1",
+            effectId: "effect:publish-1",
+            appliedAt: "2026-07-24T00:00:00.000Z",
+          });
         }
-        return undefined as T;
+        if (method === "fs.writeFile")
+          return fsMethods.writeFile.returns.parse(undefined);
+        throw new Error(`Unexpected RPC ${_target}.${method}`);
       },
       stream: async () => new Response(),
-    } as unknown as RpcClient;
+    }) as unknown as RpcClient;
     const tool = await worker.reportTool(rpc);
     const params = {
       runId: "run-1",
@@ -194,24 +223,29 @@ describe("ExplorerAgentWorker", () => {
     let commitCalls = 0;
     let pushCalls = 0;
     const pushInputs: Array<Record<string, unknown>> = [];
-    const rpc = {
-      call: async <T>(
-        _target: string,
+    const rpc = schemaRpcMock({
+      call: async (
+        target: string,
         method: string,
         args: unknown[],
-      ): Promise<T> => {
+      ): Promise<unknown> => {
         if (method === "vcs.status") {
           statusCalls += 1;
+          const contextId = (args[0] as { contextId: string }).contextId;
           if (statusCalls === 1) {
-            return {
+            return vcsMethods.status.returns.parse({
+              contextId,
               clean: true,
               committed: { kind: "event", eventId: "base" },
               workingHead: { kind: "event", eventId: "base" },
               mainEventId: "main-0",
-            } as T;
+              mainRelation: "at",
+              workingCounts: { applications: 0, workUnits: 0, changes: 0 },
+            });
           }
           if (statusCalls === 2) {
-            return {
+            return vcsMethods.status.returns.parse({
+              contextId,
               clean: false,
               committed: { kind: "event", eventId: "base" },
               workingHead: {
@@ -219,23 +253,32 @@ describe("ExplorerAgentWorker", () => {
                 applicationId: "app-finding",
               },
               mainEventId: "main-0",
-            } as T;
+              mainRelation: "at",
+              workingCounts: { applications: 1, workUnits: 0, changes: 1 },
+            });
           }
-          return {
+          return vcsMethods.status.returns.parse({
+            contextId,
             clean: true,
             committed: { kind: "event", eventId: "commit-1" },
             workingHead: { kind: "event", eventId: "commit-1" },
             mainEventId: "main-1",
-          } as T;
+            mainRelation: "at",
+            workingCounts: { applications: 0, workUnits: 0, changes: 0 },
+          });
         }
         if (method === "vcs.commit") {
           commitCalls += 1;
-          return {
+          const contextId = (args[0] as { contextId: string }).contextId;
+          return vcsMethods.commit.returns.parse({
+            contextId,
             event: {
               kind: "event",
               eventId: commitCalls === 1 ? "commit-1" : "commit-2",
             },
-          } as T;
+            committedApplicationIds: ["app-finding"],
+            integrationSourceEventIds: [],
+          });
         }
         if (method === "vcs.push") {
           pushCalls += 1;
@@ -249,11 +292,17 @@ describe("ExplorerAgentWorker", () => {
               },
             });
           }
-          return { eventId: "commit-2", mainEventId: "main-2" } as T;
+          return vcsMethods.push.returns.parse({
+            contextId: (args[0] as { contextId: string }).contextId,
+            eventId: "commit-2",
+            mainEventId: "main-2",
+            effectId: "effect:publish-2",
+            appliedAt: "2026-07-24T00:00:00.000Z",
+          });
         }
         if (method === "vcs.compare") {
           compareCalls += 1;
-          return {
+          return vcsMethods.compare.returns.parse({
             target: { kind: "event", eventId: "commit-1" },
             source: { kind: "event", eventId: "main-1" },
             base: { kind: "event", eventId: "base" },
@@ -280,10 +329,10 @@ describe("ExplorerAgentWorker", () => {
             intents: [],
             intentsTruncated: false,
             nextCursor: null,
-          } as T;
+          });
         }
         if (method === "vcs.merge") {
-          return {
+          return vcsMethods.merge.returns.parse({
             status: "working",
             commandId: "command:merge",
             contextId: "run-1",
@@ -314,12 +363,14 @@ describe("ExplorerAgentWorker", () => {
             composed: [],
             conflicts: [],
             nextConflictCursor: null,
-          } as T;
+          });
         }
-        return undefined as T;
+        if (method === "fs.writeFile")
+          return fsMethods.writeFile.returns.parse(undefined);
+        throw new Error(`Unexpected RPC ${target}.${method}`);
       },
       stream: async () => new Response(),
-    } as unknown as RpcClient;
+    }) as unknown as RpcClient;
     await expect(
       executeTool(
         await worker.reportTool(rpc),

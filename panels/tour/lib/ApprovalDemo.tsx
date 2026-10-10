@@ -1,3 +1,4 @@
+import { tourSampleRpcMethods } from "@workspace-workers/tour-sample/contract";
 import { useEffect, useRef, useState } from "react";
 import { rpc, workers } from "@workspace/runtime";
 
@@ -48,7 +49,7 @@ export function ApprovalDemo({
         ? callService(service.targetId, "read", [], {
             signal: controller.signal,
           })
-        : rpc.call<TourSample>(service.targetId, "read", [], {
+        : rpc.call(service.targetId, tourSampleRpcMethods.read, [], {
             signal: controller.signal,
           }));
       if (controller.signal.aborted) return;

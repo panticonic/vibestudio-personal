@@ -1,3 +1,4 @@
+import { missionControlRpcMethods } from "@workspace-workers/mission-control-store/contract";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createDurableObjectServiceClient,
@@ -69,28 +70,8 @@ import {
 import { connectViaRpc } from "@workspace/pubsub";
 import "./styles.css";
 
-const service = createDurableObjectServiceClient(PROTOCOL);
-type Operation =
-  | "overview"
-  | "taskOptions"
-  | "taskDetail"
-  | "getTask"
-  | "createProject"
-  | "updateProject"
-  | "createTask"
-  | "updateTask"
-  | "cancelTask"
-  | "startTask"
-  | "controlTask"
-  | "configureAutomation"
-  | "setView"
-  | "saveView"
-  | "removeView"
-  | "lead"
-  | "duplicateTask"
-  | "addNote";
-const call = <T,>(method: Operation, input?: unknown) =>
-  service.call<T>(method, ...(input === undefined ? [] : [input]));
+const service = createDurableObjectServiceClient(PROTOCOL, missionControlRpcMethods);
+const call = <K extends keyof typeof missionControlRpcMethods & string>(method: K, ...args: import("@vibestudio/shared/rpcMethods").RpcMethodArgs<(typeof missionControlRpcMethods)[K]>) => service.call(method, ...args);
 const relative = (time: number) =>
   new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -163,7 +144,7 @@ export default function MissionControl() {
   const readDetail = useCallback(async (id: string) => {
     const version = ++detailRequest.current;
     try {
-      let result = await call<TaskDetail>("taskDetail", { id });
+      let result = await call("taskDetail", { id });
       const capacity = loaded.current.runs;
       while (
         result.cursor &&
@@ -171,7 +152,7 @@ export default function MissionControl() {
         focused.current === id &&
         version === detailRequest.current
       ) {
-        const page = await call<TaskDetail>("taskDetail", {
+        const page = await call("taskDetail", {
           id,
           cursor: result.cursor,
         });
@@ -186,7 +167,7 @@ export default function MissionControl() {
         focused.current === id &&
         version === detailRequest.current
       ) {
-        const page = await call<TaskDetail>("taskDetail", {
+        const page = await call("taskDetail", {
           id,
           activityCursor: result.activityCursor,
         });
@@ -214,7 +195,7 @@ export default function MissionControl() {
   }, []);
   const refresh = useCallback(async () => {
     const version = ++request.current;
-    let result = await call<Overview>("overview", {});
+    let result = await call("overview", {});
     const viewKey = JSON.stringify(result.view);
     const capacity = loaded.current.view === viewKey ? loaded.current.tasks : 0;
     while (
@@ -222,7 +203,7 @@ export default function MissionControl() {
       result.tasks.length < capacity &&
       version === request.current
     ) {
-      const page = await call<Overview>("overview", { cursor: result.cursor });
+      const page = await call("overview", { cursor: result.cursor });
       if (JSON.stringify(page.view) !== viewKey) return;
       result = {
         ...page,
@@ -392,7 +373,7 @@ export default function MissionControl() {
     }
   };
   const updatePlanning = async (task: Task, changes: Partial<TaskInput>) => {
-    const updated = await call<Task>("updateTask", {
+    const updated = await call("updateTask", {
       id: task.id,
       expectedRevision: task.revision,
       changes,
@@ -434,7 +415,7 @@ export default function MissionControl() {
     void act(
       async () => {
         if (focused.current !== task.id) focusTask(task);
-        const run = await call<Session>("startTask", {
+        const run = await call("startTask", {
           id: task.id,
           expectedRevision: task.revision,
         });
@@ -465,7 +446,7 @@ export default function MissionControl() {
   const openLead = (prompt?: string) =>
     act(
       async () => {
-        const lead = await call<{ channelId: string; contextId: string }>(
+        const lead = await call(
           "lead",
         );
         if (prompt) {
@@ -529,7 +510,7 @@ export default function MissionControl() {
         const ids = [...selected];
         for (const id of ids) {
           try {
-            const task = await call<Task>("getTask", { id });
+            const task = await call("getTask", { id });
             await call(
               changes.status === "cancelled" ? "cancelTask" : "updateTask",
               {
@@ -572,7 +553,7 @@ export default function MissionControl() {
     void act(
       async () => {
         const snapshot = JSON.stringify(view);
-        let page = await call<Overview>("overview", {});
+        let page = await call("overview", {});
         const tasks: Task[] = [];
         for (;;) {
           if (JSON.stringify(page.view) !== snapshot)
@@ -581,7 +562,7 @@ export default function MissionControl() {
             );
           tasks.push(...page.tasks);
           if (!page.cursor) break;
-          page = await call<Overview>("overview", { cursor: page.cursor });
+          page = await call("overview", { cursor: page.cursor });
         }
         const cell = (value: unknown) => {
           const text = String(value ?? "");
@@ -1599,8 +1580,8 @@ export default function MissionControl() {
             onClick={() =>
               void act(
                 async () => {
-                  const page = await call<Overview>("overview", {
-                    cursor: data.cursor,
+                  const page = await call("overview", {
+                    cursor: data.cursor ?? undefined,
                   });
                   if (JSON.stringify(page.view) !== JSON.stringify(data.view)) {
                     await refresh();
@@ -1795,7 +1776,7 @@ export default function MissionControl() {
                   disabled={!commandsReady || detail.project.archived}
                   onClick={() =>
                     void act(async () => {
-                      const duplicate = await call<Task>("duplicateTask", {
+                      const duplicate = await call("duplicateTask", {
                         id: detail.task.id,
                         expectedRevision: detail.task.revision,
                       });
@@ -1976,9 +1957,9 @@ export default function MissionControl() {
                     onClick={() =>
                       void act(
                         async () => {
-                          const page = await call<TaskDetail>("taskDetail", {
+                          const page = await call("taskDetail", {
                             id: detail.task.id,
-                            cursor: detail.cursor,
+                            cursor: detail.cursor ?? undefined,
                           });
                           if (focused.current !== detail.task.id) return;
                           const runs = mergeBy(
@@ -2016,9 +1997,9 @@ export default function MissionControl() {
                 older={() =>
                   void act(
                     async () => {
-                      const page = await call<TaskDetail>("taskDetail", {
+                      const page = await call("taskDetail", {
                         id: detail.task.id,
-                        activityCursor: detail.activityCursor,
+                        activityCursor: detail.activityCursor ?? undefined,
                       });
                       if (focused.current !== detail.task.id) return;
                       const activity = mergeBy(
@@ -2105,7 +2086,7 @@ export default function MissionControl() {
           close={() => setModal(null)}
           submit={(input) =>
             void act(async () => {
-              const result = await call<Project>(
+              const result = await call(
                 editProject ? "updateProject" : "createProject",
                 editProject
                   ? {

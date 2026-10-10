@@ -1,3 +1,5 @@
+import { createTypedRpcServiceClient } from "@vibestudio/shared/typedRpcServiceClient";
+import { mainRpcMethods } from "@vibestudio/service-schemas/mainRpc";
 import { SilentAgentWorker } from "@workspace-workers/silent-agent-worker";
 import {
   installMessageTypes,
@@ -18,9 +20,7 @@ import {
 } from "@vibestudio/content-addressing";
 import {
   vcsMethods,
-  type VcsStatusResult,
 } from "@vibestudio/service-schemas/vcs";
-import { createTypedServiceClient } from "@vibestudio/shared/typedServiceClient";
 import { EXPLORER_SYSTEM_PROMPT } from "./prompts.js";
 import {
   buildCardState,
@@ -286,13 +286,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
             ...(repro ? { repro } : {}),
           };
           const rows = [...this.loadFindings(channelId, runId), detail];
-          const before = await toolRpc.call<{
-            clean: boolean;
-            workingHead:
-              | { kind: "event"; eventId: string }
-              | { kind: "application"; applicationId: string };
-            mainEventId: string;
-          }>("main", "vcs.status", [{ contextId }]);
+          const before = await toolRpc.call("main", mainRpcMethods["vcs.status"], [{ contextId }]);
           if (!before.clean) {
             throw new Error(
               "report_finding requires a clean explorer context; commit or discard unrelated work first",
@@ -331,16 +325,11 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
         }
 
         if (op.phase === "prepared") {
-          await toolRpc.call("main", "fs.writeFile", [
+          await toolRpc.call("main", mainRpcMethods["fs.writeFile"], [
             op.filePath,
             op.fileText,
           ]);
-          const authored = await toolRpc.call<{
-            clean: boolean;
-            workingHead:
-              | { kind: "event"; eventId: string }
-              | { kind: "application"; applicationId: string };
-          }>("main", "vcs.status", [{ contextId }]);
+          const authored = await toolRpc.call("main", mainRpcMethods["vcs.status"], [{ contextId }]);
           if (authored.clean)
             throw new Error(
               "Managed findings write produced no semantic change",
@@ -353,9 +342,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
         if (op.phase === "authored") {
           if (!op.expectedWorkingHead)
             throw new Error("finding operation lost its authored head");
-          const committed = await toolRpc.call<{
-            event: { kind: "event"; eventId: string };
-          }>("main", "vcs.commit", [
+          const committed = await toolRpc.call("main", mainRpcMethods["vcs.commit"], [
             {
               commandId: command("commit", op.expectedMainEventId),
               contextId,
@@ -487,7 +474,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
   ): Promise<{ eventId: string; mainEventId: string }> {
     if (!op.committedEventId)
       throw new Error("finding operation lost its committed event");
-    return toolRpc.call("main", "vcs.push", [
+    return toolRpc.call("main", mainRpcMethods["vcs.push"], [
       {
         commandId: command("publish", op.expectedMainEventId),
         contextId,
@@ -512,7 +499,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
   }> {
     if (!op.committedEventId)
       throw new Error("finding operation lost its committed event");
-    const status = await toolRpc.call<VcsStatusResult>("main", "vcs.status", [
+    const status = await toolRpc.call("main", mainRpcMethods["vcs.status"], [
       { contextId },
     ]);
     if (!status.clean || status.committed.kind !== "event") {
@@ -535,11 +522,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
 
     const sourceEventId = status.mainEventId;
     const source = { kind: "event" as const, eventId: sourceEventId };
-    const vcs = createTypedServiceClient(
-      "vcs",
-      vcsMethods,
-      (_service, method, args) => toolRpc.call("main", `vcs.${method}`, args),
-    );
+    const vcs = createTypedRpcServiceClient(toolRpc, { targetId: "main", namespace: "vcs" }, vcsMethods);
     const driven = await driveMerge({
       vcs,
       contextId,
@@ -557,9 +540,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
     });
     const workingHead = driven.workingHead;
 
-    const committed = await toolRpc.call<{
-      event: { kind: "event"; eventId: string };
-    }>("main", "vcs.commit", [
+    const committed = await toolRpc.call("main", mainRpcMethods["vcs.commit"], [
       {
         commandId: command("commit-integration", sourceEventId),
         contextId,
@@ -691,7 +672,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
       channelId,
       readFile: async (path) => {
         try {
-          const raw = await this.rpc.call<unknown>("main", "fs.readFile", [
+          const raw = await this.rpc.call("main", mainRpcMethods["fs.readFile"], [
             path,
             "utf8",
           ]);

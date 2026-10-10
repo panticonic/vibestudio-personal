@@ -1,3 +1,5 @@
+import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
+import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@workspace/runtime", () => ({
@@ -44,21 +46,14 @@ describe("onboarding browser-data component chain", () => {
       method === "listImportJobs" ? [completedImport] : [],
     );
     const extension = await activate({
-      rpc: {
-        call: storeCall as unknown as <T>(
-          targetId: string,
-          method: string,
-          ...args: unknown[]
-        ) => Promise<T>,
-        stream: vi.fn(async () => new Response()),
-      },
+      rpc: schemaRpcMock({ call: storeCall, stream: vi.fn(async () => new Response()) }),
       workers: {
         resolveService: vi.fn(
-          async (_protocol: string, objectKey?: string) => ({
-            kind: "durable-object" as const,
-            targetId: "do:workers/browser-data:BrowserDataDO:browser:user-1",
-            objectKey,
-          }),
+          async (_protocol: string, objectKey?: string) =>
+            durableObjectServiceFixture(
+              "do:workers/browser-data:BrowserDataDO:browser:user-1",
+              { objectKey },
+            ),
         ),
       },
       invocation: {
@@ -76,10 +71,7 @@ describe("onboarding browser-data component chain", () => {
       health: { healthy: vi.fn(), degraded: vi.fn(), unhealthy: vi.fn() },
       emit: vi.fn(),
     });
-    const provider = extension.providerContracts.browserData as Record<
-      string,
-      (...args: unknown[]) => Promise<unknown>
-    >;
+    const provider = extension.providerContracts.browserData;
     const routeCall = vi.fn(
       async (
         target: string,
@@ -94,7 +86,9 @@ describe("onboarding browser-data component chain", () => {
           unknown[],
         ];
         expect(namespace).toBe("browserData");
-        return provider[providerMethod]!(...providerArgs);
+        expect(providerMethod).toBe("listImportJobs");
+        expect(providerArgs).toEqual([]);
+        return provider.listImportJobs();
       },
     );
     const browserData = createBrowserDataClient({
@@ -166,6 +160,8 @@ describe("onboarding browser-data component chain", () => {
     expect(storeCall).toHaveBeenCalledWith(
       "do:workers/browser-data:BrowserDataDO:browser:user-1",
       "listImportJobs",
+      [],
+      undefined,
     );
   });
 });

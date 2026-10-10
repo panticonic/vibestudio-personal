@@ -1,3 +1,4 @@
+import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -39,7 +40,7 @@ describe("ApprovalDemo", () => {
     const resolveService = vi.fn(
       overrides.resolveService ??
         (() =>
-          Promise.resolve({ kind: "durable-object", targetId: "do:sample" })),
+          Promise.resolve(durableObjectServiceFixture("do:sample"))),
     );
     const callService = vi.fn(
       overrides.callService ??

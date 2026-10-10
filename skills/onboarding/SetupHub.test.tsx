@@ -341,13 +341,15 @@ it("keeps observation failures visible until the user retries the live updates",
     </Theme>,
   );
   await waitFor(() => expect(loaders.capabilities).toHaveBeenCalledTimes(1));
-  fail(new Error("model owner disconnected"));
-  await view.findByText("Live setup updates paused: model owner disconnected");
+  fail(new AggregateError([new Error("model owner disconnected"), new Error("mission release failed")], "Setup observation failed"));
+  await view.findByText(/Live setup updates paused: Setup observation failed/);
+  expect(view.getByText(/mission release failed/)).toBeTruthy();
+  expect(view.getByText(/model owner disconnected/)).toBeTruthy();
   fireEvent.click(view.getByRole("button", { name: "Refresh setup overview" }));
   await waitFor(() => expect(loaders.observe).toHaveBeenCalledTimes(2));
   await waitFor(() =>
     expect(
-      view.queryByText("Live setup updates paused: model owner disconnected"),
+      view.queryByText(/Live setup updates paused: Setup observation failed/),
     ).toBeNull(),
   );
 });

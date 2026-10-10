@@ -1,3 +1,4 @@
+import { modelSettingsRpcMethods } from "@workspace/model-catalog/rpc-contract";
 import { missionRecordSchema } from "@vibestudio/service-schemas/missions";
 import type { MissionRecord } from "@vibestudio/automation/mission";
 import type { StoredCredentialSummary } from "@workspace/runtime";
@@ -5,9 +6,10 @@ import {
   MODEL_SETTINGS_SERVICE_PROTOCOL,
   type ModelSettingsSnapshot,
 } from "@workspace/model-catalog/catalog";
-import type {
-  LocalModelEntry,
-  LocalModelsStatus,
+import {
+  localModelsExtensionMethods,
+  type LocalModelEntry,
+  type LocalModelsStatus,
 } from "@workspace/model-catalog/localModels";
 import type { ImportJobSnapshot } from "@vibestudio/browser-data";
 import type {
@@ -44,10 +46,6 @@ export interface OnboardingStatusDependencies {
   browserImportJobs(): Promise<ImportJobSnapshot[]>;
   activeSearchProvider(): Promise<"duckduckgo" | "tavily" | "brave" | "exa">;
   hasSkill(skillPath: string): Promise<boolean>;
-}
-
-interface SkillCatalogEntry {
-  skillPath: string;
 }
 
 const loadRuntime = () => import("@workspace/runtime");
@@ -127,42 +125,49 @@ async function activeSearchProvider(): Promise<
 export function createDefaultStatusDependencies(): OnboardingStatusDependencies {
   let modelSettings:
     | Promise<
-        ReturnType<
-          (typeof import("@workspace/runtime"))["createDurableObjectServiceClient"]
+        import("@vibestudio/shared/workspaceServiceRpc").DurableObjectServiceClient<
+          typeof modelSettingsRpcMethods
         >
       >
     | undefined;
   const modelSettingsClient = () =>
     (modelSettings ??= loadRuntime().then(
       ({ createDurableObjectServiceClient }) =>
-        createDurableObjectServiceClient(MODEL_SETTINGS_SERVICE_PROTOCOL),
+        createDurableObjectServiceClient(
+          MODEL_SETTINGS_SERVICE_PROTOCOL,
+          modelSettingsRpcMethods,
+        ),
     ));
   let installedSkills: Promise<ReadonlySet<string>> | undefined;
   const skills = () =>
     (installedSkills ??= loadRuntime().then(({ callMain }) =>
-      callMain<SkillCatalogEntry[]>("workspace.listSkills").then(
+      callMain("workspace.listSkills").then(
         (entries) => new Set(entries.map((entry) => entry.skillPath)),
       ),
     ));
   return {
     github: githubStatus,
     modelSettings: async () =>
-      (await modelSettingsClient()).call<ModelSettingsSnapshot>("getSettings"),
+      (await modelSettingsClient()).call("getSettings"),
     localModelsStatus: async () => {
       const { extensions } = await loadRuntime();
-      return extensions.invoke(
-        "@workspace-extensions/local-models",
-        "status",
-        [],
-      ) as Promise<LocalModelsStatus>;
+      return localModelsExtensionMethods.status.result.parse(
+        await extensions.invoke(
+          "@workspace-extensions/local-models",
+          localModelsExtensionMethods.status.method,
+          [],
+        ),
+      );
     },
     localModelsList: async () => {
       const { extensions } = await loadRuntime();
-      return extensions.invoke(
-        "@workspace-extensions/local-models",
-        "listModels",
-        [],
-      ) as Promise<LocalModelEntry[]>;
+      return localModelsExtensionMethods.listModels.result.parse(
+        await extensions.invoke(
+          "@workspace-extensions/local-models",
+          localModelsExtensionMethods.listModels.method,
+          [],
+        ),
+      );
     },
     browserImportJobs: async () =>
       (await loadRuntime()).browserData.listImportJobs(),

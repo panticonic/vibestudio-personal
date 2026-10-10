@@ -1,3 +1,5 @@
+import { createMainCaller } from "@vibestudio/service-schemas/mainRpc";
+import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { callMain } from "@workspace/runtime";
 
@@ -17,7 +19,10 @@ import {
   type OnboardingSnapshotDependencies,
 } from "./snapshot.js";
 import type { CapabilityOnboardingStatusAdapter } from "./status.js";
-import { onboardingCatalog, type OnboardingCapabilityDefinition } from "./catalog.js";
+import {
+  onboardingCatalog,
+  type OnboardingCapabilityDefinition,
+} from "./catalog.js";
 
 const googleCapability: OnboardingCapabilityDefinition = {
   id: "connection.google-workspace",
@@ -30,7 +35,10 @@ const googleCapability: OnboardingCapabilityDefinition = {
   ownerSkillPath: "skills/google-workspace/SKILL.md",
   actions: { setup: { via: "owner-skill" }, check: { via: "owner-skill" } },
   visibility: "primary",
-  setup: { statusAdapter: "google-workspace", successDescription: "Verified live." },
+  setup: {
+    statusAdapter: "google-workspace",
+    successDescription: "Verified live.",
+  },
 };
 
 const installedCatalog = [...onboardingCatalog, googleCapability];
@@ -40,17 +48,19 @@ const healthy: CapabilityOnboardingStatusAdapter = vi.fn(
     state: "configured",
     summary: "Ready.",
     attention: "none",
-  })
+  }),
 );
 
 function dependencies(
-  adapters: Record<string, CapabilityOnboardingStatusAdapter>
+  adapters: Record<string, CapabilityOnboardingStatusAdapter>,
 ): OnboardingSnapshotDependencies {
   return {
     catalog: installedCatalog,
     adapters,
     readHostTopology: vi.fn(
-      async (): ReturnType<NonNullable<OnboardingSnapshotDependencies["readHostTopology"]>> => ({
+      async (): ReturnType<
+        NonNullable<OnboardingSnapshotDependencies["readHostTopology"]>
+      > => ({
         devices: {
           availability: "available",
           pairedDeviceCount: 1,
@@ -61,7 +71,7 @@ function dependencies(
           route: "local",
           workspaceCount: 2,
         },
-      })
+      }),
     ),
     hasSkill: vi.fn(async () => true),
     now: () => new Date("2026-07-24T12:00:00.000Z"),
@@ -84,41 +94,47 @@ describe("composeOnboardingSnapshot", () => {
     expect(overview.snapshot.length).toBeGreaterThan(0);
     expect(overview.catalog).toBe(installedCatalog);
     expect(new Set(overview.snapshot.map((entry) => entry.observedAt))).toEqual(
-      new Set(["2026-07-24T12:00:00.000Z"])
+      new Set(["2026-07-24T12:00:00.000Z"]),
     );
     expect(overview).not.toHaveProperty("templates");
   });
 
-  it("preflights optional host reads instead of logging denied IPC calls", async () => {
+  it("leaves hub account topology unknown without attempting unsupported reads", async () => {
     const callMainMock = vi.mocked(callMain);
-    callMainMock.mockImplementation(async (method: string) => {
-      if (method === "authority.preflight") {
-        return { decision: "acquirable", leaves: [] };
-      }
-      if (method === "workspace.listSkills") return [{ skillPath: "skills/phone-setup/SKILL.md" }];
-      throw new Error(`Unexpected call: ${method}`);
+    const rpc = schemaRpcMock({
+      call: async (_target, method) => {
+        if (method === "workspace.listSkills")
+          return [
+            {
+              skillPath: "skills/phone-setup/SKILL.md",
+              name: "phone-setup",
+              description: "Phone setup",
+              dirPath: "skills/phone-setup",
+            },
+          ];
+        throw new Error(`Unexpected call: ${method}`);
+      },
     });
+    callMainMock.mockImplementation(createMainCaller(rpc));
 
-    const snapshot = await composeOnboardingSnapshot({}, { now: () => new Date("2026-07-24") });
+    const snapshot = await composeOnboardingSnapshot(
+      {},
+      { now: () => new Date("2026-07-24") },
+    );
 
-    expect(callMainMock).toHaveBeenCalledWith("authority.preflight", {
-      service: "hubControl",
-      method: "listDevices",
-      args: [],
-    });
-    expect(callMainMock).toHaveBeenCalledWith("authority.preflight", {
-      service: "hubControl",
-      method: "listWorkspaces",
-      args: [],
-    });
+    expect(callMainMock).toHaveBeenCalledWith("workspace.listSkills");
+    expect(callMainMock).not.toHaveBeenCalledWith(
+      "authority.preflight",
+      expect.anything(),
+    );
     expect(callMainMock).not.toHaveBeenCalledWith("hubControl.listDevices");
     expect(callMainMock).not.toHaveBeenCalledWith("hubControl.listWorkspaces");
     expect(snapshot.find((entry) => entry.id === "connection.device")).toEqual(
-      expect.objectContaining({ state: "unknown" })
+      expect.objectContaining({ state: "unknown" }),
     );
-    expect(snapshot.find((entry) => entry.id === "connection.remote-server")).toEqual(
-      expect.objectContaining({ state: "unknown" })
-    );
+    expect(
+      snapshot.find((entry) => entry.id === "connection.remote-server"),
+    ).toEqual(expect.objectContaining({ state: "unknown" }));
   });
 
   it("fault-isolates direct adapters and stamps one observation time", async () => {
@@ -131,27 +147,33 @@ describe("composeOnboardingSnapshot", () => {
         "local-models",
         "agent-defaults",
         "web-search",
-      ].map((key) => [key, healthy])
+      ].map((key) => [key, healthy]),
     );
     adapters["github"] = vi.fn(async () => {
       throw new Error("private provider diagnostic");
     });
 
-    const snapshot = await composeOnboardingSnapshot({}, dependencies(adapters));
+    const snapshot = await composeOnboardingSnapshot(
+      {},
+      dependencies(adapters),
+    );
 
     expect(snapshot.find((entry) => entry.id === "connection.github")).toEqual(
       expect.objectContaining({
         state: "unknown",
         summary: "Status could not be read right now.",
-      })
+      }),
     );
-    expect(snapshot.find((entry) => entry.id === "connection.google-workspace")?.state).toBe(
-      "configured"
-    );
+    expect(
+      snapshot.find((entry) => entry.id === "connection.google-workspace")
+        ?.state,
+    ).toBe("configured");
     expect(new Set(snapshot.map((entry) => entry.observedAt))).toEqual(
-      new Set(["2026-07-24T12:00:00.000Z"])
+      new Set(["2026-07-24T12:00:00.000Z"]),
     );
-    expect(JSON.stringify(snapshot)).not.toContain("private provider diagnostic");
+    expect(JSON.stringify(snapshot)).not.toContain(
+      "private provider diagnostic",
+    );
   });
 
   it("uses exactly one host-topology read for both host rows", async () => {
@@ -173,11 +195,12 @@ describe("composeOnboardingSnapshot", () => {
         tier: "host-topology",
         state: "connected",
         nextAction: "change",
-      })
+      }),
     );
-    expect(snapshot.find((entry) => entry.id === "connection.remote-server")?.summary).toContain(
-      "local server"
-    );
+    expect(
+      snapshot.find((entry) => entry.id === "connection.remote-server")
+        ?.summary,
+    ).toContain("local server");
   });
 
   it("reports a missing shipped mobile owner as a base capability fault", async () => {
@@ -199,9 +222,11 @@ describe("composeOnboardingSnapshot", () => {
         state: "unavailable",
         attention: "blocking",
         rawStage: "owner-unavailable",
-      })
+      }),
     );
-    expect(snapshot.find((entry) => entry.id === "connection.device")?.nextAction).toBeUndefined();
+    expect(
+      snapshot.find((entry) => entry.id === "connection.device")?.nextAction,
+    ).toBeUndefined();
   });
 
   it("does not offer setup again for a verified connection", async () => {
@@ -211,7 +236,7 @@ describe("composeOnboardingSnapshot", () => {
         verification: "verified",
         summary: "Verified.",
         attention: "none",
-      })
+      }),
     );
     const deps = dependencies({
       "ai-provider": healthy,
@@ -229,9 +254,11 @@ describe("composeOnboardingSnapshot", () => {
       expect.objectContaining({
         state: "connected",
         verification: "verified",
-      })
+      }),
     );
-    expect(snapshot.find((entry) => entry.id === "connection.github")?.nextAction).toBeUndefined();
+    expect(
+      snapshot.find((entry) => entry.id === "connection.github")?.nextAction,
+    ).toBeUndefined();
   });
 
   it("offers change instead of setup for a connection without a live verifier", async () => {
@@ -275,6 +302,8 @@ describe("composeOnboardingSnapshot", () => {
 
     const snapshot = await composeOnboardingSnapshot({}, deps);
 
-    expect(snapshot.find((entry) => entry.id === publishing.id)?.nextAction).toBe("change");
+    expect(
+      snapshot.find((entry) => entry.id === publishing.id)?.nextAction,
+    ).toBe("change");
   });
 });

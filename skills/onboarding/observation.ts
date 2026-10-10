@@ -1,9 +1,13 @@
+import { createDurableObjectServiceClient } from "@vibestudio/service-schemas/clients/durableObjectServiceClient";
+import { missionsRpcMethods } from "@vibestudio/service-schemas/missions";
+import { modelSettingsRpcMethods } from "@workspace/model-catalog/rpc-contract";
+import { mainRpcMethods } from "@vibestudio/service-schemas/mainRpc";
 import { EventsClient } from "@vibestudio/service-schemas/clients/eventsClient";
 import {
   readEventWatchRecords,
   type EventName,
 } from "@vibestudio/shared/events";
-import { isRpcAborted } from "@vibestudio/rpc";
+import { isRpcAbortedBy } from "@vibestudio/rpc";
 import { rpc } from "@workspace/runtime";
 
 export interface SetupObservationDependencies {
@@ -28,26 +32,18 @@ const setupEvents: EventName[] = [
 ];
 
 function dependencies(): SetupObservationDependencies {
-  const observeService = (protocol: string) => {
-    let target: Promise<string> | undefined;
-    return async (afterVersion: string | undefined, signal: AbortSignal) => {
-      target ??= rpc
-        .call<{
-          kind: string;
-          targetId: string;
-        }>("main", "workers.resolveService", [{ protocol }], { signal })
-        .then((resolved) => {
-          if (resolved.kind !== "durable-object")
-            throw new Error(`${protocol} has no durable setup owner`);
-          return resolved.targetId;
-        });
-      return rpc.call<{ version: string }>(
-        await target,
-        "observeChanges",
-        [{ afterVersion }],
-        { signal },
-      );
-    };
+  const observeService = (
+    protocol: string,
+    method: import("@vibestudio/rpc").RpcMethod<
+      [{ afterVersion?: string }],
+      { version: string }
+    >,
+  ) => {
+    const service = createDurableObjectServiceClient(rpc, protocol, {
+      observeChanges: method,
+    });
+    return (afterVersion: string | undefined, signal: AbortSignal) =>
+      service.callWithOptions("observeChanges", [{ afterVersion }], { signal });
   };
   return {
     watch: async (signal) =>
@@ -58,21 +54,35 @@ function dependencies(): SetupObservationDependencies {
       ),
     owners: [
       (afterVersion, signal) =>
-        rpc.call("main", "credentials.observeChanges", [{ afterVersion }], {
-          signal,
-        }),
-      observeService("vibestudio.models.v1"),
-      observeService("vibestudio.missions.v1"),
+        rpc.call(
+          "main",
+          mainRpcMethods["credentials.observeChanges"],
+          [{ afterVersion }],
+          {
+            signal,
+          },
+        ),
+      observeService(
+        "vibestudio.models.v1",
+        modelSettingsRpcMethods.observeChanges,
+      ),
+      observeService(
+        "vibestudio.missions.v1",
+        missionsRpcMethods.observeChanges,
+      ),
       (afterVersion, signal) =>
-        rpc.call("main", "hubControl.observeDevices", [{ afterVersion }], {
-          signal,
-        }),
+        rpc.call(
+          "main",
+          mainRpcMethods["hubControl.observeDevices"],
+          [{ afterVersion }],
+          {
+            signal,
+          },
+        ),
     ],
   };
 }
 
-/** All subscriptions are admitted before the caller's first snapshot. Each
- * versioned owner rechecks its revision when the next observation is admitted. */
 export function openSetupObservation(
   onChanged: () => void,
   sources: SetupObservationDependencies = dependencies(),
@@ -85,7 +95,7 @@ export function openSetupObservation(
         error,
         ownerCancelled:
           controller.signal.aborted &&
-          (isRpcAborted(error) || error === controller.signal.reason),
+          isRpcAbortedBy(error, controller.signal.reason),
       });
       throw error;
     });
@@ -134,30 +144,20 @@ export function openSetupObservation(
         throw new Error("Setup owner watch closed");
     }),
   );
-  let originalFailure: { error: unknown } | undefined;
-  const joinedFailures = (primary?: { error: unknown }) =>
-    taskFailures
-      .filter(
-        (failure) =>
-          !failure.ownerCancelled &&
-          (!primary || failure.error !== primary.error),
-      )
-      .map((failure) => failure.error);
   const completion: Promise<void> = Promise.all(tasks)
     .catch(async (error: unknown) => {
-      originalFailure = { error };
       rejectReady(error);
       controller.abort(error);
       await Promise.allSettled(tasks);
-      const failures = joinedFailures(originalFailure);
-      if (failures.length > 0) {
-        throw new AggregateError(
-          [error, ...failures],
-          "Setup owner observation failed and a sibling failed while closing.",
-          { cause: error },
-        );
+      const failures = taskFailures
+        .filter((failure) => !failure.ownerCancelled)
+        .map((failure) => failure.error);
+      if (failures.length === 1) throw failures[0];
+      if (failures.length > 1) {
+        throw new AggregateError(failures, "Setup observation failed", {
+          cause: failures[0],
+        });
       }
-      throw error;
     })
     .then(() => undefined);
   // The caller owns both admission and completion. Hold a rejection handler
@@ -173,14 +173,7 @@ export function openSetupObservation(
         controller.signal.aborted ? controller.signal.reason : reason,
       );
       controller.abort(reason);
-      await Promise.allSettled(tasks);
-      const failures = joinedFailures(originalFailure);
-      if (failures.length === 1) throw failures[0];
-      if (failures.length > 1)
-        throw new AggregateError(
-          failures,
-          "Setup owner observers failed while closing.",
-        );
+      await completion;
     },
   };
 }

@@ -1,3 +1,6 @@
+import { missionsRpcMethods } from "@vibestudio/service-schemas/missions";
+import { missionAgentRpcMethods } from "@workspace-workers/mission-agent/contract";
+import { mainRpcMethods } from "@vibestudio/service-schemas/mainRpc";
 import {
   DurableObjectBase,
   rpc,
@@ -272,12 +275,12 @@ export class MissionControlStore extends DurableObjectBase {
     };
   }
   private missions() {
-    return createDurableObjectServiceClient(this.rpc, "vibestudio.missions.v1");
+    return createDurableObjectServiceClient(this.rpc, "vibestudio.missions.v1", missionsRpcMethods);
   }
   private async agent(key: string): Promise<string> {
-    const entity = await this.rpc.call<{ targetId: string }>(
+    const entity = await this.rpc.call(
       "main",
-      "runtime.createEntity",
+      mainRpcMethods["runtime.createEntity"],
       [
         {
           kind: "do",
@@ -627,9 +630,7 @@ export class MissionControlStore extends DurableObjectBase {
         for (const task of tasks) {
           if (!task.automationId) continue;
           const missions = this.missions();
-          const summary = await missions.call<{
-            items: { automation: Automation; activeRuns: number }[];
-          }>("overview", { missionId: task.automationId, limit: 1 });
+          const summary = await missions.call("overview", { missionId: task.automationId, limit: 1 });
           const item = summary.items[0];
           if (item?.activeRuns)
             throw new Error(
@@ -909,8 +910,8 @@ export class MissionControlStore extends DurableObjectBase {
       };
     const missions = this.missions();
     const [automation, page] = await Promise.all([
-      missions.call<Automation | null>("get", task.automationId),
-      missions.call<{ items: Session[]; nextCursor?: TaskDetail["cursor"] }>(
+      missions.call("get", task.automationId),
+      missions.call(
         "listRuns",
         task.automationId,
         { limit: 20, ...(parsed.cursor ? { cursor: parsed.cursor } : {}) },
@@ -938,9 +939,9 @@ export class MissionControlStore extends DurableObjectBase {
     if (task.status === "cancelled" || task.status === "done")
       throw new Error("Move this task to Ready before starting new work.");
     const target = await this.agent(`mission-task-${id}`);
-    const automation = await this.rpc.call<Automation>(
+    const automation = await this.rpc.call(
       target,
-      "installTaskAutomation",
+      missionAgentRpcMethods.installTaskAutomation,
       [
         {
           taskId: task.id,
@@ -964,7 +965,7 @@ export class MissionControlStore extends DurableObjectBase {
     // Installation owns the resulting automation even when a concurrent card
     // edit accepts cancellation before the automation identity is available.
     if (current.status === "cancelled")
-      return this.missions().call<Automation>("cancel", automation.missionId);
+      return this.missions().call("cancel", automation.missionId);
     return automation;
   }
 
@@ -1005,7 +1006,7 @@ export class MissionControlStore extends DurableObjectBase {
       this.checkRevision(task, expectedRevision);
       const missions = this.missions();
       const current = task.automationId
-        ? await missions.call<Automation | null>("get", task.automationId)
+        ? await missions.call("get", task.automationId)
         : null;
       const automation =
         current ??
@@ -1020,7 +1021,7 @@ export class MissionControlStore extends DurableObjectBase {
         throw new Error("Move this task to Ready before starting new work.");
       if (automation.state === "paused")
         await missions.call("resume", automation.missionId);
-      return missions.call<Session>("runNow", automation.missionId);
+      return missions.call("runNow", automation.missionId);
     });
   }
 
@@ -1040,7 +1041,7 @@ export class MissionControlStore extends DurableObjectBase {
       const task = this.task(id);
       if (!task.automationId) throw new Error("This task has no automation.");
       if (action === "resume") {
-        const automation = await this.missions().call<Automation | null>(
+        const automation = await this.missions().call(
           "get",
           task.automationId,
         );
@@ -1055,7 +1056,7 @@ export class MissionControlStore extends DurableObjectBase {
           );
         this.validateTask({ ...task, status: "active" });
       }
-      return this.missions().call<Automation>(action, task.automationId);
+      return this.missions().call(action, task.automationId);
     });
   }
 
@@ -1102,7 +1103,7 @@ export class MissionControlStore extends DurableObjectBase {
     if (this.leadLaunch) return this.leadLaunch;
     const launch = (async () => {
       const channelId = LEAD_CHANNEL_ID;
-      await this.rpc.call("main", "runtime.createEntity", [
+      await this.rpc.call("main", mainRpcMethods["runtime.createEntity"], [
         {
           kind: "do",
           execution: { surface: "code", source: "workers/pubsub-channel" },

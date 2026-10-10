@@ -1,8 +1,13 @@
+import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
 import { describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   launchAgentIntoChannel: vi.fn(async () => ({
-    handle: { id: "do:conductor", targetId: "do:conductor", contextId: "ctx-collection" },
+    handle: {
+      id: "do:conductor",
+      targetId: "do:conductor",
+      contextId: "ctx-collection",
+    },
     subscription: { ok: true, participantId: "do:conductor" },
     contextId: "ctx-collection",
   })),
@@ -31,7 +36,9 @@ import {
 
 describe("collection orchestration", () => {
   it("creates one stable channel and agent identity from a supplied seed", () => {
-    expect(createCollectionSession("6d4d8a2f-0000-4000-8000-000000000000")).toEqual({
+    expect(
+      createCollectionSession("6d4d8a2f-0000-4000-8000-000000000000"),
+    ).toEqual({
       channelName: "collection-6d4d8a2f000040008000000000000000",
       agentKey: "conductor-6d4d8a2f000040008000000000000000",
     });
@@ -42,11 +49,15 @@ describe("collection orchestration", () => {
       rootPanelId: "panel:tree/imported",
       title: "Imported tabs",
     });
-    expect(prompt).toContain('panelTree.walk("panel:tree/imported", { limit: 500 })');
+    expect(prompt).toContain(
+      'panelTree.walk("panel:tree/imported", { limit: 500 })',
+    );
     expect(prompt).not.toContain("page.revision");
     expect(prompt).toContain("{ node, handle, depth }");
     expect(prompt).not.toContain("stateArgs.title");
-    expect(prompt).toContain("await handle.setTitle(title, { explicit: true })");
+    expect(prompt).toContain(
+      "await handle.setTitle(title, { explicit: true })",
+    );
     expect(prompt).toContain("await handle.movePanel(newParentId)");
     expect(prompt).not.toContain("node.handle");
     expect(prompt).toContain("about/collection/SKILL.md");
@@ -64,7 +75,7 @@ describe("collection orchestration", () => {
       promptForCollectionStartupTask({
         kind: "title-browser-import-windows",
         sourceName: "Firefox",
-      })
+      }),
     ).toBe(prompt);
   });
 
@@ -76,8 +87,10 @@ describe("collection orchestration", () => {
     });
     const rpc: CollectionOrchestrationRpc = {
       selfId: "@workspace-extensions/browser-data",
-      call: async <T>() => undefined as T,
-      stream: vi.fn(async () => new Response()),
+      ...schemaRpcMock({
+        call: async () => undefined,
+        stream: vi.fn(async () => new Response()),
+      }),
     };
 
     await launchCollectionTask(rpc, {
@@ -102,7 +115,7 @@ describe("collection orchestration", () => {
           approvalLevel: 2,
           systemPrompt: expect.stringContaining("panel:imported"),
         }),
-      })
+      }),
     );
     expect(mocks.connectViaRpc).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -111,7 +124,7 @@ describe("collection orchestration", () => {
         contextId: "ctx-collection",
         type: "headless",
         replayMode: "skip",
-      })
+      }),
     );
     expect(mocks.ready).toHaveBeenCalledOnce();
     expect(mocks.send).toHaveBeenCalledWith("Title the imported windows", {

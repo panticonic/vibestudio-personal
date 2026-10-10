@@ -1,3 +1,5 @@
+import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
+import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RpcClient } from "@vibestudio/rpc";
 import type { AgentToolExecutionContext } from "@workspace/agentic-do";
@@ -17,19 +19,45 @@ const controlTarget = "do:workers/mission-control-store:MissionControlStore:main
 const databases = new Set<{ close(): void }>();
 afterEach(() => { for (const db of databases) db.close(); databases.clear(); });
 
+function missionRecord(input: {
+  charter: unknown;
+  authorityPlan?: typeof authorityPlan;
+  name?: string;
+  state?: "active" | "paused";
+  seeded?: boolean;
+}) {
+  return {
+    schemaVersion: 3 as const,
+    missionId: "mission-task",
+    name: input.name ?? "Ship",
+    revision: 1,
+    charter: input.charter,
+    authorityPlan: input.authorityPlan ?? authorityPlan,
+    owner: { userId: "test-user" },
+    state: input.state ?? "active",
+    revisionDigest: "d".repeat(64),
+    authority: { requestIds: [], grantIds: [], denialIds: [] },
+    createdAt: 1,
+    updatedAt: 1,
+    activatedAt: 1,
+    runCount: 0,
+    ...(input.seeded === undefined ? {} : { seeded: input.seeded }),
+  };
+}
+
 class TestMissionAgent extends MissionAgent {
   readonly remote = vi.fn(async (_target: string, method: string, args: unknown[]): Promise<unknown> => {
-    if (method === "workers.resolveService") return { kind: "durable-object", targetId: args[0] === "mission-control.v1" ? controlTarget : missionsTarget };
+    if (method === "workers.resolveService") return durableObjectServiceFixture(args[0] === "mission-control.v1" ? controlTarget : missionsTarget);
     throw new Error(`Unexpected RPC ${method}`);
   });
   readonly boundRemote = vi.fn(async (_target: string, method: string, args: unknown[]): Promise<unknown> => {
-    if (method === "workers.resolveService") return { kind: "durable-object", targetId: controlTarget };
+    if (method === "workers.resolveService") return durableObjectServiceFixture(controlTarget);
     if (method === "overview") return { tasks: [], total: 0, input: args[0] };
     throw new Error(`Unexpected execution RPC ${method}`);
   });
-  protected override get rpc(): RpcClient { return { call: this.remote } as unknown as RpcClient; }
+  protected override get rpc(): RpcClient { return schemaRpcMock({ call: this.remote }) as unknown as RpcClient; }
   protected override async bindNativeToolExecution(): Promise<AgentToolExecutionContext> {
-    return { invocationId: "test-invocation", commandId: "test-command", rpc: { call: this.boundRemote } as unknown as RpcClient };
+    return { invocationId: "test-invocation", commandId: "test-command", rpc: schemaRpcMock({ call: this.boundRemote }) as unknown as RpcClient };
   }
   configureSubscription(): void {
     this.sql.exec(
@@ -58,8 +86,10 @@ describe("Mission lead native contracts", () => {
     const tool = (await instance.tools()).find(item => item.name === "mission_control");
     expect(tool).toBeDefined();
     const result = await executeTool(tool!, { operation: "overview", input: { limit: 20 } });
-    expect(instance.boundRemote).toHaveBeenCalledWith("main", "workers.resolveService", ["mission-control.v1", null]);
-    expect(instance.boundRemote).toHaveBeenCalledWith(controlTarget, "overview", [{ limit: 20 }]);
+    expect(instance.boundRemote.mock.calls.map(([target, method, args]) => [target, method, args])).toEqual(expect.arrayContaining([
+      ["main", "workers.resolveService", ["mission-control.v1", null]],
+      [controlTarget, "overview", [{ limit: 20 }]],
+    ]));
     expect(result.details).toEqual({ tasks: [], total: 0, input: { limit: 20 } });
     expect(instance.remote).not.toHaveBeenCalled();
   });
@@ -68,7 +98,7 @@ describe("Mission lead native contracts", () => {
     const instance = await agent();
     const failure = new Error("This card changed. Refresh before saving your edit.");
     instance.boundRemote.mockImplementation(async (_target, method) => {
-      if (method === "workers.resolveService") return { kind: "durable-object", targetId: controlTarget };
+      if (method === "workers.resolveService") return durableObjectServiceFixture(controlTarget);
       throw failure;
     });
     const tool = (await instance.tools()).find(item => item.name === "mission_control")!;
@@ -78,16 +108,17 @@ describe("Mission lead native contracts", () => {
   it("installs a task automation through Missions using the installed image and a fresh conversation", async () => {
     const instance = await agent();
     instance.remote.mockImplementation(async (_target, method, args) => {
-      if (method === "workers.resolveService") return { kind: "durable-object", targetId: missionsTarget };
+      if (method === "workers.resolveService") return durableObjectServiceFixture(missionsTarget);
       if (method === "authority.compileAuthorityPlan") return authorityPlan;
       if (method === "getDefault") return null;
-      if (method === "provisionDefault") return { missionId: "mission-task", state: "active", name: "Ship", charter: (args[1] as { charter: unknown }).charter };
+      if (method === "provisionDefault") return missionRecord({ charter: (args[1] as { charter: unknown }).charter, authorityPlan: (args[1] as { authorityPlan: typeof authorityPlan }).authorityPlan });
       throw new Error(`Unexpected RPC ${method}`);
     });
     const installed = await instance.installTaskAutomation({ taskId: "task-1", name: "Ship", prompt: "Read the live task and deliver it.", trigger: { kind: "schedule", everyMs: 60000 }, automationId: null });
     expect(installed.missionId).toBe("mission-task");
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "getDefault", ["mission-control-task:task-1"]);
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "provisionDefault", ["mission-control-task:task-1", {
+    expect(instance.remote.mock.calls.map(([target, method, args]) => [target, method, args])).toEqual(expect.arrayContaining([
+      [missionsTarget, "getDefault", ["mission-control-task:task-1"]],
+      [missionsTarget, "provisionDefault", ["mission-control-task:task-1", {
       name: "Ship",
       authorityPlan,
       charter: expect.objectContaining({
@@ -97,18 +128,19 @@ describe("Mission lead native contracts", () => {
           conversation: { mode: "fresh" }, action: { kind: "prompt", text: "Read the live task and deliver it." },
         }),
       }),
-    }]);
+      }]],
+    ]));
   });
 
   it("recovers an existing task default after a lost linkage without creating or editing its schedule", async () => {
     const instance = await agent();
     let installed: unknown = null;
     instance.remote.mockImplementation(async (_target, method, args) => {
-      if (method === "workers.resolveService") return { kind: "durable-object", targetId: missionsTarget };
+      if (method === "workers.resolveService") return durableObjectServiceFixture(missionsTarget);
       if (method === "authority.compileAuthorityPlan") return authorityPlan;
       if (method === "getDefault") return installed;
       if (method === "provisionDefault") {
-        installed = { missionId: "mission-task", state: "paused", ...(args[1] as object) };
+        installed = missionRecord({ ...(args[1] as { charter: unknown; authorityPlan: typeof authorityPlan }), state: "paused" });
         return installed;
       }
       throw new Error(`Unexpected RPC ${method}`);
@@ -133,15 +165,24 @@ describe("Mission lead native contracts", () => {
       kind: "agent", image: { source: "workers/mission-agent", ref: `state:${"b".repeat(64)}`, effectiveVersion: "a".repeat(64), className: "MissionAgent", objectKey: "task-agent" },
       conversation: { mode: "fresh" }, action: { kind: "prompt", text: "Read the live task and deliver it." }, operations: [],
     };
-    const current = { missionId: "mission-task", state: "active", name: "Ship", seeded, authorityPlan: { ...authorityPlan, schemaVersion }, charter: { summary: "Execute Mission Control task task-1", execution, trigger: { kind: "schedule", everyMs: 60000 } } };
+    const current = missionRecord({ name: "Ship", seeded, authorityPlan: { ...authorityPlan, schemaVersion } as typeof authorityPlan, charter: { summary: "Execute Mission Control task task-1", execution, trigger: { kind: "schedule", everyMs: 60000 } } });
     instance.remote.mockImplementation(async (_target, method, args) => {
-      if (method === "workers.resolveService") return { kind: "durable-object", targetId: missionsTarget };
+      if (method === "workers.resolveService") return durableObjectServiceFixture(missionsTarget);
       if (method === "get") return current;
       if (method === "authority.compileAuthorityPlan") return authorityPlan;
       if (method === "edit") return { ...current, ...(args[1] as object) };
       throw new Error(`Unexpected RPC ${method}`);
     });
-    await instance.installTaskAutomation({ taskId: "task-1", name: "Ship", prompt: changedPrompt ? "Deliver the revised task." : execution.action.text, trigger: { kind: "schedule", everyMs: 120000 }, automationId: current.missionId });
+    const input = { taskId: "task-1", name: "Ship", prompt: changedPrompt ? "Deliver the revised task." : execution.action.text, trigger: { kind: "schedule", everyMs: 120000 }, automationId: current.missionId };
+    if (schemaVersion === 1) {
+      await expect(instance.installTaskAutomation(input)).rejects.toThrow(
+        'Service "missions" method "get" return value failed schema validation.',
+      );
+      expect(instance.remote.mock.calls.some(([, method]) => method === "edit")).toBe(false);
+      expect(instance.remote.mock.calls.some(([, method]) => method === "authority.compileAuthorityPlan")).toBe(false);
+      return;
+    }
+    await instance.installTaskAutomation(input);
     const compilerCalls = instance.remote.mock.calls.filter(([, method]) => method === "authority.compileAuthorityPlan");
     expect(compilerCalls).toHaveLength(compile ? 1 : 0);
     const edit = instance.remote.mock.calls.find(([, method]) => method === "edit")!;

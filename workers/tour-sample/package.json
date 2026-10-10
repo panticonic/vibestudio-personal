@@ -73,7 +73,8 @@
     ]
   },
   "dependencies": {
-    "@workspace/runtime": "workspace:*"
+    "@workspace/runtime": "workspace:*",
+    "@vibestudio/shared": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.2.7",
@@ -81,5 +82,9 @@
     "@vibestudio/rpc": "workspace:*",
     "@vibestudio/shared": "workspace:*",
     "@vibestudio/workspace": "workspace:*"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./contract": "./contract.ts"
   }
 }

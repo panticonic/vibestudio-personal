@@ -1,3 +1,5 @@
+import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
+import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestDO } from "@vibestudio/durable/test-utils";
 import type { RpcClient } from "@vibestudio/rpc";
@@ -21,7 +23,7 @@ class TestMissionControlStore extends MissionControlStore {
     },
   );
   protected override get rpc(): RpcClient {
-    return { call: this.remote } as unknown as RpcClient;
+    return schemaRpcMock({ call: this.remote }) as unknown as RpcClient;
   }
 }
 
@@ -59,6 +61,38 @@ async function task(
 
 const missionsTarget = "do:workers/missions:MissionsDO:workspace-missions";
 const agentTarget = "do:workers/mission-agent:MissionAgent:task-executor";
+function expectWireCall(
+  remote: TestMissionControlStore["remote"],
+  target: string,
+  method: string,
+  args: unknown[],
+) {
+  expect(
+    remote.mock.calls.map(([callTarget, callMethod, callArgs]) => [
+      callTarget,
+      callMethod,
+      callArgs,
+    ]),
+  ).toEqual(expect.arrayContaining([[target, method, args]]));
+}
+function runtimeEntityFixture(spec: unknown) {
+  const input = spec as {
+    contextId?: string;
+    execution?: { source?: string; ref?: string };
+    source?: string;
+  };
+  const repoPath = input.execution?.source ?? input.source ?? "workers/mission-agent";
+  return {
+    id: agentTarget,
+    kind: "do" as const,
+    source: {
+      repoPath,
+      effectiveVersion: input.execution?.ref ?? "a".repeat(64),
+    },
+    contextId: input.contextId ?? "ctx-mission-control-test",
+    targetId: agentTarget,
+  };
+}
 function automation(): Automation {
   return {
     missionId: "mission-task",
@@ -69,13 +103,63 @@ function automation(): Automation {
     authority: { requestIds: [], grantIds: [], denialIds: [] },
   };
 }
+function missionWireRecord(record: Automation) {
+  const execution = {
+    kind: "agent" as const,
+    image: { source: "workers/mission-agent", ref: `state:${"a".repeat(64)}`, effectiveVersion: "a".repeat(64), className: "MissionAgent", objectKey: "test" },
+    conversation: { mode: "fresh" as const },
+    action: { kind: "prompt" as const, text: "Execute the test mission." },
+    operations: [],
+  };
+  return {
+    schemaVersion: 3 as const,
+    missionId: record.missionId,
+    name: record.name,
+    revision: 1,
+    charter: { summary: "Test mission", execution, trigger: record.charter.trigger },
+    authorityPlan: { schemaVersion: 2 as const, digest: "c".repeat(64), artifactRef: `authority-plan:${"c".repeat(64)}`, compilerVersion: "test", catalogDigest: "b".repeat(64) },
+    owner: { userId: "test-user" },
+    state: record.state,
+    revisionDigest: "d".repeat(64),
+    authority: record.authority,
+    createdAt: 1,
+    updatedAt: 1,
+    activatedAt: 1,
+    runCount: record.runCount,
+    ...(record.nextRunAt === undefined ? {} : { nextRunAt: record.nextRunAt }),
+  };
+}
+function missionRunWireRecord(run: Session, mission: Automation) {
+  return {
+    runId: run.runId,
+    missionId: mission.missionId,
+    missionSubject: `mission:${"e".repeat(64)}@${"f".repeat(64)}`,
+    revision: 1,
+    trigger: "manual" as const,
+    phase: run.phase === "terminal" ? "terminal" as const : "admitted" as const,
+    ...(run.outcome === undefined ? {} : { outcome: "succeeded" as const }),
+    startedAt: run.startedAt,
+    ...(run.finishedAt === undefined ? {} : { finishedAt: run.finishedAt }),
+    ...(run.channelId === undefined ? {} : { channelId: run.channelId }),
+    ...(run.contextId === undefined ? {} : { contextId: run.contextId }),
+    ...(run.finalMessage === undefined ? {} : { finalMessage: run.finalMessage }),
+  };
+}
+function missionOverviewWire(record: Automation, state = record.state, activeRuns = 0) {
+  return {
+    generatedAt: 1,
+    stats: { total: 1, active: state === "active" ? 1 : 0, running: activeRuns, issueRunsLast24Hours: 0, completed: 0 },
+    items: [{ automation: missionWireRecord({ ...record, state }), recentRuns: [], totalRuns: record.runCount, activeRuns, issueRunsSince: 0 }],
+    attention: [],
+  };
+}
 function mockAutomationTransport(instance: TestMissionControlStore) {
   const record = automation();
-  instance.remote.mockImplementation(async (_target, method) => {
+  instance.remote.mockImplementation(async (_target, method, args) => {
     if (method === "workers.resolveService")
-      return { kind: "durable-object", targetId: missionsTarget };
-    if (method === "runtime.createEntity") return { targetId: agentTarget };
-    if (method === "installTaskAutomation" || method === "get") return record;
+      return durableObjectServiceFixture(missionsTarget);
+    if (method === "runtime.createEntity") return runtimeEntityFixture(args[0]);
+    if (method === "installTaskAutomation" || method === "get") return missionWireRecord(record);
     throw new Error(`Unexpected RPC ${method}`);
   });
   return record;
@@ -438,10 +522,10 @@ describe("Mission Control canonical execution ledger", () => {
     const cancellation = new Promise<Automation>((resolve) => {
       finishCancel = resolve;
     });
-    instance.remote.mockImplementation(async (_target, method) => {
+    instance.remote.mockImplementation(async (_target, method, args) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
-      if (method === "runtime.createEntity") return { targetId: agentTarget };
+        return durableObjectServiceFixture(missionsTarget);
+      if (method === "runtime.createEntity") return runtimeEntityFixture(args[0]);
       if (method === "installTaskAutomation") {
         enteredInstall();
         return installation;
@@ -472,7 +556,7 @@ describe("Mission Control canonical execution ledger", () => {
         tags: ["deferred"],
       },
     });
-    finishInstall(record);
+    finishInstall(missionWireRecord(record) as unknown as Automation);
     await cancelEntered;
     expect(settled).toBe(false);
     expect(instance.getTask({ id: card.id })).toMatchObject({
@@ -481,12 +565,12 @@ describe("Mission Control canonical execution ledger", () => {
       tags: ["deferred"],
       automationId: record.missionId,
     });
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "cancel", [
+    expectWireCall(instance.remote, missionsTarget, "cancel", [
       record.missionId,
     ]);
     const paused: Automation = { ...record, state: "paused" };
-    finishCancel(paused);
-    expect(await pending).toEqual(paused);
+    finishCancel(missionWireRecord(paused) as unknown as Automation);
+    expect(await pending).toMatchObject(paused);
     expect(instance.getTask({ id: card.id })).toMatchObject({
       status: "cancelled",
       title: "Stop this rollout",
@@ -508,8 +592,8 @@ describe("Mission Control canonical execution ledger", () => {
     const linked = instance.getTask({ id: card.id });
     instance.remote.mockImplementation(async (_target, method) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
-      if (method === "cancel") return { ...record, state: "paused" };
+        return durableObjectServiceFixture(missionsTarget);
+      if (method === "cancel") return missionWireRecord({ ...record, state: "paused" });
       throw new Error(`Unexpected RPC ${method}`);
     });
     const cancelled = await instance.cancelTask({
@@ -545,9 +629,9 @@ describe("Mission Control canonical execution ledger", () => {
     let state = record.state;
     instance.remote.mockImplementation(async (_target, method) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
+        return durableObjectServiceFixture(missionsTarget);
       if (method === "overview")
-        return { items: [{ automation: { ...record, state }, activeRuns }] };
+        return missionOverviewWire(record, state, activeRuns);
       throw new Error(`Unexpected RPC ${method}`);
     });
     const input = {
@@ -558,7 +642,7 @@ describe("Mission Control canonical execution ledger", () => {
     await expect(instance.updateProject(input)).rejects.toThrow(
       /live execution/i,
     );
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "overview", [
+    expectWireCall(instance.remote, missionsTarget, "overview", [
       { missionId: record.missionId, limit: 1 },
     ]);
     activeRuns = 0;
@@ -585,8 +669,8 @@ describe("Mission Control canonical execution ledger", () => {
     const installation = new Promise<Automation>((resolve) => {
       finishInstall = resolve;
     });
-    instance.remote.mockImplementation(async (_target, method) => {
-      if (method === "runtime.createEntity") return { targetId: agentTarget };
+    instance.remote.mockImplementation(async (_target, method, args) => {
+      if (method === "runtime.createEntity") return runtimeEntityFixture(args[0]);
       if (method === "installTaskAutomation") {
         enteredInstall();
         return installation;
@@ -604,8 +688,8 @@ describe("Mission Control canonical execution ledger", () => {
     const rejected = expect(queued).rejects.toThrow(
       /changed|revision|refresh/i,
     );
-    finishInstall(record);
-    expect(await first).toEqual(record);
+    finishInstall(missionWireRecord(record) as unknown as Automation);
+    expect(await first).toMatchObject(record);
     await rejected;
     expect(
       instance.remote.mock.calls.filter(
@@ -636,12 +720,12 @@ describe("Mission Control canonical execution ledger", () => {
       phase: "preparing",
       startedAt: 100,
     };
-    instance.remote.mockImplementation(async (_target, method) => {
+    instance.remote.mockImplementation(async (_target, method, args) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
-      if (method === "runtime.createEntity") return { targetId: agentTarget };
-      if (method === "installTaskAutomation" || method === "get") return record;
-      if (method === "runNow") return run;
+        return durableObjectServiceFixture(missionsTarget);
+      if (method === "runtime.createEntity") return runtimeEntityFixture(args[0]);
+      if (method === "installTaskAutomation" || method === "get") return missionWireRecord(record);
+      if (method === "runNow") return missionRunWireRecord(run, record);
       throw new Error(`Unexpected RPC ${method}`);
     });
     expect(
@@ -649,8 +733,8 @@ describe("Mission Control canonical execution ledger", () => {
         id: card.id,
         expectedRevision: linked.revision,
       }),
-    ).toEqual(run);
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "runNow", [
+    ).toEqual(missionRunWireRecord(run, record));
+    expectWireCall(instance.remote, missionsTarget, "runNow", [
       record.missionId,
     ]);
     expect(
@@ -683,7 +767,7 @@ describe("Mission Control canonical execution ledger", () => {
     });
     instance.remote.mockImplementation(async (_target, method) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
+        return durableObjectServiceFixture(missionsTarget);
       if (method === "cancel") {
         enteredCancellation();
         return joined;
@@ -696,10 +780,10 @@ describe("Mission Control canonical execution ledger", () => {
     });
     await entered;
     expect(instance.getTask({ id: card.id }).status).toBe("active");
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "cancel", [
+    expectWireCall(instance.remote, missionsTarget, "cancel", [
       record.missionId,
     ]);
-    resolveCancellation({ ...record, state: "paused" });
+    resolveCancellation(missionWireRecord({ ...record, state: "paused" }));
     expect(await pending).toMatchObject({ id: card.id, status: "cancelled" });
     expect(
       instance.remote.mock.calls.some(
@@ -729,7 +813,7 @@ describe("Mission Control canonical execution ledger", () => {
     });
     instance.remote.mockImplementation(async (_target, method) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
+        return durableObjectServiceFixture(missionsTarget);
       if (method === "cancel") {
         enteredCancellation();
         return joined;
@@ -749,7 +833,7 @@ describe("Mission Control canonical execution ledger", () => {
     const conflict = expect(pending).rejects.toThrow(
       /execution stopped.*state changed/i,
     );
-    finishCancellation({ ...record, state: "paused" });
+    finishCancellation(missionWireRecord({ ...record, state: "paused" }));
     await conflict;
     expect(instance.getTask({ id: card.id })).toEqual(edited);
   });
@@ -778,17 +862,17 @@ describe("Mission Control canonical execution ledger", () => {
     const cursor = { startedAt: 50, runId: "older" };
     instance.remote.mockImplementation(async (_target, method) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
-      if (method === "get") return record;
-      if (method === "listRuns") return { items: [run], nextCursor: cursor };
+        return durableObjectServiceFixture(missionsTarget);
+      if (method === "get") return missionWireRecord(record);
+      if (method === "listRuns") return { items: [missionRunWireRecord(run, record)], nextCursor: cursor };
       throw new Error(`Unexpected RPC ${method}`);
     });
     const page = await instance.taskDetail({ id: card.id, cursor });
-    expect(page).toMatchObject({ automation: record, runs: [run], cursor });
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "get", [
+    expect(page).toMatchObject({ automation: record, runs: [expect.objectContaining({ runId: run.runId, outcome: "succeeded", channelId: run.channelId, contextId: run.contextId })], cursor });
+    expectWireCall(instance.remote, missionsTarget, "get", [
       record.missionId,
     ]);
-    expect(instance.remote).toHaveBeenCalledWith(missionsTarget, "listRuns", [
+    expectWireCall(instance.remote, missionsTarget, "listRuns", [
       record.missionId,
       { limit: 20, cursor },
     ]);
@@ -808,8 +892,8 @@ describe("Mission Control canonical execution ledger", () => {
     const failure = new Error("Canonical run ledger unavailable");
     instance.remote.mockImplementation(async (_target, method) => {
       if (method === "workers.resolveService")
-        return { kind: "durable-object", targetId: missionsTarget };
-      if (method === "get") return record;
+        return durableObjectServiceFixture(missionsTarget);
+      if (method === "get") return missionWireRecord(record);
       throw failure;
     });
     await expect(instance.taskDetail({ id: card.id })).rejects.toBe(failure);
@@ -1250,14 +1334,14 @@ describe("Mission Control active project selection", () => {
     const entered = new Promise<void>(resolve => { enter = resolve; });
     const checked = new Promise<unknown>(resolve => { finish = resolve; });
     instance.remote.mockImplementation(async (_target, method) => {
-      if (method === "workers.resolveService") return { kind: "durable-object", targetId: missionsTarget };
+      if (method === "workers.resolveService") return durableObjectServiceFixture(missionsTarget);
       if (method === "overview") { enter(); return checked; }
       throw new Error(`Unexpected RPC ${method}`);
     });
     const pending = instance.updateProject({ id: p.id, expectedRevision: 1, changes: { archived: true } });
     await entered;
     const selected = instance.setView({ projectId: other.id, layout: "list", query: "Current focus" });
-    finish({ items: [{ automation: { ...record, state: "paused" }, activeRuns: 0 }] });
+    finish(missionOverviewWire(record, "paused"));
     expect(await pending).toMatchObject({ archived: true });
     expect(instance.overview().view).toEqual(selected);
   });

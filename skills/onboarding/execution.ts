@@ -34,7 +34,7 @@ const defaultDependencies: OnboardingExecutionDependencies = {
     const panel = await openPanel(source, { focus: true });
     return { id: panel.id, readiness: "ready" as const };
   },
-  openShellSurface: (target) => callMain<void>("app.openShellSurface", target),
+  openShellSurface: (target) => callMain("app.openShellSurface", target),
   readCatalog: readInstalledOnboardingCatalog,
 };
 

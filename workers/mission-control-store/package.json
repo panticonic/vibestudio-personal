@@ -123,11 +123,17 @@
     "@workspace/mission-control": "workspace:*",
     "@vibestudio/workspace-contracts": "workspace:*",
     "zod": "^3.25.76",
-    "@workspace/agentic-core": "workspace:*"
+    "@workspace/agentic-core": "workspace:*",
+    "@vibestudio/shared": "workspace:*"
   },
   "devDependencies": {
+    "@vibestudio/service-schemas": "workspace:*",
     "vitest": "^3.2.7",
     "@vibestudio/durable": "workspace:*",
     "@vibestudio/rpc": "workspace:*"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./contract": "./contract.ts"
   }
 }

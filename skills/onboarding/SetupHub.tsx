@@ -1,3 +1,4 @@
+import { formatRpcFailure } from "@workspace/runtime";
 import { openSetupObservation } from "./observation.js";
 import { OperationNotice } from "@workspace/ui/feedback";
 import {
@@ -318,7 +319,7 @@ export default function SetupHub({
       } catch (error) {
         if (request === capabilityRequest.current) {
           setError(
-            `Couldn't refresh setup status: ${error instanceof Error ? error.message : String(error)}`,
+            `Couldn't refresh setup status: ${formatRpcFailure(error)}`,
           );
         }
       } finally {
@@ -355,7 +356,7 @@ export default function SetupHub({
     const failed = (cause: unknown) => {
       if (active)
         setObservationError(
-          `Live setup updates paused: ${cause instanceof Error ? cause.message : String(cause)}`,
+          `Live setup updates paused: ${formatRpcFailure(cause)}`,
         );
     };
     void observation.ready
@@ -412,7 +413,7 @@ export default function SetupHub({
       await chat.send(label, { metadata: { interaction, selection } });
     } catch (error) {
       setError(
-        `Couldn't complete “${label}”: ${error instanceof Error ? error.message : String(error)}`,
+        `Couldn't complete “${label}”: ${formatRpcFailure(error)}`,
       );
     } finally {
       setPending(null);
