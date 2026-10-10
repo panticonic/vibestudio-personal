@@ -372,11 +372,7 @@ type ProjectFormProps = {
 export function ProjectForm(props: ProjectFormProps) {
   return (
     <Modal
-      title={
-        props.project
-          ? "Project settings"
-          : "A new place for your next big idea"
-      }
+      title={props.project ? "Project settings" : "New project"}
       close={props.close}
     >
       <ProjectFields {...props} />
@@ -461,12 +457,11 @@ function ProjectFields({
         label="Project name"
         name="name"
         errors={errors}
-        help="A clear name makes this project easy to find in conversations and views."
       >
         {(props) => (
           <input
             {...props}
-            placeholder="What are we building?"
+            placeholder="Project name"
             defaultValue={project?.name}
             required
             maxLength={200}
@@ -479,12 +474,11 @@ function ProjectFields({
         label="Goal"
         name="description"
         errors={errors}
-        help="Describe the outcome, rather than a list of implementation details."
       >
         {(props) => (
           <textarea
             {...props}
-            placeholder="The outcome you want to make possible…"
+            placeholder="Project description"
             defaultValue={project?.description}
             maxLength={4000}
             rows={3}
@@ -1103,7 +1097,7 @@ function ChecklistEditor({
             (items.length >= 100 || text.trim().length > 500)
           }
           aria-describedby={error ? errorId : undefined}
-          placeholder="Add a clear acceptance step…"
+          placeholder="Add checklist item…"
           value={text}
           maxLength={500}
           disabled={busy || items.length >= 100}
@@ -1147,7 +1141,7 @@ type TaskFormProps = {
 export function TaskForm(props: TaskFormProps) {
   return (
     <Modal
-      title={props.task ? "Shape the task" : "Give your agent a clear mission"}
+      title={props.task ? "Edit task" : "New task"}
       close={props.close}
     >
       <TaskFields {...props} />
@@ -1251,13 +1245,12 @@ function TaskFields({
         label="Task title"
         name="title"
         errors={errors}
-        help="Name a concrete outcome. A good title makes progress easy to recognize."
       >
         {(props) => (
           <input
             {...props}
             defaultValue={task?.title}
-            placeholder="A concrete outcome, in a few words"
+            placeholder="Task title"
             required
             maxLength={200}
             disabled={busy}
@@ -1269,14 +1262,14 @@ function TaskFields({
         label="Brief"
         name="description"
         errors={errors}
-        help="Give your agent context, constraints, and evidence of success."
+        help="Context, requirements, and acceptance criteria."
       >
         {(props) => (
           <textarea
             {...props}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="Context, requirements, and what success looks like…"
+            placeholder="Task description"
             rows={6}
             maxLength={16000}
             disabled={busy}
@@ -1503,7 +1496,7 @@ type ScheduleFormProps = {
 };
 export function ScheduleForm(props: ScheduleFormProps) {
   return (
-    <Modal title="Put this mission on a rhythm" close={props.close}>
+    <Modal title="Schedule" close={props.close}>
       <ScheduleFields {...props} />
     </Modal>
   );
@@ -2010,7 +2003,7 @@ type FiltersProps = {
 };
 export function Filters(props: FiltersProps) {
   return (
-    <Modal title="Find your focus" close={props.close}>
+    <Modal title="Filters" close={props.close}>
       <FilterFields {...props} />
     </Modal>
   );

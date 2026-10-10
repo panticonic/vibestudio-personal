@@ -217,14 +217,6 @@
   font-weight: 700;
   letter-spacing: -0.035em;
 }
-.mc-brand small {
-  display: block;
-  margin-top: 4px;
-  color: var(--gray-11);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-}
 .mc-brand-symbol {
   display: flex;
   align-items: center;
@@ -345,12 +337,6 @@
 .mc-sidebar .mc-add-project {
   color: var(--gray-11);
 }
-.mc-sidebar-empty {
-  padding: 5px 11px 10px;
-  color: var(--gray-11);
-  font-size: 12px;
-  line-height: 1.7;
-}
 .mc-saved-view {
   display: flex;
   align-items: center;
@@ -375,12 +361,6 @@
 .mc-sidebar-bottom strong {
   font-size: 13px;
   font-weight: 600;
-}
-.mc-sidebar-bottom small {
-  display: block;
-  margin-top: 2px;
-  color: var(--gray-11);
-  font-size: 11px;
 }
 .mc-sidebar-bottom .mc-icon {
   margin-left: auto;
@@ -453,13 +433,6 @@
 .mc-heading > div:first-child {
   min-width: 0;
 }
-.mc-eyebrow {
-  margin-bottom: 11px;
-  color: var(--accent-11);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.11em;
-}
 .mc-heading h1 {
   font-size: clamp(26px, 2.3vw, 34px);
   font-weight: 650;
@@ -531,11 +504,6 @@
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-.mc-stat small {
-  color: var(--gray-11);
-  font-size: 11px;
-  line-height: 1.5;
-}
 .mc-stat .mc-stat-icon {
   display: flex;
   align-items: center;
@@ -569,27 +537,11 @@
   background: var(--mc-surface);
   color: var(--accent-11);
 }
-.mc-command-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.mc-command-copy strong {
-  font-size: 14px;
-  font-weight: 600;
-}
-.mc-command-copy span {
-  color: var(--gray-11);
-  font-size: 12px;
-}
 .mc-command form {
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 210px;
-  max-width: 350px;
-  margin-left: auto;
   padding: 3px 5px;
   border: 1px solid var(--accent-a6);
   border-radius: 9px;
@@ -1059,12 +1011,6 @@
 .mc-column-empty span {
   font-size: 13px;
 }
-.mc-column-empty small {
-  display: block;
-  margin-top: 7px;
-  font-size: 12px;
-  line-height: 1.65;
-}
 
 /* Alternate views and honest loading/empty states. */
 .mc-list {
@@ -1520,12 +1466,6 @@
 .mc-no-sessions p {
   margin-top: 10px;
   font-size: 13px;
-}
-.mc-no-sessions small {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 1.7;
 }
 .mc-run {
   display: block;
@@ -2267,17 +2207,6 @@
   .mc-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .mc-command {
-    flex-wrap: wrap;
-  }
-  .mc-command-copy {
-    flex: 1;
-  }
-  .mc-command form {
-    flex-basis: 100%;
-    max-width: none;
-    margin-left: 0;
-  }
   .mc-detail {
     position: fixed;
     top: 0;
@@ -2303,10 +2232,6 @@
   .mc-brand {
     font-size: 14px;
     gap: 8px;
-  }
-  .mc-brand small {
-    font-size: 8px;
-    letter-spacing: 0.06em;
   }
   .mc-space-label {
     flex-wrap: wrap;
@@ -2375,9 +2300,6 @@
     padding: 0 8px 0 0;
     font-size: 13px;
   }
-  .mc-brand small {
-    display: none;
-  }
   .mc-brand-symbol {
     width: 32px;
     height: 32px;
@@ -2400,8 +2322,7 @@
     flex-shrink: 0;
   }
   .mc-space-label,
-  .mc-sidebar-heading,
-  .mc-sidebar-empty {
+  .mc-sidebar-heading {
     display: none;
   }
   .mc-sidebar-bottom {
@@ -2411,9 +2332,6 @@
     padding: 0 0 0 10px;
     border-top: 0;
     border-left: 1px solid var(--mc-line);
-  }
-  .mc-sidebar-bottom small {
-    display: none;
   }
   .mc-topbar {
     gap: 8px;
@@ -2443,14 +2361,8 @@
     width: 27px;
     height: 27px;
   }
-  .mc-stat small {
-    font-size: 11px;
-  }
   .mc-command {
     padding: 15px;
-  }
-  .mc-command-copy strong {
-    font-size: 13px;
   }
   .mc-command form {
     min-width: 0;

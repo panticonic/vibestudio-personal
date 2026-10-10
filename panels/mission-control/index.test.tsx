@@ -576,10 +576,8 @@ describe("Mission Control interaction ownership", () => {
         }) as HTMLInputElement
       ).disabled,
     ).toBe(true);
-    expect(screen.getByText("Gathering your missions…")).toBeTruthy();
-    expect(screen.queryByText("Your next chapter starts here.")).toBeNull();
-    expect(screen.queryByText("Your first project starts here.")).toBeNull();
-    expect(screen.queryByText("Save a useful slice of your work.")).toBeNull();
+    expect(screen.getByText("Loading…")).toBeTruthy();
+    expect(screen.queryByText("No projects")).toBeNull();
     fireEvent.click(commands[0]!);
     fireEvent.click(commands[1]!);
     fireEvent.click(commands[7]!);
@@ -597,7 +595,7 @@ describe("Mission Control interaction ownership", () => {
       fireEvent.click(screen.getByRole("button", { name: "New task" })),
     );
     expect(
-      screen.getByRole("dialog", { name: "Give your agent a clear mission" }),
+      screen.getByRole("dialog", { name: "New task" }),
     ).toBeTruthy();
   });
 
@@ -616,7 +614,7 @@ describe("Mission Control interaction ownership", () => {
     expect(screen.getByRole("alert").textContent).toContain(
       "Workspace source unavailable",
     );
-    expect(screen.getByText("Couldn’t load your missions.")).toBeTruthy();
+    expect(screen.getByText("Couldn’t load tasks.")).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: "New task" }) as HTMLButtonElement)
         .disabled,
@@ -914,7 +912,7 @@ describe("Mission Control interaction ownership", () => {
       within(inspector).getByRole("button", { name: "Start agent" }),
     );
     await screen.findByText(
-      "1 operation in progress. Planning stays available.",
+      "1 operation in progress.",
     );
     expect(
       (screen.getByRole("button", { name: "New task" }) as HTMLButtonElement)
@@ -928,12 +926,12 @@ describe("Mission Control interaction ownership", () => {
       ),
     );
     expect(
-      screen.getByText("1 operation in progress. Planning stays available."),
+      screen.getByText("1 operation in progress."),
     ).toBeTruthy();
     await act(async () => rejectLaunch(new Error("Launch approval denied")));
     await screen.findByText("Launch approval denied");
     expect(
-      screen.queryByText("1 operation in progress. Planning stays available."),
+      screen.queryByText("1 operation in progress."),
     ).toBeNull();
     expect(ready.status).toBe("ready");
   });

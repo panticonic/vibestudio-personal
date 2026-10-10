@@ -177,7 +177,7 @@ export function TaskCard({
           onClick={start}
           disabled={busy || startBusy || blocked}
           title={
-            blocked ? "Waiting for dependencies" : "Launch a real agent session"
+            blocked ? "Waiting for dependencies" : "Start agent"
           }
         >
           <Play size={12} />
@@ -594,7 +594,7 @@ export function NotesActivity({
           <textarea
             value={text}
             maxLength={4000}
-            placeholder="A decision, a blocker, or context for the next agent…"
+            placeholder="Add note…"
             rows={3}
             onChange={(event) => setText(event.target.value)}
           />
@@ -638,7 +638,7 @@ export function CommandPalette({
       .includes(query.toLocaleLowerCase()),
   );
   return (
-    <Modal title="Go anywhere. Make things happen." close={close}>
+    <Modal title="Commands" close={close}>
       <label className="mc-palette-search">
         <Search size={16} />
         <input

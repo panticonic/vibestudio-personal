@@ -679,13 +679,13 @@ export default function MissionControl() {
     {
       id: "new-task",
       label: "New task",
-      detail: "N · give an agent a clear mission",
+      detail: "N",
       run: () => newTask(),
     },
     {
       id: "new-project",
       label: "New project",
-      detail: "P · connect workspace repositories",
+      detail: "P",
       run: () => {
         setEditProject(undefined);
         setModal("project");
@@ -694,18 +694,17 @@ export default function MissionControl() {
     {
       id: "lead",
       label: "Talk to mission lead",
-      detail: "Turn flowing ideas into organized work",
       run: () => void openLead(),
     },
     {
       id: "search",
       label: "Search tasks",
-      detail: "/ · search the complete task store",
+      detail: "/",
       run: () => search.current?.focus(),
     },
     {
       id: "filters",
-      label: "Filter your work",
+      label: "Filters",
       detail: "Status, priority, due dates and blockers",
       run: () => setModal("filters"),
     },
@@ -752,7 +751,7 @@ export default function MissionControl() {
             <Orbit size={22} />
           </span>
           <span>
-            Mission Control<small>WORKSPACE COMMAND CENTER</small>
+            Mission Control
           </span>
         </a>
         <div className="mc-space-label">
@@ -800,7 +799,7 @@ export default function MissionControl() {
           }
         >
           <Inbox size={16} />
-          Idea inbox
+          Inbox
           <span>{!view.projectId ? (data?.counts.inbox ?? "—") : null}</span>
         </button>
         <button
@@ -821,7 +820,7 @@ export default function MissionControl() {
           }
         >
           <CircleCheck size={16} />
-          Needs your eyes
+          Needs review
           <span>{!view.projectId ? (data?.counts.review ?? "—") : null}</span>
         </button>
         <div className="mc-sidebar-heading">
@@ -862,9 +861,6 @@ export default function MissionControl() {
                 <ChevronRight size={13} />
               </button>
             ))}
-          {data && !data.projects.some((project) => !project.archived) && (
-            <p className="mc-sidebar-empty">Your first project starts here.</p>
-          )}
         </div>
         <button
           className="mc-nav mc-add-project"
@@ -921,16 +917,12 @@ export default function MissionControl() {
             </button>
           </div>
         ))}
-        {data && !data.views.length && (
-          <p className="mc-sidebar-empty">Save a useful slice of your work.</p>
-        )}
         <div className="mc-sidebar-bottom">
           <div className="mc-lead-avatar">
             <Sparkles size={18} />
           </div>
           <div>
             <strong>Mission lead</strong>
-            <small>Ideas → organized action</small>
           </div>
           <button
             className="mc-icon"
@@ -988,14 +980,8 @@ export default function MissionControl() {
         </header>
         <div className="mc-heading">
           <div>
-            <div className="mc-eyebrow">
-              A LITTLE CLARITY. A LOT OF MOMENTUM.
-            </div>
-            <h1>{project?.name ?? "Make room for what’s next."}</h1>
-            <p>
-              {project?.description ||
-                "A clear view of your ideas, your agents, and the work moving forward."}
-            </p>
+            <h1>{project?.name ?? "All missions"}</h1>
+            {project?.description && <p>{project.description}</p>}
             {project?.repos.length ? (
               <div className="mc-heading-repos">
                 <GitBranch size={13} />
@@ -1033,36 +1019,28 @@ export default function MissionControl() {
           {(
             [
               {
-                title: "In motion",
                 value: data?.counts.active,
                 icon: Play,
                 status: "active",
                 color: "violet",
-                sub: "Tasks underway",
               },
               {
-                title: "Ready for takeoff",
                 value: data?.counts.ready,
                 icon: CircleDot,
                 status: "ready",
                 color: "blue",
-                sub: "Clear next steps",
               },
               {
-                title: "Needs your eyes",
                 value: data?.counts.review,
                 icon: CircleCheck,
                 status: "review",
                 color: "amber",
-                sub: "Ready for a human touch",
               },
               {
-                title: "Mission complete",
                 value: data?.counts.done,
                 icon: Check,
                 status: "done",
                 color: "green",
-                sub: "Accepted and delivered",
               },
             ] as const
           ).map((stat) => (
@@ -1073,9 +1051,8 @@ export default function MissionControl() {
               onClick={() => setView({ ...view, statuses: [stat.status] })}
             >
               <div>
-                <span>{stat.title}</span>
+                <span>{STATUS_LABELS[stat.status]}</span>
                 <strong>{stat.value ?? "—"}</strong>
-                <small>{stat.sub}</small>
               </div>
               <span className={`mc-stat-icon mc-color-${stat.color}`}>
                 <stat.icon size={18} />
@@ -1087,10 +1064,6 @@ export default function MissionControl() {
           <div className="mc-command-icon">
             <Sparkles size={20} />
           </div>
-          <div className="mc-command-copy">
-            <strong>Big idea? Messy thought? Start here.</strong>
-            <span>Your mission lead turns a conversation into a plan.</span>
-          </div>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -1100,7 +1073,7 @@ export default function MissionControl() {
             <input
               aria-label="Idea for mission lead"
               disabled={!commandsReady}
-              placeholder="What’s on your mind?"
+              placeholder="Message mission lead…"
               value={idea}
               onChange={(event) => setIdea(event.target.value)}
               maxLength={16000}
@@ -1118,7 +1091,6 @@ export default function MissionControl() {
           <div className="mc-operation-status" role="status">
             <CircleDot size={14} />
             {pending.size} operation{pending.size === 1 ? "" : "s"} in progress.
-            Planning stays available.
           </div>
         )}
         {error && (
@@ -1170,7 +1142,7 @@ export default function MissionControl() {
             <h2>
               {view.statuses.length === 1
                 ? STATUS_LABELS[view.statuses[0]!]
-                : "The mission board"}
+                : "Tasks"}
             </h2>
             <span>
               {data?.total ?? "—"} {data?.total === 1 ? "task" : "tasks"}
@@ -1312,7 +1284,7 @@ export default function MissionControl() {
               disabled={!commandsReady}
               value={capture}
               maxLength={200}
-              placeholder="Capture a task without leaving your flow…"
+              placeholder="Task title…"
               onChange={(event) => setCapture(event.target.value)}
             />
             {!view.projectId && (
@@ -1466,14 +1438,9 @@ export default function MissionControl() {
             <Orbit size={35} />
             <h3>
               {error
-                ? "Couldn’t load your missions."
-                : "Gathering your missions…"}
+                ? "Couldn’t load tasks."
+                : "Loading…"}
             </h3>
-            <p>
-              {error
-                ? "Refresh to try loading this workspace again."
-                : "Loading your projects, tasks, and saved views."}
-            </p>
             {error && (
               <button
                 className="mc-primary"
@@ -1491,16 +1458,7 @@ export default function MissionControl() {
             <span className="mc-empty-orbit">
               <Orbit size={46} />
             </span>
-            <div className="mc-eyebrow">
-              EVERY GREAT MISSION STARTS WITH AN IDEA
-            </div>
-            <h3>Your next chapter starts here.</h3>
-            <p>
-              Create a project, connect its repositories, and give your first
-              task to an agent.
-              <br />
-              Or talk it through with your mission lead.
-            </p>
+            <h3>No projects</h3>
             <button
               className="mc-primary"
               disabled={!commandsReady}
@@ -1510,7 +1468,7 @@ export default function MissionControl() {
               }}
             >
               <Plus size={16} />
-              Create your first project
+              New project
             </button>
           </div>
         ) : view.layout === "board" ? (
@@ -1583,18 +1541,7 @@ export default function MissionControl() {
                     ))}
                   {!data.tasks.some((task) => task.status === status) && (
                     <div className="mc-column-empty">
-                      <span>Clear skies here.</span>
-                      <small>
-                        {status === "inbox"
-                          ? "Capture an idea to get started."
-                          : status === "ready"
-                            ? "Your next missions will land here."
-                            : status === "active"
-                              ? "Start an agent from a ready task."
-                              : status === "review"
-                                ? "Delivered work awaits your review."
-                                : "Good work deserves a landing spot."}
-                      </small>
+                      <span>No tasks</span>
                     </div>
                   )}
                 </div>
@@ -1626,11 +1573,6 @@ export default function MissionControl() {
             <div className="mc-empty">
               <Search size={30} />
               <h3>No tasks in this view.</h3>
-              <p>
-                {activeFilters || view.query
-                  ? "Try a different filter or clear this slice of your work."
-                  : "Capture a quick idea above or give your agent a clear mission."}
-              </p>
               <button
                 disabled={!commandsReady}
                 onClick={() =>
@@ -1769,7 +1711,7 @@ export default function MissionControl() {
               </div>
               <p className="mc-brief">
                 {detail.task.description ||
-                  "Add a brief so your agent knows what success looks like."}
+                  "No description"}
               </p>
               <div className="mc-tags">
                 {detail.task.tags.map((tag) => (
@@ -2013,9 +1955,6 @@ export default function MissionControl() {
                     {showConversation ? "Overview only" : "Show chat links"}
                   </button>
                 </div>
-                <p className="mc-help">
-                  Concise outcomes from your agent sessions.
-                </p>
                 {detail.runs.map((run) => (
                   <RunRow
                     key={run.runId}
@@ -2028,10 +1967,7 @@ export default function MissionControl() {
                 {!detail.runs.length && (
                   <div className="mc-no-sessions">
                     <Orbit size={23} />
-                    <p>Every mission has a first flight.</p>
-                    <small>
-                      Start an agent to see its progress and outcome here.
-                    </small>
+                    <p>No agent sessions</p>
                   </div>
                 )}
                 {detail.cursor && (
@@ -2118,7 +2054,7 @@ export default function MissionControl() {
                 <div>
                   <strong>{project.name}</strong>
                   <p className="mc-help">
-                    {project.description || "No goal added."}
+                    {project.description || "No description"}
                   </p>
                 </div>
                 <button
@@ -2241,7 +2177,7 @@ export default function MissionControl() {
       )}
       {modal === "save-view" && (
         <Modal
-          title={savedView ? "Manage saved view" : "Keep this perspective"}
+          title={savedView ? "Manage saved view" : "Save view"}
           close={() => setModal(null)}
         >
           <form
@@ -2273,7 +2209,7 @@ export default function MissionControl() {
                 required
                 maxLength={80}
                 defaultValue={savedView?.name}
-                placeholder="e.g. This week’s launch"
+                placeholder="View name"
               />
             </label>
             {savedView && (
@@ -2316,7 +2252,7 @@ export default function MissionControl() {
         <CommandPalette commands={commands} close={() => setModal(null)} />
       )}
       {modal === "shortcuts" && (
-        <Modal title="Stay in your flow" close={() => setModal(null)}>
+        <Modal title="Keyboard shortcuts" close={() => setModal(null)}>
           <dl className="mc-shortcuts">
             {[
               ["Ctrl / ⌘ K", "Open command menu"],
@@ -2336,7 +2272,7 @@ export default function MissionControl() {
             ))}
           </dl>
           <p className="mc-help">
-            Single-key shortcuts stay out of your way while typing. Select cards
+            Single-key shortcuts are disabled while typing. Select cards
             to reveal bulk actions. Drag cards to move them, or use the
             accessible Move task control.
           </p>
@@ -2346,7 +2282,7 @@ export default function MissionControl() {
         <Modal title={confirmation.title} close={() => setConfirmation(null)}>
           <p className="mc-confirm-copy">{confirmation.description}</p>
           <div className="mc-form-footer">
-            <button onClick={() => setConfirmation(null)}>Keep working</button>
+            <button onClick={() => setConfirmation(null)}>Cancel</button>
             <button
               className="mc-primary"
               disabled={busy}
