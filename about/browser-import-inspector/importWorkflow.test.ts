@@ -82,7 +82,12 @@ describe("browser import workflow", () => {
     vi.mocked(h.client.startSensitiveImport).mockImplementation(async (request) => {
       expect(h.checkpoint).toEqual({
         request,
-        status: { operationId: "sealed-1", state: "running", counts: [], version: "unobserved" },
+        status: {
+          operationId: "sealed-1",
+          state: "running",
+          counts: [],
+          version: "unobserved",
+        },
       });
       return {
         operationId: request.operationId,
@@ -111,6 +116,30 @@ describe("browser import workflow", () => {
       sensitiveStatus: { operationId: "sealed-1", state: "running" },
       errors: [],
     });
+  });
+
+  it("dispatches both starts before publishing their IDs to progress observers", async () => {
+    const h = harness();
+    vi.mocked(h.client.startImport).mockResolvedValue(publicJob);
+    vi.mocked(h.client.startSensitiveImport).mockResolvedValue({
+      operationId: "sealed-1",
+      state: "complete",
+      counts: [],
+      version: "v1",
+    });
+    const report = vi.fn(() => {
+      expect(h.client.startImport).toHaveBeenCalledOnce();
+      expect(h.client.startSensitiveImport).toHaveBeenCalledOnce();
+    });
+    await startSelectedImports(
+      h.client,
+      h.store,
+      publicSelection,
+      sensitiveSelection,
+      () => "sealed-1",
+      report
+    );
+    expect(report).toHaveBeenCalledWith({ publicOperationId: "sealed-1" });
   });
 
   it("waits for asynchronous checkpoint persistence before starting either import", async () => {
@@ -272,15 +301,24 @@ describe("browser import workflow", () => {
     await expect(observeSensitiveCheckpoint(h.client, h.store)).resolves.toMatchObject({
       state: "complete",
     });
-    expect(h.client.observeSensitiveImport).toHaveBeenLastCalledWith("sealed-1", undefined);
+    expect(h.client.observeSensitiveImport).toHaveBeenLastCalledWith("sealed-1", {
+      afterVersion: undefined,
+      signal: undefined,
+    });
     expect(h.checkpoint?.status.state).toBe("complete");
     h.store.write({
       request: { ...sensitiveSelection, operationId: "sealed-1" },
-      status: { operationId: "sealed-1", state: "running", counts: [], version: "v2" },
+      status: {
+        operationId: "sealed-1",
+        state: "running",
+        counts: [],
+        version: "v2",
+      },
     });
     await observeSensitiveCheckpoint(h.client, h.store, "v2");
     expect(h.client.observeSensitiveImport).toHaveBeenLastCalledWith("sealed-1", {
       afterVersion: "v2",
+      signal: undefined,
     });
   });
 
@@ -288,7 +326,12 @@ describe("browser import workflow", () => {
     const h = harness();
     h.store.write({
       request: { ...sensitiveSelection, operationId: "sealed-1" },
-      status: { operationId: "sealed-1", state: "running", counts: [], version: "v1" },
+      status: {
+        operationId: "sealed-1",
+        state: "running",
+        counts: [],
+        version: "v1",
+      },
     });
     vi.mocked(h.client.cancelImport).mockRejectedValue(new Error("public failed"));
     vi.mocked(h.client.cancelSensitiveImport).mockResolvedValue({
@@ -351,11 +394,46 @@ describe("browser import workflow", () => {
       expect(h.checkpoint?.status.counts).toEqual(status.counts);
     }
   );
+  it("does not write a checkpoint after its observation has been cancelled", async () => {
+    const h = harness();
+    const checkpoint = {
+      request: { ...sensitiveSelection, operationId: "sealed-1" },
+      status: {
+        operationId: "sealed-1",
+        state: "running" as const,
+        counts: [],
+        version: "v1",
+      },
+    };
+    h.store.write(checkpoint);
+    let finish!: (status: typeof checkpoint.status) => void;
+    vi.mocked(h.client.observeSensitiveImport).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const observation = new AbortController();
+    const waiting = observeSensitiveCheckpoint(h.client, h.store, "v1", observation.signal);
+    expect(h.client.observeSensitiveImport).toHaveBeenCalledWith("sealed-1", {
+      afterVersion: "v1",
+      signal: observation.signal,
+    });
+    observation.abort(new Error("Source changed"));
+    finish({ ...checkpoint.status, version: "v2" });
+    await expect(waiting).rejects.toThrow("Source changed");
+    expect(h.checkpoint).toEqual(checkpoint);
+  });
+
   it("discards a late observation after a different import takes ownership of the checkpoint", async () => {
     const h = harness();
     const first = {
       request: { ...sensitiveSelection, operationId: "first" },
-      status: { operationId: "first", state: "running" as const, counts: [], version: "v1" },
+      status: {
+        operationId: "first",
+        state: "running" as const,
+        counts: [],
+        version: "v1",
+      },
     };
     h.store.write(first);
     let finish!: (status: typeof first.status) => void;
@@ -367,7 +445,12 @@ describe("browser import workflow", () => {
     const observation = observeSensitiveCheckpoint(h.client, h.store);
     const second = {
       request: { ...sensitiveSelection, operationId: "second" },
-      status: { operationId: "second", state: "running" as const, counts: [], version: "v1" },
+      status: {
+        operationId: "second",
+        state: "running" as const,
+        counts: [],
+        version: "v1",
+      },
     };
     h.store.write(second);
     finish(first.status);

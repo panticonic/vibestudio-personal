@@ -57,16 +57,20 @@ export async function startSelectedImports(
     ? previous?.request.operationId === pending.operationId
       ? previous.status
       : // Local placeholder until the host answers; its version is never sent back.
-        { operationId: pending.operationId, state: "running", counts: [], version: "unobserved" }
+        {
+          operationId: pending.operationId,
+          state: "running",
+          counts: [],
+          version: "unobserved",
+        }
     : null;
   if (pending && pendingStatus) {
     await checkpointStore.write({ request: pending, status: pendingStatus });
   }
 
   const publicOperationId = publicSelection ? createOperationId() : null;
-  if (publicOperationId) report({ publicOperationId });
-  if (pendingStatus) report({ sensitiveStatus: pendingStatus });
-  const [publicResult, sensitiveResult] = await Promise.allSettled([
+  // Dispatch each initiating call before publishing IDs to progress observers.
+  const starting = Promise.allSettled([
     publicSelection && publicOperationId
       ? client.startImport(publicSelection, publicOperationId)
       : Promise.resolve(null),
@@ -78,6 +82,9 @@ export async function startSelectedImports(
         })
       : Promise.resolve(null),
   ]);
+  if (publicOperationId) report({ publicOperationId });
+  if (pendingStatus) report({ sensitiveStatus: pendingStatus });
+  const [publicResult, sensitiveResult] = await starting;
   const status =
     sensitiveResult.status === "fulfilled"
       ? sensitiveResult.value
@@ -101,7 +108,8 @@ export async function startSelectedImports(
 export async function observeSensitiveCheckpoint(
   client: BrowserDataClient,
   checkpointStore: SensitiveCheckpointStore,
-  afterVersion?: string
+  afterVersion?: string,
+  signal?: AbortSignal
 ): Promise<SensitiveBrowserImportStatus | null> {
   const checkpoint = checkpointStore.read();
   if (
@@ -110,10 +118,11 @@ export async function observeSensitiveCheckpoint(
   ) {
     return checkpoint?.status ?? null;
   }
-  const status = await client.observeSensitiveImport(
-    checkpoint.request.operationId,
-    afterVersion === undefined ? undefined : { afterVersion }
-  );
+  const status = await client.observeSensitiveImport(checkpoint.request.operationId, {
+    afterVersion,
+    signal,
+  });
+  signal?.throwIfAborted();
   if (checkpointStore.read()?.request.operationId !== checkpoint.request.operationId) return null;
   await checkpointStore.write({ request: checkpoint.request, status });
   return status;

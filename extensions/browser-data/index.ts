@@ -17,6 +17,7 @@ import {
 import {
   BROWSER_ENVIRONMENT_KEY_VERSION,
   BrowserImportCoordinator,
+  BrowserImportAdmissions,
   RemoteBrowserImportProvider,
   type BrowserEnvironmentIdentity,
   type BrowserImportAcquisitionOption,
@@ -157,22 +158,33 @@ export async function activate(ctx: ExtensionContextLike) {
   const sourceBrowsers = new Map<string, string>();
   const sourceKey = (hostId: string, sourceId: string) => `${hostId.length}:${hostId}${sourceId}`;
 
-  const currentIdentity = async (): Promise<{
+  const publicAdmissions = new BrowserImportAdmissions<{
     identity: BrowserEnvironmentIdentity;
-    dataTargetId: string;
-  }> => {
-    const invocation = ctx.invocation.current();
-    const userId = invocation?.caller.userId?.trim();
-    const workspaceId = invocation?.caller.workspaceId?.trim();
+    starting: Promise<ImportJobSnapshot>;
+  }>();
+  const protectedAdmissions = new BrowserImportAdmissions<SensitiveBrowserImportStatus>();
+  const currentCaller = () => {
+    const caller = ctx.invocation.current()?.caller;
+    const userId = caller?.userId?.trim();
+    const workspaceId = caller?.workspaceId?.trim();
     if (!userId || !workspaceId || userId === "system") {
       throw Object.assign(new Error("Browser data requires a verified user and workspace"), {
         code: "ENOCALLER",
       });
     }
-    const cacheKey = `${workspaceId}\x00${userId}`;
+    return browserEnvironmentKeyMaterial(workspaceId, userId);
+  };
+  const admissionKey = (operationId: string) =>
+    JSON.stringify([currentCaller().material, operationId]);
+
+  const currentIdentity = async (): Promise<{
+    identity: BrowserEnvironmentIdentity;
+    dataTargetId: string;
+  }> => {
+    const normalized = currentCaller();
+    const cacheKey = normalized.material;
     let pending = resolvedStores.get(cacheKey);
     if (!pending) {
-      const normalized = browserEnvironmentKeyMaterial(workspaceId, userId);
       const environmentKey = `${BROWSER_ENVIRONMENT_KEY_VERSION}_${createHash("sha256")
         .update(normalized.material)
         .digest("base64url")}`;
@@ -314,12 +326,12 @@ export async function activate(ctx: ExtensionContextLike) {
       }
       importHosts.set(identity.environmentKey, current);
       return summaries;
-    } catch {
+    } catch (error) {
       for (const registration of importHosts.get(identity.environmentKey)?.values() ?? []) {
         registration.unregister();
       }
       importHosts.delete(identity.environmentKey);
-      return [];
+      throw error;
     }
   };
 
@@ -441,32 +453,49 @@ export async function activate(ctx: ExtensionContextLike) {
         ]);
       }
     ),
-    startImport: guarded("startImport", async (selection: BrowserImportSelection, operationId: string) => {
-      const { identity } = await currentIdentity();
-      await ensureImportHosts(identity);
-      assertNonSensitiveImportSelection(selection);
-      const started = await coordinator.start(identity, selection, operationId, ctx.invocation.signal?.() ?? undefined);
-      // The initiating RPC owns the import's authority through its final batch.
-      // The caller knows the operation ID and can observe/cancel while awaiting this result.
-      const completed = await coordinator.waitForJob(identity, started.jobId);
-      reportImportHealth(ctx, completed);
-      ctx.emit("import-complete", completed);
-      return completed;
-    }),
+    startImport: guarded(
+      "startImport",
+      async (selection: BrowserImportSelection, operationId: string) => {
+        const signal = ctx.invocation.signal?.() ?? undefined;
+        const key = admissionKey(operationId);
+        const { identity, starting } = await publicAdmissions.run(
+          key,
+          JSON.stringify(selection),
+          async () => {
+            const { identity } = await currentIdentity();
+            await ensureImportHosts(identity);
+            assertNonSensitiveImportSelection(selection);
+            const starting = coordinator.start(identity, selection, operationId, signal);
+            return { identity, starting };
+          }
+        );
+        const started = await starting;
+        // The initiating RPC owns the import's authority through its final batch.
+        // The caller knows the operation ID and can observe/cancel while awaiting this result.
+        const completed = await coordinator.waitForJob(identity, started.jobId);
+        reportImportHealth(ctx, completed);
+        ctx.emit("import-complete", completed);
+        return completed;
+      }
+    ),
     startSensitiveImport: guarded(
       "startSensitiveImport",
       async (request: SensitiveBrowserImportRequest): Promise<SensitiveBrowserImportStatus> => {
-        const { identity } = await currentIdentity();
-        const hosts = await ensureImportHosts(identity);
-        assertSelectedImportHost(hosts, request.hostId);
-        assertSensitiveImportRequest(request);
-        return ctx.rpc.call<SensitiveBrowserImportStatus>(
-          "main",
-          "browserEnvironment.startSensitiveImport",
-          request.hostId,
-          request.sourceId,
-          request.dataTypes,
-          request.operationId
+        return protectedAdmissions.run(
+          admissionKey(request.operationId),
+          JSON.stringify(request),
+          async () => {
+            const { identity } = await currentIdentity();
+            const hosts = await ensureImportHosts(identity);
+            assertSelectedImportHost(hosts, request.hostId);
+            assertSensitiveImportRequest(request);
+            return ctx.rpc.call("main", mainRpcMethods["browserEnvironment.startSensitiveImport"], [
+              request.hostId,
+              request.sourceId,
+              request.dataTypes,
+              request.operationId,
+            ]);
+          }
         );
       }
     ),
@@ -476,19 +505,38 @@ export async function activate(ctx: ExtensionContextLike) {
         operationId: string,
         options?: { afterVersion?: string }
       ): Promise<SensitiveBrowserImportStatus> => {
+        const key = admissionKey(operationId);
+        const signal = ctx.invocation.signal?.() ?? undefined;
+        await protectedAdmissions.wait(key, signal);
         const { identity } = await currentIdentity();
         await ensureImportHosts(identity);
         assertSensitiveImportOperationId(operationId);
         return options?.afterVersion === undefined
-          ? ctx.rpc.call("main", "browserEnvironment.observeSensitiveImport", operationId)
-          : ctx.rpc.call("main", "browserEnvironment.observeSensitiveImport", operationId, {
-              afterVersion: options.afterVersion,
-            });
+          ? ctx.rpc.call(
+              "main",
+              mainRpcMethods["browserEnvironment.observeSensitiveImport"],
+              [operationId],
+              { signal }
+            )
+          : ctx.rpc.call(
+              "main",
+              mainRpcMethods["browserEnvironment.observeSensitiveImport"],
+              [
+                operationId,
+                {
+                  afterVersion: options.afterVersion,
+                },
+              ],
+              { signal }
+            );
       }
     ),
     cancelSensitiveImport: guarded(
       "cancelSensitiveImport",
       async (operationId: string): Promise<SensitiveBrowserImportStatus> => {
+        const key = admissionKey(operationId);
+        const signal = ctx.invocation.signal?.() ?? undefined;
+        await protectedAdmissions.wait(key, signal);
         const { identity } = await currentIdentity();
         await ensureImportHosts(identity);
         assertSensitiveImportOperationId(operationId);
@@ -528,16 +576,20 @@ export async function activate(ctx: ExtensionContextLike) {
       const persisted = await callStore("getImportJob", jobId);
       return persisted ? orphanedImportJob(persisted) : null;
     }),
-    observeImportJob: guarded("observeImportJob", async (
-      jobId: string, options?: { afterVersion?: string }
-    ) => {
-      const { identity } = await currentIdentity();
-      if (!jobId || jobId.length > 200) throw new Error("Import operation ID is required");
-      return coordinator.observeJob(identity, jobId, {
-        afterVersion: options?.afterVersion,
-        signal: ctx.invocation.signal?.() ?? undefined,
-      });
-    }),
+    observeImportJob: guarded(
+      "observeImportJob",
+      async (jobId: string, options?: { afterVersion?: string }) => {
+        const key = admissionKey(jobId);
+        const signal = ctx.invocation.signal?.() ?? undefined;
+        await publicAdmissions.wait(key, signal);
+        const { identity } = await currentIdentity();
+        if (!jobId || jobId.length > 200) throw new Error("Import operation ID is required");
+        return coordinator.observeJob(identity, jobId, {
+          afterVersion: options?.afterVersion,
+          signal: ctx.invocation.signal?.() ?? undefined,
+        });
+      }
+    ),
     listImportJobs: guarded("listImportJobs", async () => {
       const { identity } = await currentIdentity();
       const live = coordinator.listJobs(identity);

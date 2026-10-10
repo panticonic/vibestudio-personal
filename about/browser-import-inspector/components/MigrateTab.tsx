@@ -136,7 +136,8 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
       let afterVersion: string | undefined;
       while (!observation.signal.aborted) {
         const next = await browserData.observeImportJob(jobId, {
-          afterVersion, signal: observation.signal,
+          afterVersion,
+          signal: observation.signal,
         });
         if (observation.signal.aborted) return;
         setJob(next.job);
@@ -144,9 +145,10 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
         afterVersion = next.version;
       }
     })().catch((cause) => {
-      if (!observation.signal.aborted) setError(
-        `Lost contact with the import while it was running: ${classifyError(cause).message}`
-      );
+      if (!observation.signal.aborted)
+        setError(
+          `Lost contact with the import while it was running: ${classifyError(cause).message}`
+        );
     });
     return () => observation.abort();
   }, [publicOperationId, job?.jobId]);
@@ -154,31 +156,32 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
   useEffect(() => {
     setObservationError(null);
     if (!sensitiveStatus || !["running", "applying"].includes(sensitiveStatus.state)) return;
-    let active = true;
+    const observation = new AbortController();
     const observe = async () => {
       // The first read returns the host's current status; each later read
       // waits on the version the host returned until the import changes.
       let afterVersion: string | undefined;
-      while (active) {
+      while (!observation.signal.aborted) {
         const status = await observeSensitiveCheckpoint(
           browserData,
           sensitiveCheckpointStore,
-          afterVersion
+          afterVersion,
+          observation.signal
         );
-        if (!active || !status) return;
+        if (observation.signal.aborted || !status) return;
         setSensitiveStatus(status);
         if (!["running", "applying"].includes(status.state)) return;
         afterVersion = status.version;
       }
     };
     observe().catch((cause) => {
-      if (!active) return;
+      if (observation.signal.aborted) return;
       setObservationError(
         `Could not read protected import progress: ${classifyError(cause).message}. Your saved data is kept; retry to resume progress.`
       );
     });
     return () => {
-      active = false;
+      observation.abort();
     };
   }, [sensitiveStatus?.operationId, sensitiveStatus?.state, observationAttempt]);
 
@@ -578,7 +581,7 @@ async function writeSensitiveImportCheckpoint(
   await panel.stateArgs.patch({
     sensitiveImport: createJsonMergePatch(
       panel.stateArgs.get<{ sensitiveImport?: SensitiveImportCheckpoint }>().sensitiveImport ?? {},
-      checkpoint,
+      checkpoint
     ),
   });
 }

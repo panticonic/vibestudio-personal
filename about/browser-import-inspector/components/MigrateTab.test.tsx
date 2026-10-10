@@ -10,8 +10,10 @@ const fixtures = vi.hoisted(() => ({
     startImport: vi.fn(),
     observeImportJob: vi.fn(),
     cancelImport: vi.fn(),
+    observeSensitiveImport: vi.fn(),
+    cancelSensitiveImport: vi.fn(),
   },
-  stateArgs: { get: () => ({}), patch: vi.fn(async () => undefined) },
+  stateArgs: { get: vi.fn(() => ({})), patch: vi.fn(async () => undefined) },
 }));
 
 vi.mock("@workspace/runtime", () => ({
@@ -110,6 +112,9 @@ async function startImport(view = render(<MigrateTab selection={selection} now={
 describe("MigrateTab public import observation", () => {
   beforeEach(() => {
     observations.length = 0;
+    fixtures.stateArgs.get.mockReset().mockReturnValue({});
+    fixtures.browserData.observeSensitiveImport.mockReset();
+    fixtures.browserData.cancelSensitiveImport.mockReset();
     fixtures.browserData.listImportJobs.mockReset().mockResolvedValue([]);
     fixtures.browserData.startImport.mockReset().mockResolvedValue(snapshot("reading"));
     fixtures.browserData.cancelImport.mockReset().mockResolvedValue(undefined);
@@ -152,17 +157,17 @@ describe("MigrateTab public import observation", () => {
 
     await act(async () => resolveNext(snapshot("reading"), "published-1"));
     await waitFor(() =>
-      expect(observations.some((item) => item.afterVersion === "published-1" && !item.signal.aborted)).toBe(
-        true
-      )
+      expect(
+        observations.some((item) => item.afterVersion === "published-1" && !item.signal.aborted)
+      ).toBe(true)
     );
 
     await act(async () => resolveNext(snapshot("reading", 12), "published-2"));
     await screen.findByText("12 of 20 processed");
     await waitFor(() =>
-      expect(observations.some((item) => item.afterVersion === "published-2" && !item.signal.aborted)).toBe(
-        true
-      )
+      expect(
+        observations.some((item) => item.afterVersion === "published-2" && !item.signal.aborted)
+      ).toBe(true)
     );
 
     await act(async () => resolveNext(snapshot("complete", 20), "published-3"));
@@ -183,6 +188,64 @@ describe("MigrateTab public import observation", () => {
     expect(active!.signal.aborted).toBe(true);
     expect(fixtures.browserData.cancelImport).not.toHaveBeenCalled();
   });
+
+  it.each(["unmount", "change source"])(
+    "releases a protected progress wait on %s",
+    async (action) => {
+      const protectedSelection = {
+        ...selection,
+        source: {
+          ...selection.source,
+          supportedDataTypes: ["cookies" as const],
+        },
+      };
+      const status = {
+        operationId: "protected-1",
+        state: "running",
+        counts: [],
+        version: "v1",
+      };
+      fixtures.stateArgs.get.mockReturnValue({
+        sensitiveImport: {
+          request: {
+            hostId: selection.host.hostId,
+            sourceId: selection.source.sourceId,
+            dataTypes: ["cookies"],
+            operationId: status.operationId,
+          },
+          status,
+        },
+      });
+      let pendingSignal: AbortSignal | undefined;
+      fixtures.browserData.observeSensitiveImport.mockImplementation((_id, options) => {
+        if (!options.afterVersion) return Promise.resolve(status);
+        pendingSignal = options.signal;
+        return new Promise((_resolve, reject) => {
+          options.signal.addEventListener("abort", () => reject(options.signal.reason), {
+            once: true,
+          });
+        });
+      });
+      const view = render(<MigrateTab selection={protectedSelection} now={500} />);
+      await waitFor(() => expect(pendingSignal).toBeDefined());
+      if (action === "unmount") view.unmount();
+      else
+        view.rerender(
+          <MigrateTab
+            selection={{
+              ...protectedSelection,
+              source: {
+                ...protectedSelection.source,
+                sourceId: "other-source",
+              },
+            }}
+            now={500}
+          />
+        );
+      await waitFor(() => expect(pendingSignal!.aborted).toBe(true));
+      expect(fixtures.browserData.cancelSensitiveImport).not.toHaveBeenCalled();
+    }
+  );
 
   it("shows provider observation failures while leaving the import uncancelled", async () => {
     await startImport();

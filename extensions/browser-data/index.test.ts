@@ -665,6 +665,105 @@ describe("@workspace-extensions/browser-data", () => {
     );
   });
 
+  it.each(["public", "protected"])(
+    "waits for %s admission through host discovery",
+    async (kind) => {
+      const { ctx, rpcCall } = makeContext();
+      const original = rpcCall.getMockImplementation()!;
+      let release!: () => void;
+      const discovery = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      rpcCall.mockImplementation(async (target, method, ...args) => {
+        if (method === "browserEnvironment.listImportHosts") await discovery;
+        if (
+          method === "browserEnvironment.startSensitiveImport" ||
+          method === "browserEnvironment.observeSensitiveImport"
+        )
+          return {
+            operationId: String(method.endsWith("startSensitiveImport") ? args[3] : args[0]),
+            state: "complete",
+            counts: [],
+            version: "v1",
+          };
+        return original(target, method, ...args);
+      });
+      const api = (await activate(ctx as never)).providerContracts.browserData;
+      const id = `pending-${kind}`;
+      const starting =
+        kind === "public"
+          ? api.startImport(
+              {
+                hostId: "server:workspace-1",
+                sourceId: "opaque-chrome",
+                dataTypes: ["bookmarks"],
+              },
+              id
+            )
+          : api.startSensitiveImport({
+              hostId: "server:workspace-1",
+              sourceId: "opaque-chrome",
+              dataTypes: ["passwords"],
+              operationId: id,
+            });
+      const observing =
+        kind === "public" ? api.observeImportJob(id) : api.observeSensitiveImport(id);
+      let settled = false;
+      void observing.then(
+        () => {
+          settled = true;
+        },
+        () => {
+          settled = true;
+        }
+      );
+      await vi.waitFor(() =>
+        expect(rpcCall).toHaveBeenCalledWith("main", "browserEnvironment.listImportHosts")
+      );
+      expect(settled).toBe(false);
+      release();
+      await starting;
+      await expect(observing).resolves.toBeDefined();
+    }
+  );
+
+  it("propagates host admission failure to the start and its observer", async () => {
+    const { ctx, rpcCall } = makeContext();
+    const original = rpcCall.getMockImplementation()!;
+    const failure = new Error("Device disconnected during discovery");
+    let fail!: (error: Error) => void;
+    const discovery = new Promise<void>((_resolve, reject) => {
+      fail = reject;
+    });
+    rpcCall.mockImplementation(async (target, method, ...args) => {
+      if (method === "browserEnvironment.listImportHosts") await discovery;
+      if (
+        method === "browserEnvironment.startSensitiveImport" ||
+        method === "browserEnvironment.observeSensitiveImport"
+      )
+        return {
+          operationId: String(method.endsWith("startSensitiveImport") ? args[3] : args[0]),
+          state: "complete",
+          counts: [],
+          version: "v1",
+        };
+      return original(target, method, ...args);
+    });
+    const api = (await activate(ctx as never)).providerContracts.browserData;
+    const starting = api.startImport(
+      {
+        hostId: "server:workspace-1",
+        sourceId: "opaque-chrome",
+        dataTypes: ["bookmarks"],
+      },
+      "failed-admission"
+    );
+    const observing = api.observeImportJob("failed-admission");
+    fail(failure);
+    await expect(starting).rejects.toBe(failure);
+    await expect(observing).rejects.toBe(failure);
+  });
+
   it("stores imports as idempotent source-scoped batches", async () => {
     const { ctx, rpcCall, emit, health } = makeContext();
     const api = (await activate(ctx as never)).providerContracts.browserData;
