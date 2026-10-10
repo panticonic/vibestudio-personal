@@ -506,7 +506,7 @@ export class BrowserDataDO extends DurableObjectBase {
       .toArray();
   }
 
-  protected override afterSchemaReady(): void {
+  protected override restoreActivationState(): undefined {
     // Seed choices once, preserving an imported or explicitly selected default.
     const hasDefault =
       this.sql
