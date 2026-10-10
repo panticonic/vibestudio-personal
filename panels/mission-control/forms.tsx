@@ -1,4 +1,4 @@
-import { missionControlRpcMethods } from "@workspace-workers/mission-control-store/contract";
+import { missionControlRpcMethods } from "@workspace/mission-control/rpc-contract";
 import {
   createContext,
   useCallback,

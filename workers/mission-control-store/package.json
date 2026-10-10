@@ -133,7 +133,6 @@
     "@vibestudio/rpc": "workspace:*"
   },
   "exports": {
-    ".": "./index.ts",
-    "./contract": "./contract.ts"
+    ".": "./index.ts"
   }
 }

@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./rpc-contract": "./rpc-contract.ts"
   },
   "dependencies": {
     "zod": "^3.25.76",
+    "@vibestudio/shared": "workspace:*",
     "@vibestudio/workspace-contracts": "workspace:*"
   },
   "devDependencies": {

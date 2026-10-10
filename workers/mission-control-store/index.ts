@@ -1,5 +1,5 @@
 import { missionsRpcMethods } from "@vibestudio/service-schemas/missions";
-import { missionAgentRpcMethods } from "@workspace-workers/mission-agent/contract";
+import { missionAgentRpcMethods } from "@workspace/mission-control/rpc-contract";
 import { mainRpcMethods } from "@vibestudio/service-schemas/mainRpc";
 import {
   DurableObjectBase,
@@ -29,6 +29,7 @@ import {
   type DependencySummary,
   dueDayBounds,
 } from "@workspace/mission-control";
+import type { MissionControlStoreRpc } from "@workspace/mission-control/rpc-contract";
 import { launchAgentIntoChannel } from "@workspace/agentic-core/agent-launch";
 import { LEAD_INSTRUCTIONS } from "@workspace/mission-control";
 import { triggerSchema } from "@vibestudio/workspace-contracts/automations";
@@ -68,7 +69,10 @@ function recordFields(task: Task) {
 }
 
 /** Shared domain state. Conversations and run outcomes belong to MissionsDO. */
-export class MissionControlStore extends DurableObjectBase {
+export class MissionControlStore
+  extends DurableObjectBase
+  implements MissionControlStoreRpc
+{
   static override schemaVersion = 2;
   private readonly executionCommands = new Map<string, Promise<void>>();
   private readonly archivingProjects = new Set<string>();

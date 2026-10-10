@@ -305,7 +305,6 @@
     "vitest": "^3.2.7"
   },
   "exports": {
-    ".": "./index.ts",
-    "./contract": "./contract.ts"
+    ".": "./index.ts"
   }
 }

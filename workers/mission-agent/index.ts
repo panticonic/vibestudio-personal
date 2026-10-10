@@ -1,4 +1,4 @@
-import { missionControlRpcMethods } from "@workspace-workers/mission-control-store/contract";
+import { missionControlRpcMethods } from "@workspace/mission-control/rpc-contract";
 import { createMissionsClient } from "@vibestudio/service-schemas/clients/missionsClient";
 import { AiChatWorker } from "@workspace-workers/agent-worker";
 import {
@@ -12,6 +12,7 @@ import { copyJson } from "@panticonic/pi-chord";
 import type { ToolRegistration } from "@panticonic/pi-durable";
 import { authorNativeTool } from "@workspace/harness";
 import { PROTOCOL, type Automation } from "@workspace/mission-control";
+import type { MissionAgentRpc } from "@workspace/mission-control/rpc-contract";
 
 import { missionCharterSchema } from "@vibestudio/service-schemas/missions";
 import { triggerSchema } from "@vibestudio/workspace-contracts/automations";
@@ -47,7 +48,7 @@ const parameters = Type.Object(
 );
 
 /** A normal chat vessel with one app-shaped tool; no alternate agent loop. */
-export class MissionAgent extends AiChatWorker {
+export class MissionAgent extends AiChatWorker implements MissionAgentRpc {
   protected override async getTools(
     channelId: string,
   ): Promise<ToolRegistration[]> {
