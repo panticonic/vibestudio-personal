@@ -2,7 +2,6 @@ import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
 import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RpcClient } from "@vibestudio/rpc";
-import type { AgentToolExecutionContext } from "@workspace/agentic-do";
 import { createNativeVesselTestDO } from "@workspace/agentic-do/testing/native-vessel";
 import { executeTool } from "@workspace/harness/testing/native-tool";
 import { MissionAgent } from "./index.js";
@@ -56,15 +55,16 @@ class TestMissionAgent extends MissionAgent {
     throw new Error(`Unexpected execution RPC ${method}`);
   });
   protected override get rpc(): RpcClient { return schemaRpcMock({ call: this.remote }) as unknown as RpcClient; }
-  protected override async bindNativeToolExecution(): Promise<AgentToolExecutionContext> {
-    return { invocationId: "test-invocation", commandId: "test-command", rpc: schemaRpcMock({ call: this.boundRemote }) as unknown as RpcClient };
+  protected override async bindNativeToolExecution() {
+    const rpc = schemaRpcMock({ call: this.boundRemote }) as unknown as RpcClient;
+    return { invocationId: "test-invocation", commandId: "test-command", rpc, cleanupRpc: rpc };
   }
   configureSubscription(): void {
     this.sql.exec(
       `INSERT INTO subscriptions
-         (channel_id, context_id, revision, subscribed_at, config, relationship_json, participant_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      "mission-channel", "mission-context", 1, Date.now(), "{}", "{}", "agent:mission-lead",
+         (channel_id, channel_ref_json, context_id, revision, subscribed_at, config, relationship_json, participant_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      "mission-channel", JSON.stringify({ source: "workers/pubsub-channel", className: "PubSubChannel", objectKey: "mission-channel" }), "mission-context", 1, Date.now(), "{}", "{}", "agent:mission-lead",
     );
   }
   tools() { return this.getTools("mission-channel"); }
@@ -73,8 +73,8 @@ class TestMissionAgent extends MissionAgent {
 async function agent() {
   const fixture = await createNativeVesselTestDO(TestMissionAgent, {
     WORKER_SOURCE: "workers/mission-agent", WORKER_CLASS_NAME: "MissionAgent",
-    WORKER_SOURCE_REF: `state:${"b".repeat(64)}`, WORKER_EFFECTIVE_VERSION: "a".repeat(64), __objectKey: "task-agent",
-  });
+    __objectKey: "task-agent",
+  }, { props: { stateArgs: null, image: { sourceRef: `state:${"b".repeat(64)}`, effectiveVersion: "a".repeat(64) } } });
   databases.add(fixture.db);
   fixture.instance.configureSubscription();
   return fixture.instance;

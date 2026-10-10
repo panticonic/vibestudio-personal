@@ -5,7 +5,6 @@ import type {
   ToolRegistration,
   ToolExecutionApi,
 } from "@panticonic/pi-durable";
-import type { AgentToolExecutionContext } from "@workspace/agentic-do";
 import { executeTool } from "@workspace/harness/testing/native-tool";
 import type { RpcClient } from "@vibestudio/rpc";
 import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
@@ -31,12 +30,13 @@ class TestExplorerAgentWorker extends ExplorerAgentWorker {
   private toolRpc?: RpcClient;
   protected override async bindNativeToolExecution(
     api: ToolExecutionApi,
-  ): Promise<AgentToolExecutionContext> {
+  ) {
     if (!this.toolRpc) throw new Error("Missing effect unit-test RPC fixture");
     return {
       invocationId: api.callId,
       commandId: `command:${api.callId}`,
       rpc: this.toolRpc,
+      cleanupRpc: this.toolRpc,
     };
   }
   async reportTool(rpc: RpcClient): Promise<ToolRegistration> {
@@ -49,8 +49,9 @@ class TestExplorerAgentWorker extends ExplorerAgentWorker {
   }
   prepareChannel(): void {
     this.sql.exec(`INSERT INTO subscriptions
-         (channel_id, context_id, revision, subscribed_at, config, relationship_json, participant_id)
-       VALUES ('ch-1', 'ctx-1', 1, 1, NULL, '{}', 'agent:explorer')`);
+         (channel_id, channel_ref_json, context_id, revision, subscribed_at, config, relationship_json, participant_id)
+       VALUES ('ch-1', ?, 'ctx-1', 1, 1, NULL, '{}', 'agent:explorer')`,
+       JSON.stringify({ source: "workers/pubsub-channel", className: "PubSubChannel", objectKey: "ch-1" }));
   }
   findingCount(): number {
     return Number(
@@ -80,6 +81,7 @@ afterEach(async () => {
     try {
       const released = await resource.instance.releaseForLifecycle({
         epoch: "test-end",
+        phase: "release",
         mode: "suspend",
         reason: "test",
         deadlineMs: 0,

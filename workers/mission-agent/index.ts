@@ -71,7 +71,8 @@ Always read before editing, preserve independent fields, and report original fai
             .parse(args.operation);
           const service = createDurableObjectServiceClient(
             execution?.rpc ?? this.rpc,
-            PROTOCOL, missionControlRpcMethods,
+            PROTOCOL,
+            missionControlRpcMethods,
           );
           const result = await service.call(operation, args.input ?? {});
           return {
@@ -117,8 +118,8 @@ Always read before editing, preserve independent fields, and report original fai
         kind: "agent",
         image: {
           source: this.env["WORKER_SOURCE"],
-          ref: this.env["WORKER_SOURCE_REF"],
-          effectiveVersion: this.env["WORKER_EFFECTIVE_VERSION"],
+          ref: this.ctx.props.image?.sourceRef,
+          effectiveVersion: this.ctx.props.image?.effectiveVersion,
           className: "MissionAgent",
           objectKey: this.objectKey,
         },
