@@ -988,6 +988,7 @@ describe("Mission Control planning detail and focused views", () => {
         probe.sql.exec("SELECT shape_json FROM _vibestudio_schema").one()
           ["shape_json"],
       ),
+      durableWorkQueues: [],
     };
     const restored = await createTestDO(
       TestMissionControlStore,
@@ -1355,7 +1356,14 @@ describe("Mission Control active project selection", () => {
     legacy.sql.exec("INSERT INTO state VALUES (?,?)", "view", JSON.stringify(view));
     legacy.sql.exec("INSERT INTO views VALUES (?,?)", "past", JSON.stringify({ id: "past", name: "Past view", view }));
     const probe = await createStore();
-    const descriptor = { className: "MissionControlStore", version: 2, freshSchemaFingerprint: String(probe.sql.exec("SELECT shape_json FROM _vibestudio_schema").one()["shape_json"]) };
+    const descriptor = {
+      className: "MissionControlStore",
+      version: 2,
+      freshSchemaFingerprint: String(
+        probe.sql.exec("SELECT shape_json FROM _vibestudio_schema").one()["shape_json"],
+      ),
+      durableWorkQueues: [],
+    };
     const restored = await createTestDO(TestMissionControlStore, { ...env, VIBESTUDIO_SCHEMA_DESCRIPTOR: descriptor }, { db: legacy.db });
     expect(restored.instance.overview()).toMatchObject({ view: { ...view, projectId: null }, views: [{ id: "past", view: { projectId: p.id } }] });
   });
