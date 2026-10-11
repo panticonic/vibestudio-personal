@@ -1,6 +1,7 @@
 import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
+import { schemaRpcClientMock } from "@vibestudio/rpc/test-utils";
+import type { ExtensionRpcLike } from "@vibestudio/extension";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
@@ -13,9 +14,9 @@ const orchestrationMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@workspace/collection-orchestration", async () => {
-  const actual = await vi.importActual<typeof import("@workspace/collection-orchestration")>(
-    "@workspace/collection-orchestration"
-  );
+  const actual = await vi.importActual<
+    typeof import("@workspace/collection-orchestration")
+  >("@workspace/collection-orchestration");
   return {
     ...actual,
     launchCollectionTask: orchestrationMocks.launchCollectionTask,
@@ -23,9 +24,9 @@ vi.mock("@workspace/collection-orchestration", async () => {
 });
 
 vi.mock("@vibestudio/browser-import", async () => {
-  const actual = await vi.importActual<typeof import("@vibestudio/browser-import")>(
-    "@vibestudio/browser-import"
-  );
+  const actual = await vi.importActual<
+    typeof import("@vibestudio/browser-import")
+  >("@vibestudio/browser-import");
   return {
     ...actual,
     LocalBrowserImportProvider: class {
@@ -153,9 +154,9 @@ vi.mock("@vibestudio/browser-import", async () => {
 });
 
 vi.mock("@vibestudio/browser-data", async () => {
-  const actual = await vi.importActual<typeof import("@vibestudio/browser-data")>(
-    "@vibestudio/browser-data"
-  );
+  const actual = await vi.importActual<
+    typeof import("@vibestudio/browser-data")
+  >("@vibestudio/browser-data");
   const browserImport = await import("@vibestudio/browser-import");
   return {
     ...actual,
@@ -165,8 +166,13 @@ vi.mock("@vibestudio/browser-data", async () => {
 
 import { activate } from "./index.js";
 
-const browserEnvironmentMaterial = browserEnvironmentKeyMaterial("workspace-1", "user-1");
-const EXPECTED_BROWSER_ENVIRONMENT_KEY = `${BROWSER_ENVIRONMENT_KEY_VERSION}_${createHash("sha256")
+const browserEnvironmentMaterial = browserEnvironmentKeyMaterial(
+  "workspace-1",
+  "user-1",
+);
+const EXPECTED_BROWSER_ENVIRONMENT_KEY = `${BROWSER_ENVIRONMENT_KEY_VERSION}_${createHash(
+  "sha256",
+)
   .update(browserEnvironmentMaterial.material)
   .digest("base64url")}`;
 const EXPECTED_BROWSER_DATA_TARGET = `do:workers/browser-data:BrowserDataDO:${EXPECTED_BROWSER_ENVIRONMENT_KEY}`;
@@ -194,7 +200,11 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
     }
   >();
   const rpcCall = vi.fn(
-    async (_targetId: string, method: string, ...args: unknown[]): Promise<unknown> => {
+    async (
+      _targetId: string,
+      method: string,
+      ...args: unknown[]
+    ): Promise<unknown> => {
       if (method === "browserEnvironment.listImportHosts") {
         return [
           {
@@ -245,7 +255,10 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
       }
       if (method === "titlesForSlots") {
         return Object.fromEntries(
-          (args[0] as string[]).map((slotId) => [slotId, slots.get(slotId)?.title ?? slotId])
+          (args[0] as string[]).map((slotId) => [
+            slotId,
+            slots.get(slotId)?.title ?? slotId,
+          ]),
         );
       }
       if (method === "updatePanelTitle" || method.endsWith("updateTitle")) {
@@ -255,9 +268,13 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
         return null;
       }
       if (
-        ["bindSlot", "indexPanel", "incrementAccess", "rebuildIndex", "removeSlots"].includes(
-          method
-        )
+        [
+          "bindSlot",
+          "indexPanel",
+          "incrementAccess",
+          "rebuildIndex",
+          "removeSlots",
+        ].includes(method)
       ) {
         return undefined;
       }
@@ -268,7 +285,10 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
           hiddenInLauncher: false,
         };
       }
-      if (method === "runtime.reserveEntity" || method === "runtime.createEntity") {
+      if (
+        method === "runtime.reserveEntity" ||
+        method === "runtime.createEntity"
+      ) {
         createdPanels += 1;
         const spec = args[0] as { key: string; contextId?: string };
         const entity = {
@@ -404,22 +424,46 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
         return { closeId: `close:${String(args[0])}`, closedCount: 1 };
       if (method === "workspace-state.slot.closeCleanupPage")
         return { items: [], nextCursor: null };
-      if (method === "runtime.retireEntity" || method === "open" || method.endsWith(".open"))
+      if (
+        method === "runtime.retireEntity" ||
+        method === "open" ||
+        method.endsWith(".open")
+      )
         return undefined;
       if (method.endsWith("panel.index")) return null;
       return [];
-    }
+    },
   );
   const emit = vi.fn();
   const rpcStream = vi.fn(async () => new Response());
   const rpcWireCall = vi.fn(
-    async (targetId: string, method: string, args: unknown[]): Promise<unknown> =>
-      rpcCall(targetId, method, ...args)
+    async (
+      targetId: string,
+      method: string,
+      args: unknown[],
+    ): Promise<unknown> => rpcCall(targetId, method, ...args),
   );
-  const rpc = schemaRpcMock({ call: rpcWireCall, stream: rpcStream });
+  const rpcClient = schemaRpcClientMock(
+    { call: rpcWireCall, stream: rpcStream },
+    "browser-data-test",
+  );
+  const rpc: ExtensionRpcLike = {
+    call: rpcClient.call,
+    stream: rpcClient.stream,
+    emit: rpcClient.emit,
+    on: (eventName, listener) =>
+      rpcClient.on(eventName, listener, {
+        kind: "closed",
+        reason:
+          "This listener consumes host or implementation lifecycle events.",
+      }),
+  };
   const health = { healthy: vi.fn(), degraded: vi.fn(), unhealthy: vi.fn() };
   const resolveService = vi.fn(async (_protocol: string, objectKey: string) =>
-    durableObjectServiceFixture(`do:workers/browser-data:BrowserDataDO:${objectKey}`, { objectKey })
+    durableObjectServiceFixture(
+      `do:workers/browser-data:BrowserDataDO:${objectKey}`,
+      { objectKey },
+    ),
   );
   return {
     ctx: {
@@ -461,7 +505,7 @@ describe("@workspace-extensions/browser-data", () => {
     const { ctx } = makeContext();
     const activated = await activate(ctx as never);
     const manifest = JSON.parse(
-      readFileSync(new URL("./package.json", import.meta.url), "utf8")
+      readFileSync(new URL("./package.json", import.meta.url), "utf8"),
     ) as {
       vibestudio: {
         authority: {
@@ -470,12 +514,17 @@ describe("@workspace-extensions/browser-data", () => {
         };
         extension: {
           providerContracts: { browserData: { methods: string[] } };
-          methodAuthority: Record<string, { effect: { kind: string; capability?: string } }>;
+          methodAuthority: Record<
+            string,
+            { effect: { kind: string; capability?: string } }
+          >;
         };
       };
     };
     const methods = Object.keys(activated.providerContracts.browserData);
-    expect(methods).toEqual(manifest.vibestudio.extension.providerContracts.browserData.methods);
+    expect(methods).toEqual(
+      manifest.vibestudio.extension.providerContracts.browserData.methods,
+    );
     expect(methods).not.toEqual(
       expect.arrayContaining([
         "detectBrowsers",
@@ -489,7 +538,7 @@ describe("@workspace-extensions/browser-data", () => {
         "getCookiesForOrigin",
         "exportPasswords",
         "exportCookies",
-      ])
+      ]),
     );
     const downstreamSensitiveCapabilities = new Set([
       "service:browserEnvironment.previewSensitiveImport",
@@ -500,8 +549,10 @@ describe("@workspace-extensions/browser-data", () => {
     ]);
     expect(
       manifest.vibestudio.authority.requests
-        .filter((request) => downstreamSensitiveCapabilities.has(request.capability))
-        .map((request) => request.capability)
+        .filter((request) =>
+          downstreamSensitiveCapabilities.has(request.capability),
+        )
+        .map((request) => request.capability),
     ).toEqual([
       "service:browserEnvironment.previewSensitiveImport",
       "service:browserEnvironment.startSensitiveImport",
@@ -527,10 +578,13 @@ describe("@workspace-extensions/browser-data", () => {
     await api.listImportJobs();
     expect(resolveService).toHaveBeenCalledWith(
       "vibestudio.browser-data.v1",
-      EXPECTED_BROWSER_ENVIRONMENT_KEY
+      EXPECTED_BROWSER_ENVIRONMENT_KEY,
     );
     expect(resolveService).toHaveBeenCalledTimes(1);
-    expect(rpcCall).toHaveBeenCalledWith(EXPECTED_BROWSER_DATA_TARGET, "listImportJobs");
+    expect(rpcCall).toHaveBeenCalledWith(
+      EXPECTED_BROWSER_DATA_TARGET,
+      "listImportJobs",
+    );
     expect(health.healthy).toHaveBeenCalledWith({
       summary: "Browser environment storage ready",
     });
@@ -541,7 +595,11 @@ describe("@workspace-extensions/browser-data", () => {
     const api = (await activate(ctx as never)).providerContracts.browserData;
 
     await expect(api.getHistory({ limit: 60 })).resolves.toEqual([]);
-    expect(rpcCall).toHaveBeenCalledWith(EXPECTED_BROWSER_DATA_TARGET, "getHistory", { limit: 60 });
+    expect(rpcCall).toHaveBeenCalledWith(
+      EXPECTED_BROWSER_DATA_TARGET,
+      "getHistory",
+      { limit: 60 },
+    );
   });
 
   it("does not resolve or forward to protected browser storage", async () => {
@@ -550,9 +608,11 @@ describe("@workspace-extensions/browser-data", () => {
 
     await api.getHistory({ limit: 1 });
     expect(resolveService).toHaveBeenCalledTimes(1);
-    expect(resolveService).not.toHaveBeenCalledWith("vibestudio.browser-vault.v1");
+    expect(resolveService).not.toHaveBeenCalledWith(
+      "vibestudio.browser-vault.v1",
+    );
     expect(rpcCall.mock.calls.map((call) => call[0])).not.toContain(
-      "do:vibestudio/internal:BrowserVaultDO:environment-key"
+      "do:vibestudio/internal:BrowserVaultDO:environment-key",
     );
   });
 
@@ -579,7 +639,9 @@ describe("@workspace-extensions/browser-data", () => {
     rpcCall.mockRejectedValueOnce(new Error("store authority refused"));
     const api = (await activate(ctx as never)).providerContracts.browserData;
 
-    await expect(api.listImportJobs()).rejects.toThrow("store authority refused");
+    await expect(api.listImportJobs()).rejects.toThrow(
+      "store authority refused",
+    );
     expect(health.healthy).not.toHaveBeenCalled();
     expect(health.degraded).toHaveBeenCalledWith({
       summary: "Browser environment storage unavailable",
@@ -614,7 +676,8 @@ describe("@workspace-extensions/browser-data", () => {
       phase: "failed",
       finishedAt: 2,
       resumable: true,
-      error: "The browser import stopped before it completed. Start the import again to retry.",
+      error:
+        "The browser import stopped before it completed. Start the import again to retry.",
     });
     await expect(api.listImportJobs()).resolves.toEqual([
       expect.objectContaining({ jobId: orphaned.jobId, phase: "failed" }),
@@ -633,7 +696,9 @@ describe("@workspace-extensions/browser-data", () => {
         supportedDataTypes: ["bookmarks", "history", "cookies"],
       }),
     ]);
-    expect(JSON.stringify(sources)).not.toMatch(/profile|[/\\\\]Users[/\\\\]|[/\\\\]home[/\\\\]/i);
+    expect(JSON.stringify(sources)).not.toMatch(
+      /profile|[/\\\\]Users[/\\\\]|[/\\\\]home[/\\\\]/i,
+    );
   });
 
   it("acquires and releases transient exports through the selected host", async () => {
@@ -641,10 +706,15 @@ describe("@workspace-extensions/browser-data", () => {
     const api = (await activate(ctx as never)).providerContracts.browserData;
     const [host] = await api.listImportHosts();
 
-    await expect(api.listImportAcquisitionOptions(host!.hostId)).resolves.toEqual([
+    await expect(
+      api.listImportAcquisitionOptions(host!.hostId),
+    ).resolves.toEqual([
       expect.objectContaining({ acquisitionId: "choose-export" }),
     ]);
-    const result = await api.beginImportAcquisition(host!.hostId, "choose-export");
+    const result = await api.beginImportAcquisition(
+      host!.hostId,
+      "choose-export",
+    );
     expect(result).toMatchObject({
       state: "selected",
       source: { sourceId: "temporary-export", transient: true },
@@ -655,13 +725,13 @@ describe("@workspace-extensions/browser-data", () => {
       "main",
       "browserEnvironment.beginImportAcquisition",
       host!.hostId,
-      "choose-export"
+      "choose-export",
     );
     expect(rpcCall).toHaveBeenCalledWith(
       "main",
       "browserEnvironment.releaseImportSource",
       host!.hostId,
-      "temporary-export"
+      "temporary-export",
     );
   });
 
@@ -681,7 +751,9 @@ describe("@workspace-extensions/browser-data", () => {
           method === "browserEnvironment.observeSensitiveImport"
         )
           return {
-            operationId: String(method.endsWith("startSensitiveImport") ? args[3] : args[0]),
+            operationId: String(
+              method.endsWith("startSensitiveImport") ? args[3] : args[0],
+            ),
             state: "complete",
             counts: [],
             version: "v1",
@@ -698,7 +770,7 @@ describe("@workspace-extensions/browser-data", () => {
                 sourceId: "opaque-chrome",
                 dataTypes: ["bookmarks"],
               },
-              id
+              id,
             )
           : api.startSensitiveImport({
               hostId: "server:workspace-1",
@@ -707,7 +779,9 @@ describe("@workspace-extensions/browser-data", () => {
               operationId: id,
             });
       const observing =
-        kind === "public" ? api.observeImportJob(id) : api.observeSensitiveImport(id);
+        kind === "public"
+          ? api.observeImportJob(id)
+          : api.observeSensitiveImport(id);
       let settled = false;
       void observing.then(
         () => {
@@ -715,16 +789,19 @@ describe("@workspace-extensions/browser-data", () => {
         },
         () => {
           settled = true;
-        }
+        },
       );
       await vi.waitFor(() =>
-        expect(rpcCall).toHaveBeenCalledWith("main", "browserEnvironment.listImportHosts")
+        expect(rpcCall).toHaveBeenCalledWith(
+          "main",
+          "browserEnvironment.listImportHosts",
+        ),
       );
       expect(settled).toBe(false);
       release();
       await starting;
       await expect(observing).resolves.toBeDefined();
-    }
+    },
   );
 
   it("propagates host admission failure to the start and its observer", async () => {
@@ -742,7 +819,9 @@ describe("@workspace-extensions/browser-data", () => {
         method === "browserEnvironment.observeSensitiveImport"
       )
         return {
-          operationId: String(method.endsWith("startSensitiveImport") ? args[3] : args[0]),
+          operationId: String(
+            method.endsWith("startSensitiveImport") ? args[3] : args[0],
+          ),
           state: "complete",
           counts: [],
           version: "v1",
@@ -756,7 +835,7 @@ describe("@workspace-extensions/browser-data", () => {
         sourceId: "opaque-chrome",
         dataTypes: ["bookmarks"],
       },
-      "failed-admission"
+      "failed-admission",
     );
     const observing = api.observeImportJob("failed-admission");
     fail(failure);
@@ -774,18 +853,19 @@ describe("@workspace-extensions/browser-data", () => {
         sourceId: "opaque-chrome",
         dataTypes: ["bookmarks"],
       },
-      "public-operation"
+      "public-operation",
     );
     expect(result.phase).toBe("complete");
     const observed = await api.observeImportJob(result.jobId);
     expect(observed).toEqual({ job: result, version: expect.any(String) });
     await expect(
-      api.observeImportJob(result.jobId, { afterVersion: observed.version })
+      api.observeImportJob(result.jobId, { afterVersion: observed.version }),
     ).resolves.toEqual(observed);
     await vi.waitFor(async () => {
-      expect(((await api.getImportJob(result.jobId)) as { phase?: string } | null)?.phase).toBe(
-        "complete"
-      );
+      expect(
+        ((await api.getImportJob(result.jobId)) as { phase?: string } | null)
+          ?.phase,
+      ).toBe("complete");
     });
     expect(rpcCall).toHaveBeenCalledWith(
       EXPECTED_BROWSER_DATA_TARGET,
@@ -798,16 +878,16 @@ describe("@workspace-extensions/browser-data", () => {
           folder: [],
         },
       ],
-      { sourceId: "opaque-chrome" }
+      { sourceId: "opaque-chrome" },
     );
     expect(rpcCall).toHaveBeenCalledWith(
       EXPECTED_BROWSER_DATA_TARGET,
       "recordImportBatch",
-      expect.objectContaining({ dataType: "bookmarks", batchIndex: 0 })
+      expect.objectContaining({ dataType: "bookmarks", batchIndex: 0 }),
     );
     expect(emit).toHaveBeenCalledWith(
       "import-complete",
-      expect.objectContaining({ phase: "complete" })
+      expect.objectContaining({ phase: "complete" }),
     );
     expect(health.healthy).toHaveBeenLastCalledWith({
       summary: "Browser data import completed",
@@ -826,78 +906,83 @@ describe("@workspace-extensions/browser-data", () => {
           sourceId: "opaque-chrome",
           dataTypes: ["cookies"],
         },
-        "public-operation"
-      )
+        "public-operation",
+      ),
     ).rejects.toMatchObject({ code: "EUNSUPPORTED" });
-    expect(rpcCall.mock.calls.map((call) => call[1])).not.toContain("addCookiesBatch");
+    expect(rpcCall.mock.calls.map((call) => call[1])).not.toContain(
+      "addCookiesBatch",
+    );
   });
 
   it("delegates sensitive preview and durable import control to sealed host effects", async () => {
     const { ctx, rpcCall } = makeContext();
-    rpcCall.mockImplementation(async (_targetId: string, method: string, ...args: unknown[]) => {
-      if (method === "browserEnvironment.listImportHosts") {
-        return [
-          {
-            hostId: "desktop-1",
-            displayName: "This device",
-            platform: "linux",
-            location: "device",
-            connected: true,
-          },
-        ];
-      }
-      if (method === "browserEnvironment.previewSensitiveImport") {
-        return {
-          dataTypes: [
+    rpcCall.mockImplementation(
+      async (_targetId: string, method: string, ...args: unknown[]) => {
+        if (method === "browserEnvironment.listImportHosts") {
+          return [
             {
-              dataType: "cookies",
-              itemsProcessed: 2,
-              stored: 0,
-              skipped: 0,
-              errors: 0,
+              hostId: "desktop-1",
+              displayName: "This device",
+              platform: "linux",
+              location: "device",
+              connected: true,
             },
-          ],
-          warnings: [],
-          breakdowns: [],
-          openTabCount: 0,
-          localDataSetCount: 0,
-        };
-      }
-      if (method === "browserEnvironment.startSensitiveImport") {
-        return {
-          operationId: args[3],
-          state: "running",
-          counts: [
-            {
-              dataType: "cookies",
-              read: 2,
-              stored: 2,
-              skipped: 0,
-              errors: 0,
-            },
-          ],
-          version: "v1",
-        };
-      }
-      if (method === "browserEnvironment.observeSensitiveImport") {
-        return {
-          operationId: args[0],
-          state: "complete",
-          counts: [],
-          version: "v2",
-        };
-      }
-      if (method.endsWith("browserPrivacyPresentation.open")) return undefined;
-      if (method === "browserEnvironment.cancelSensitiveImport") {
-        return {
-          operationId: args[0],
-          state: "cancelled",
-          counts: [],
-          version: "v2",
-        };
-      }
-      return [];
-    });
+          ];
+        }
+        if (method === "browserEnvironment.previewSensitiveImport") {
+          return {
+            dataTypes: [
+              {
+                dataType: "cookies",
+                itemsProcessed: 2,
+                stored: 0,
+                skipped: 0,
+                errors: 0,
+              },
+            ],
+            warnings: [],
+            breakdowns: [],
+            openTabCount: 0,
+            localDataSetCount: 0,
+          };
+        }
+        if (method === "browserEnvironment.startSensitiveImport") {
+          return {
+            operationId: args[3],
+            state: "running",
+            counts: [
+              {
+                dataType: "cookies",
+                read: 2,
+                stored: 2,
+                skipped: 0,
+                errors: 0,
+              },
+            ],
+            version: "v1",
+          };
+        }
+        if (method === "browserEnvironment.observeSensitiveImport") {
+          return {
+            operationId: args[0],
+            state: "complete",
+            counts: [],
+            version: "v2",
+          };
+        }
+        if (method.endsWith("browserPrivacyPresentation.open"))
+          return undefined;
+        if (method === "browserEnvironment.cancelSensitiveImport") {
+          return {
+            operationId: args[0],
+            state: "cancelled",
+            counts: [],
+            version: "v2",
+          };
+        }
+        return [];
+      },
+    );
     const api = (await activate(ctx as never)).providerContracts.browserData;
     const hosts = await api.listImportHosts();
     const desktop = hosts.find((host) => host.hostId === "desktop-1");
@@ -906,7 +991,7 @@ describe("@workspace-extensions/browser-data", () => {
         hostId: desktop!.hostId,
         sourceId: "opaque-chrome",
         dataTypes: ["cookies"],
-      })
+      }),
     ).resolves.toMatchObject({
       dataTypes: [{ dataType: "cookies", itemsProcessed: 2 }],
     });
@@ -920,7 +1005,9 @@ describe("@workspace-extensions/browser-data", () => {
     expect(started).toEqual({
       operationId: "sensitive-op-1",
       state: "running",
-      counts: [{ dataType: "cookies", read: 2, stored: 2, skipped: 0, errors: 0 }],
+      counts: [
+        { dataType: "cookies", read: 2, stored: 2, skipped: 0, errors: 0 },
+      ],
       version: "v1",
     });
     expect(rpcCall).toHaveBeenCalledWith(
@@ -929,20 +1016,22 @@ describe("@workspace-extensions/browser-data", () => {
       "desktop-1",
       "opaque-chrome",
       ["cookies"],
-      "sensitive-op-1"
+      "sensitive-op-1",
     );
-    await expect(api.observeSensitiveImport("sensitive-op-1")).resolves.toEqual({
-      operationId: "sensitive-op-1",
-      state: "complete",
-      counts: [],
-      version: "v2",
-    });
+    await expect(api.observeSensitiveImport("sensitive-op-1")).resolves.toEqual(
+      {
+        operationId: "sensitive-op-1",
+        state: "complete",
+        counts: [],
+        version: "v2",
+      },
+    );
     await api.observeSensitiveImport("sensitive-op-1", { afterVersion: "v1" });
     expect(rpcCall).toHaveBeenCalledWith(
       "main",
       "browserEnvironment.observeSensitiveImport",
       "sensitive-op-1",
-      { afterVersion: "v1" }
+      { afterVersion: "v1" },
     );
     await expect(api.cancelSensitiveImport("sensitive-op-1")).resolves.toEqual({
       operationId: "sensitive-op-1",
@@ -950,8 +1039,14 @@ describe("@workspace-extensions/browser-data", () => {
       counts: [],
       version: "v2",
     });
-    await expect(api.openBrowserPrivacyManager("export")).resolves.toBeUndefined();
-    expect(rpcCall).toHaveBeenCalledWith("main", "browserPrivacyPresentation.open", "export");
+    await expect(
+      api.openBrowserPrivacyManager("export"),
+    ).resolves.toBeUndefined();
+    expect(rpcCall).toHaveBeenCalledWith(
+      "main",
+      "browserPrivacyPresentation.open",
+      "export",
+    );
   });
 
   it("can keep selected HTTP tabs directly under the calling panel", async () => {
@@ -965,15 +1060,19 @@ describe("@workspace-extensions/browser-data", () => {
         selection: ["tab-1", "tab-2"],
         destination: "caller",
         groupBy: "none",
-      })
+      }),
     ).resolves.toMatchObject({ tabsFound: 2, panelsOpened: 1 });
     // Imported browser tabs are deferred slots. The only readiness observation
     // here is for the caller anchor; the tab itself must not wait for the
     // external document to load.
     expect(
-      rpcCall.mock.calls.filter((call) => call[1] === "panelRuntime.observeSlot")
+      rpcCall.mock.calls.filter(
+        (call) => call[1] === "panelRuntime.observeSlot",
+      ),
     ).toHaveLength(1);
-    expect(rpcCall.mock.calls.some((call) => call[1] === "panelRuntime.ensureSlot")).toBe(false);
+    expect(
+      rpcCall.mock.calls.some((call) => call[1] === "panelRuntime.ensureSlot"),
+    ).toBe(false);
     expect(rpcCall).toHaveBeenCalledWith("main", "runtime.createEntity", {
       kind: "panel",
       execution: { surface: "external", url: "https://example.com/" },
@@ -984,7 +1083,7 @@ describe("@workspace-extensions/browser-data", () => {
     expect(rpcCall).toHaveBeenCalledWith(
       "main",
       "workspace-state.slot.create",
-      expect.objectContaining({ parentSlotId: "panel:tree/panel-parent" })
+      expect.objectContaining({ parentSlotId: "panel:tree/panel-parent" }),
     );
     expect(orchestrationMocks.launchCollectionTask).not.toHaveBeenCalled();
   });
@@ -1002,13 +1101,15 @@ describe("@workspace-extensions/browser-data", () => {
     expect(result).toMatchObject({ tabsFound: 3, panelsOpened: 2 });
     expect(result.root).toMatchObject({ panelsOpened: 2 });
     expect(result.collections).toHaveLength(2);
-    expect(result.collections.map((entry) => entry.panelsOpened)).toEqual([1, 1]);
+    expect(result.collections.map((entry) => entry.panelsOpened)).toEqual([
+      1, 1,
+    ]);
 
     const collectionCalls = rpcCall.mock.calls.filter(
       (call) =>
         call[1] === "workspace-state.slot.create" &&
-        (call[2] as { initialEntry?: { source?: string } })?.initialEntry?.source ===
-          "about/collection"
+        (call[2] as { initialEntry?: { source?: string } })?.initialEntry
+          ?.source === "about/collection",
     );
     expect(collectionCalls).toHaveLength(3);
     expect(collectionCalls[0]?.[2]).toMatchObject({
@@ -1039,7 +1140,8 @@ describe("@workspace-extensions/browser-data", () => {
       },
     });
     for (const call of collectionCalls) {
-      const entry = (call[2] as { initialEntry: { stateArgs?: object } }).initialEntry;
+      const entry = (call[2] as { initialEntry: { stateArgs?: object } })
+        .initialEntry;
       expect(entry.stateArgs ?? {}).not.toHaveProperty("title");
     }
 
@@ -1047,9 +1149,9 @@ describe("@workspace-extensions/browser-data", () => {
       .filter(
         (call) =>
           call[1] === "workspace-state.slot.create" &&
-          (call[2] as { initialEntry?: { source?: string } })?.initialEntry?.source?.startsWith(
-            "browser:"
-          )
+          (
+            call[2] as { initialEntry?: { source?: string } }
+          )?.initialEntry?.source?.startsWith("browser:"),
       )
       .map((call) => (call[2] as { parentSlotId?: string }).parentSlotId);
     expect(new Set(tabParents).size).toBe(2);
@@ -1059,12 +1161,14 @@ describe("@workspace-extensions/browser-data", () => {
       .filter(
         (call) =>
           call[1] === "workspace-state.slot.create" &&
-          (call[2] as { initialEntry?: { source?: string } })?.initialEntry?.source?.startsWith(
-            "browser:"
-          )
+          (
+            call[2] as { initialEntry?: { source?: string } }
+          )?.initialEntry?.source?.startsWith("browser:"),
       )
       .map(
-        (call) => (call[2] as { initialEntry?: { contextId?: string } }).initialEntry?.contextId
+        (call) =>
+          (call[2] as { initialEntry?: { contextId?: string } }).initialEntry
+            ?.contextId,
       );
     expect(new Set(tabContexts)).toEqual(new Set(["ctx-panel-1"]));
     const rootState = (
@@ -1085,16 +1189,17 @@ describe("@workspace-extensions/browser-data", () => {
         },
         task: expect.stringContaining("window collection"),
         idempotencyKey: `initial-prompt:${rootState.channelName}`,
-      })
+      }),
     );
     const lastPanelCreateOrder = Math.max(
       ...rpcCall.mock.invocationCallOrder.filter(
-        (_, index) => rpcCall.mock.calls[index]?.[1] === "workspace-state.slot.create"
-      )
+        (_, index) =>
+          rpcCall.mock.calls[index]?.[1] === "workspace-state.slot.create",
+      ),
     );
-    expect(orchestrationMocks.launchCollectionTask.mock.invocationCallOrder[0]).toBeGreaterThan(
-      lastPanelCreateOrder
-    );
+    expect(
+      orchestrationMocks.launchCollectionTask.mock.invocationCallOrder[0],
+    ).toBeGreaterThan(lastPanelCreateOrder);
   });
 
   it("does not silently flatten tabs when a requested window collection cannot be created", async () => {
@@ -1104,18 +1209,21 @@ describe("@workspace-extensions/browser-data", () => {
 
     const passthrough = rpcCall.getMockImplementation()!;
     let collectionCreates = 0;
-    rpcCall.mockImplementation(async (targetId: string, method: string, ...args: unknown[]) => {
-      if (method !== "workspace-state.slot.create") return passthrough(targetId, method, ...args);
-      const [input] = args as [{ initialEntry: { source: string } }];
-      if (input.initialEntry.source === "about/collection") {
-        collectionCreates += 1;
-        if (collectionCreates === 1) {
+    rpcCall.mockImplementation(
+      async (targetId: string, method: string, ...args: unknown[]) => {
+        if (method !== "workspace-state.slot.create")
           return passthrough(targetId, method, ...args);
+        const [input] = args as [{ initialEntry: { source: string } }];
+        if (input.initialEntry.source === "about/collection") {
+          collectionCreates += 1;
+          if (collectionCreates === 1) {
+            return passthrough(targetId, method, ...args);
+          }
+          throw new Error("Server auth failed: Not a member of this workspace");
         }
-        throw new Error("Server auth failed: Not a member of this workspace");
-      }
-      return passthrough(targetId, method, ...args);
-    });
+        return passthrough(targetId, method, ...args);
+      },
+    );
 
     const result = await api.openTabsAsPanels({
       hostId: host!.hostId,
@@ -1129,13 +1237,17 @@ describe("@workspace-extensions/browser-data", () => {
     expect(result.skipped.map((entry) => entry.reason)).toEqual([
       expect.stringContaining("Could not create Window 1"),
     ]);
-    expect(rpcCall).toHaveBeenCalledWith("main", "workspace-state.slot.close", expect.any(String));
+    expect(rpcCall).toHaveBeenCalledWith(
+      "main",
+      "workspace-state.slot.close",
+      expect.any(String),
+    );
     expect(orchestrationMocks.launchCollectionTask).not.toHaveBeenCalled();
   });
 
   it("preserves the queued collection task when immediate conductor launch is transiently unavailable", async () => {
     orchestrationMocks.launchCollectionTask.mockRejectedValueOnce(
-      new Error("model provider unavailable")
+      new Error("model provider unavailable"),
     );
     const { ctx } = makeContext("panel", "panel:tree/panel-parent");
     const api = (await activate(ctx as never)).providerContracts.browserData;
@@ -1147,11 +1259,11 @@ describe("@workspace-extensions/browser-data", () => {
         sourceId: "opaque-chrome",
         selection: ["tab-1"],
         groupBy: "none",
-      })
+      }),
     ).resolves.toMatchObject({ panelsOpened: 1 });
 
     expect(ctx.log.warn).toHaveBeenCalledWith(
-      expect.stringContaining("could not start collection title assignment")
+      expect.stringContaining("could not start collection title assignment"),
     );
   });
 
@@ -1168,12 +1280,14 @@ describe("@workspace-extensions/browser-data", () => {
     expect(result.root).toMatchObject({ panelsOpened: 2 });
     expect(result.collections).toEqual([]);
     const createCalls = rpcCall.mock.calls.filter(
-      (call) => call[1] === "workspace-state.slot.create"
+      (call) => call[1] === "workspace-state.slot.create",
     );
     expect(createCalls).toHaveLength(3);
     expect(createCalls[0]?.[2]).toMatchObject({ parentSlotId: null });
     expect(
-      createCalls.slice(1).map((call) => (call[2] as { parentSlotId?: string }).parentSlotId)
+      createCalls
+        .slice(1)
+        .map((call) => (call[2] as { parentSlotId?: string }).parentSlotId),
     ).toEqual([result.root!.id, result.root!.id]);
   });
 });

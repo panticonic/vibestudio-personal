@@ -1,5 +1,6 @@
 import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
-import { schemaRpcMock } from "@vibestudio/rpc/test-utils";
+import { schemaRpcClientMock } from "@vibestudio/rpc/test-utils";
+import type { ExtensionRpcLike } from "@vibestudio/extension";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@workspace/runtime", () => ({
@@ -45,15 +46,29 @@ describe("onboarding browser-data component chain", () => {
     const storeCall = vi.fn(async (_target: string, method: string) =>
       method === "listImportJobs" ? [completedImport] : [],
     );
+    const rpcClient = schemaRpcClientMock(
+      { call: storeCall, stream: vi.fn(async () => new Response()) },
+      "onboarding-browser-data-test",
+    );
+    const rpc: ExtensionRpcLike = {
+      call: rpcClient.call,
+      stream: rpcClient.stream,
+      emit: rpcClient.emit,
+      on: (eventName, listener) =>
+        rpcClient.on(eventName, listener, {
+          kind: "closed",
+          reason:
+            "This listener consumes host or implementation lifecycle events.",
+        }),
+    };
     const extension = await activate({
-      rpc: schemaRpcMock({ call: storeCall, stream: vi.fn(async () => new Response()) }),
+      rpc,
       workers: {
-        resolveService: vi.fn(
-          async (_protocol: string, objectKey?: string) =>
-            durableObjectServiceFixture(
-              "do:workers/browser-data:BrowserDataDO:browser:user-1",
-              { objectKey },
-            ),
+        resolveService: vi.fn(async (_protocol: string, objectKey?: string) =>
+          durableObjectServiceFixture(
+            "do:workers/browser-data:BrowserDataDO:browser:user-1",
+            { objectKey },
+          ),
         ),
       },
       invocation: {

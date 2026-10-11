@@ -8,7 +8,11 @@ import {
   type RpcMethodArgs,
 } from "@vibestudio/shared/rpcMethods";
 import { browserDataMethods } from "@vibestudio/service-schemas/browserData";
-const browserStoreRpcMethods = createRpcMethods("browserData", browserDataMethods, "");
+const browserStoreRpcMethods = createRpcMethods(
+  "browserData",
+  browserDataMethods,
+  "",
+);
 import { mainRpcMethods } from "@vibestudio/service-schemas/mainRpc";
 import {
   exportChromiumBookmarks,
@@ -74,12 +78,12 @@ interface ResolvedBuiltinService {
 }
 
 interface ExtensionContextLike {
-  rpc: {
-    call: import("@vibestudio/rpc").RpcCaller["call"];
-    stream: import("@vibestudio/rpc").RpcCaller["stream"];
-  };
+  rpc: import("@vibestudio/extension").ExtensionRpcLike;
   workers: {
-    resolveService(protocol: string, objectKey?: string): Promise<ResolvedBuiltinService>;
+    resolveService(
+      protocol: string,
+      objectKey?: string,
+    ): Promise<ResolvedBuiltinService>;
   };
   invocation: InvocationLike;
   log: {
@@ -134,11 +138,14 @@ const BROWSER_DATA_STORE_METHODS = [
   "getPageFavicon",
 ] as const;
 
-function collectionOrchestrationRpc(ctx: ExtensionContextLike): CollectionOrchestrationRpc {
+function collectionOrchestrationRpc(
+  ctx: ExtensionContextLike,
+): CollectionOrchestrationRpc {
   return {
     selfId: "@workspace-extensions/browser-data",
     call: (targetId, method, args) => ctx.rpc.call(targetId, method, args),
-    stream: (targetId, method, args, options) => ctx.rpc.stream(targetId, method, args, options),
+    stream: (targetId, method, args, options) =>
+      ctx.rpc.stream(targetId, method, args, options),
   };
 }
 
@@ -153,24 +160,32 @@ export async function activate(ctx: ExtensionContextLike) {
     Promise<{ identity: BrowserEnvironmentIdentity; dataTargetId: string }>
   >();
   const targetsByEnvironment = new Map<string, string>();
-  const importHosts = new Map<string, Map<string, { unregister: () => void }>>();
+  const importHosts = new Map<
+    string,
+    Map<string, { unregister: () => void }>
+  >();
   const hostLabels = new Map<string, string>();
   const sourceBrowsers = new Map<string, string>();
-  const sourceKey = (hostId: string, sourceId: string) => `${hostId.length}:${hostId}${sourceId}`;
+  const sourceKey = (hostId: string, sourceId: string) =>
+    `${hostId.length}:${hostId}${sourceId}`;
 
   const publicAdmissions = new BrowserImportAdmissions<{
     identity: BrowserEnvironmentIdentity;
     starting: Promise<ImportJobSnapshot>;
   }>();
-  const protectedAdmissions = new BrowserImportAdmissions<SensitiveBrowserImportStatus>();
+  const protectedAdmissions =
+    new BrowserImportAdmissions<SensitiveBrowserImportStatus>();
   const currentCaller = () => {
     const caller = ctx.invocation.current()?.caller;
     const userId = caller?.userId?.trim();
     const workspaceId = caller?.workspaceId?.trim();
     if (!userId || !workspaceId || userId === "system") {
-      throw Object.assign(new Error("Browser data requires a verified user and workspace"), {
-        code: "ENOCALLER",
-      });
+      throw Object.assign(
+        new Error("Browser data requires a verified user and workspace"),
+        {
+          code: "ENOCALLER",
+        },
+      );
     }
     return browserEnvironmentKeyMaterial(workspaceId, userId);
   };
@@ -185,7 +200,9 @@ export async function activate(ctx: ExtensionContextLike) {
     const cacheKey = normalized.material;
     let pending = resolvedStores.get(cacheKey);
     if (!pending) {
-      const environmentKey = `${BROWSER_ENVIRONMENT_KEY_VERSION}_${createHash("sha256")
+      const environmentKey = `${BROWSER_ENVIRONMENT_KEY_VERSION}_${createHash(
+        "sha256",
+      )
         .update(normalized.material)
         .digest("base64url")}`;
       pending = ctx.workers
@@ -195,7 +212,9 @@ export async function activate(ctx: ExtensionContextLike) {
             throw new Error("browser.data did not resolve to a Durable Object");
           }
           if (dataTarget.objectKey !== environmentKey) {
-            throw new Error("Server resolved a different browser environment key");
+            throw new Error(
+              "Server resolved a different browser environment key",
+            );
           }
           const identity = {
             workspaceId: normalized.workspaceId,
@@ -218,17 +237,20 @@ export async function activate(ctx: ExtensionContextLike) {
     return pending;
   };
 
-  const callStoreForIdentity = <K extends keyof typeof browserStoreRpcMethods & string>(
+  const callStoreForIdentity = <
+    K extends keyof typeof browserStoreRpcMethods & string,
+  >(
     identity: BrowserEnvironmentIdentity,
     method: K,
     ...args: RpcMethodArgs<(typeof browserStoreRpcMethods)[K]>
   ) => {
     const targetId = targetsByEnvironment.get(identity.environmentKey);
-    if (!targetId) throw new Error("Browser environment target is not resolved");
+    if (!targetId)
+      throw new Error("Browser environment target is not resolved");
     return createRpcMethodCaller(
       ctx.rpc,
       targetId,
-      browserStoreRpcMethods
+      browserStoreRpcMethods,
     )(method, args)
       .then((result) => {
         ctx.health?.healthy({ summary: "Browser environment storage ready" });
@@ -247,7 +269,7 @@ export async function activate(ctx: ExtensionContextLike) {
     async storeBatch(identity, batch) {
       assertNonSensitiveImportDataType(batch.dataType);
       await storeImportBatch(batch, (method, ...args) =>
-        callStoreForIdentity(identity, method, ...args)
+        callStoreForIdentity(identity, method, ...args),
       );
       await callStoreForIdentity(identity, "recordImportBatch", {
         jobId: batch.jobId,
@@ -264,7 +286,8 @@ export async function activate(ctx: ExtensionContextLike) {
         hostId: job.hostId,
         hostLabel: hostLabels.get(job.hostId) ?? "Browser host",
         sourceId: job.sourceId,
-        browser: sourceBrowsers.get(sourceKey(job.hostId, job.sourceId)) ?? "unknown",
+        browser:
+          sourceBrowsers.get(sourceKey(job.hostId, job.sourceId)) ?? "unknown",
         phase: job.phase,
         startedAt: job.startedAt,
         updatedAt: job.updatedAt,
@@ -288,13 +311,13 @@ export async function activate(ctx: ExtensionContextLike) {
   });
 
   const ensureImportHosts = async (
-    identity: BrowserEnvironmentIdentity
+    identity: BrowserEnvironmentIdentity,
   ): Promise<ImportHostSummary[]> => {
     try {
       const summaries = await ctx.rpc.call(
         "main",
         mainRpcMethods["browserEnvironment.listImportHosts"],
-        []
+        [],
       );
       const current = importHosts.get(identity.environmentKey) ?? new Map();
       const available = new Set(summaries.map((summary) => summary.hostId));
@@ -311,8 +334,8 @@ export async function activate(ctx: ExtensionContextLike) {
             createTypedRpcServiceClient(
               ctx.rpc,
               { targetId: "main", namespace: "browserEnvironment" },
-              browserEnvironmentMethods
-            )
+              browserEnvironmentMethods,
+            ),
           );
           current.set(summary.hostId, {
             unregister: coordinator.registerHost({
@@ -327,7 +350,9 @@ export async function activate(ctx: ExtensionContextLike) {
       importHosts.set(identity.environmentKey, current);
       return summaries;
     } catch (error) {
-      for (const registration of importHosts.get(identity.environmentKey)?.values() ?? []) {
+      for (const registration of importHosts
+        .get(identity.environmentKey)
+        ?.values() ?? []) {
         registration.unregister();
       }
       importHosts.delete(identity.environmentKey);
@@ -336,12 +361,17 @@ export async function activate(ctx: ExtensionContextLike) {
   };
 
   const guarded =
-    <Args extends unknown[], Result>(_method: string, fn: (...args: Args) => Promise<Result>) =>
+    <Args extends unknown[], Result>(
+      _method: string,
+      fn: (...args: Args) => Promise<Result>,
+    ) =>
     async (...args: Args): Promise<Result> => {
       return fn(...args);
     };
 
-  const callStore = async <K extends keyof typeof browserStoreRpcMethods & string>(
+  const callStore = async <
+    K extends keyof typeof browserStoreRpcMethods & string,
+  >(
     method: K,
     ...args: RpcMethodArgs<(typeof browserStoreRpcMethods)[K]>
   ) => {
@@ -353,17 +383,23 @@ export async function activate(ctx: ExtensionContextLike) {
   >("browserData", BROWSER_DATA_STORE_METHODS, async (method, args) => {
     const { identity } = await currentIdentity();
     const targetId = targetsByEnvironment.get(identity.environmentKey);
-    if (!targetId) throw new Error("Browser environment target is not resolved");
+    if (!targetId)
+      throw new Error("Browser environment target is not resolved");
     const descriptors: RpcMethodMap = browserStoreRpcMethods;
     return ctx.rpc.call(targetId, descriptors[method]!, args);
   });
   const browserData = {
     getBrowserEnvironment: guarded("getBrowserEnvironment", async () => {
       const invocation = ctx.invocation.current();
-      if (!invocation || !TRUSTED_CALLER_KINDS.has(invocation.caller.callerKind)) {
+      if (
+        !invocation ||
+        !TRUSTED_CALLER_KINDS.has(invocation.caller.callerKind)
+      ) {
         throw Object.assign(
-          new Error("Browser environment identity is available only to the trusted host"),
-          { code: "EACCES" }
+          new Error(
+            "Browser environment identity is available only to the trusted host",
+          ),
+          { code: "EACCES" },
         );
       }
       return (await currentIdentity()).identity;
@@ -382,26 +418,32 @@ export async function activate(ctx: ExtensionContextLike) {
         return ctx.rpc.call(
           "main",
           mainRpcMethods["browserEnvironment.listImportAcquisitionOptions"],
-          [hostId]
+          [hostId],
         );
-      }
+      },
     ),
     beginImportAcquisition: guarded(
       "beginImportAcquisition",
-      async (hostId: string, acquisitionId: string): Promise<BrowserImportAcquisitionResult> => {
+      async (
+        hostId: string,
+        acquisitionId: string,
+      ): Promise<BrowserImportAcquisitionResult> => {
         const { identity } = await currentIdentity();
         const hosts = await ensureImportHosts(identity);
         assertSelectedImportHost(hosts, hostId);
         const result = await ctx.rpc.call(
           "main",
           mainRpcMethods["browserEnvironment.beginImportAcquisition"],
-          [hostId, acquisitionId]
+          [hostId, acquisitionId],
         );
         if (result.state === "selected") {
-          sourceBrowsers.set(sourceKey(hostId, result.source.sourceId), result.source.browser);
+          sourceBrowsers.set(
+            sourceKey(hostId, result.source.sourceId),
+            result.source.browser,
+          );
         }
         return result;
-      }
+      },
     ),
     releaseImportSource: guarded(
       "releaseImportSource",
@@ -409,12 +451,13 @@ export async function activate(ctx: ExtensionContextLike) {
         const { identity } = await currentIdentity();
         const hosts = await ensureImportHosts(identity);
         assertSelectedImportHost(hosts, hostId);
-        await ctx.rpc.call("main", mainRpcMethods["browserEnvironment.releaseImportSource"], [
-          hostId,
-          sourceId,
-        ]);
+        await ctx.rpc.call(
+          "main",
+          mainRpcMethods["browserEnvironment.releaseImportSource"],
+          [hostId, sourceId],
+        );
         sourceBrowsers.delete(sourceKey(hostId, sourceId));
-      }
+      },
     ),
     listImportSources: guarded("listImportSources", async (hostId: string) => {
       const { identity } = await currentIdentity();
@@ -422,23 +465,32 @@ export async function activate(ctx: ExtensionContextLike) {
       const sources = await coordinator.listSources(
         identity,
         hostId,
-        ctx.invocation.signal?.() ?? undefined
+        ctx.invocation.signal?.() ?? undefined,
       );
-      const host = coordinator.listHosts(identity).find((candidate) => candidate.hostId === hostId);
+      const host = coordinator
+        .listHosts(identity)
+        .find((candidate) => candidate.hostId === hostId);
       const availableSources = sources.map((source) =>
-        withAvailableSensitiveImportPath(source, host !== undefined)
+        withAvailableSensitiveImportPath(source, host !== undefined),
       );
       for (const source of availableSources) {
         sourceBrowsers.set(sourceKey(hostId, source.sourceId), source.browser);
       }
       return availableSources;
     }),
-    previewImport: guarded("previewImport", async (selection: BrowserImportSelection) => {
-      const { identity } = await currentIdentity();
-      await ensureImportHosts(identity);
-      assertNonSensitiveImportSelection(selection);
-      return coordinator.preview(identity, selection, ctx.invocation.signal?.() ?? undefined);
-    }),
+    previewImport: guarded(
+      "previewImport",
+      async (selection: BrowserImportSelection) => {
+        const { identity } = await currentIdentity();
+        await ensureImportHosts(identity);
+        assertNonSensitiveImportSelection(selection);
+        return coordinator.preview(
+          identity,
+          selection,
+          ctx.invocation.signal?.() ?? undefined,
+        );
+      },
+    ),
     previewSensitiveImport: guarded(
       "previewSensitiveImport",
       async (request: SensitiveBrowserImportSelection) => {
@@ -446,12 +498,12 @@ export async function activate(ctx: ExtensionContextLike) {
         const hosts = await ensureImportHosts(identity);
         assertSelectedImportHost(hosts, request.hostId);
         assertSensitiveImportSelection(request);
-        return ctx.rpc.call("main", mainRpcMethods["browserEnvironment.previewSensitiveImport"], [
-          request.hostId,
-          request.sourceId,
-          request.dataTypes,
-        ]);
-      }
+        return ctx.rpc.call(
+          "main",
+          mainRpcMethods["browserEnvironment.previewSensitiveImport"],
+          [request.hostId, request.sourceId, request.dataTypes],
+        );
+      },
     ),
     startImport: guarded(
       "startImport",
@@ -465,9 +517,14 @@ export async function activate(ctx: ExtensionContextLike) {
             const { identity } = await currentIdentity();
             await ensureImportHosts(identity);
             assertNonSensitiveImportSelection(selection);
-            const starting = coordinator.start(identity, selection, operationId, signal);
+            const starting = coordinator.start(
+              identity,
+              selection,
+              operationId,
+              signal,
+            );
             return { identity, starting };
-          }
+          },
         );
         const started = await starting;
         // The initiating RPC owns the import's authority through its final batch.
@@ -476,11 +533,13 @@ export async function activate(ctx: ExtensionContextLike) {
         reportImportHealth(ctx, completed);
         ctx.emit("import-complete", completed);
         return completed;
-      }
+      },
     ),
     startSensitiveImport: guarded(
       "startSensitiveImport",
-      async (request: SensitiveBrowserImportRequest): Promise<SensitiveBrowserImportStatus> => {
+      async (
+        request: SensitiveBrowserImportRequest,
+      ): Promise<SensitiveBrowserImportStatus> => {
         return protectedAdmissions.run(
           admissionKey(request.operationId),
           JSON.stringify(request),
@@ -489,21 +548,25 @@ export async function activate(ctx: ExtensionContextLike) {
             const hosts = await ensureImportHosts(identity);
             assertSelectedImportHost(hosts, request.hostId);
             assertSensitiveImportRequest(request);
-            return ctx.rpc.call("main", mainRpcMethods["browserEnvironment.startSensitiveImport"], [
-              request.hostId,
-              request.sourceId,
-              request.dataTypes,
-              request.operationId,
-            ]);
-          }
+            return ctx.rpc.call(
+              "main",
+              mainRpcMethods["browserEnvironment.startSensitiveImport"],
+              [
+                request.hostId,
+                request.sourceId,
+                request.dataTypes,
+                request.operationId,
+              ],
+            );
+          },
         );
-      }
+      },
     ),
     observeSensitiveImport: guarded(
       "observeSensitiveImport",
       async (
         operationId: string,
-        options?: { afterVersion?: string }
+        options?: { afterVersion?: string },
       ): Promise<SensitiveBrowserImportStatus> => {
         const key = admissionKey(operationId);
         const signal = ctx.invocation.signal?.() ?? undefined;
@@ -516,7 +579,7 @@ export async function activate(ctx: ExtensionContextLike) {
               "main",
               mainRpcMethods["browserEnvironment.observeSensitiveImport"],
               [operationId],
-              { signal }
+              { signal },
             )
           : ctx.rpc.call(
               "main",
@@ -527,9 +590,9 @@ export async function activate(ctx: ExtensionContextLike) {
                   afterVersion: options.afterVersion,
                 },
               ],
-              { signal }
+              { signal },
             );
-      }
+      },
     ),
     cancelSensitiveImport: guarded(
       "cancelSensitiveImport",
@@ -540,17 +603,23 @@ export async function activate(ctx: ExtensionContextLike) {
         const { identity } = await currentIdentity();
         await ensureImportHosts(identity);
         assertSensitiveImportOperationId(operationId);
-        return ctx.rpc.call("main", mainRpcMethods["browserEnvironment.cancelSensitiveImport"], [
-          operationId,
-        ]);
-      }
+        return ctx.rpc.call(
+          "main",
+          mainRpcMethods["browserEnvironment.cancelSensitiveImport"],
+          [operationId],
+        );
+      },
     ),
     openBrowserPrivacyManager: guarded(
       "openBrowserPrivacyManager",
       async (section?: BrowserPrivacySection): Promise<void> => {
         await currentIdentity();
-        await ctx.rpc.call("main", mainRpcMethods["browserPrivacyPresentation.open"], [section]);
-      }
+        await ctx.rpc.call(
+          "main",
+          mainRpcMethods["browserPrivacyPresentation.open"],
+          [section],
+        );
+      },
     ),
     cancelImport: guarded("cancelImport", async (jobId: string) => {
       const { identity } = await currentIdentity();
@@ -560,8 +629,10 @@ export async function activate(ctx: ExtensionContextLike) {
       const { identity } = await currentIdentity();
       await ensureImportHosts(identity);
       const existing =
-        coordinator.getJob(identity, jobId) ?? (await callStore("getImportJob", jobId));
-      if (!existing) throw new Error(`Browser import job was not found: ${jobId}`);
+        coordinator.getJob(identity, jobId) ??
+        (await callStore("getImportJob", jobId));
+      if (!existing)
+        throw new Error(`Browser import job was not found: ${jobId}`);
       assertNonSensitiveImportDataTypes(existing.requestedDataTypes);
       const resumed = await coordinator.resume(identity, jobId);
       const completed = await coordinator.waitForJob(identity, resumed.jobId);
@@ -583,62 +654,74 @@ export async function activate(ctx: ExtensionContextLike) {
         const signal = ctx.invocation.signal?.() ?? undefined;
         await publicAdmissions.wait(key, signal);
         const { identity } = await currentIdentity();
-        if (!jobId || jobId.length > 200) throw new Error("Import operation ID is required");
+        if (!jobId || jobId.length > 200)
+          throw new Error("Import operation ID is required");
         return coordinator.observeJob(identity, jobId, {
           afterVersion: options?.afterVersion,
           signal: ctx.invocation.signal?.() ?? undefined,
         });
-      }
+      },
     ),
     listImportJobs: guarded("listImportJobs", async () => {
       const { identity } = await currentIdentity();
       const live = coordinator.listJobs(identity);
-      return live.length > 0 ? live : (await callStore("listImportJobs")).map(orphanedImportJob);
+      return live.length > 0
+        ? live
+        : (await callStore("listImportJobs")).map(orphanedImportJob);
     }),
-    listOpenTabs: guarded("listOpenTabs", async (request: { hostId: string; sourceId: string }) => {
-      const { identity } = await currentIdentity();
-      await ensureImportHosts(identity);
-      return coordinator.listOpenTabs(
-        identity,
-        request.hostId,
-        request.sourceId,
-        ctx.invocation.signal?.() ?? undefined
-      );
-    }),
-    openTabsAsPanels: guarded("openTabsAsPanels", async (request: OpenTabsAsPanelsRequest) => {
-      const { identity } = await currentIdentity();
-      await ensureImportHosts(identity);
-      const tabs = await coordinator.listOpenTabs(
-        identity,
-        request.hostId,
-        request.sourceId,
-        ctx.invocation.signal?.() ?? undefined
-      );
-      const chosen =
-        request.selection.length > 0
-          ? tabs.filter((tab) => request.selection.includes(tab.tabId))
-          : tabs;
-      const sources = await coordinator.listSources(
-        identity,
-        request.hostId,
-        ctx.invocation.signal?.() ?? undefined
-      );
-      const sourceName =
-        sources.find((source) => source.sourceId === request.sourceId)?.displayName ?? "Browser";
-      return openTabsAsPanels(chosen, ctx, {
-        destination: request.destination ?? "new-root",
-        groupBy: request.groupBy ?? "window",
-        sourceName,
-      });
-    }),
+    listOpenTabs: guarded(
+      "listOpenTabs",
+      async (request: { hostId: string; sourceId: string }) => {
+        const { identity } = await currentIdentity();
+        await ensureImportHosts(identity);
+        return coordinator.listOpenTabs(
+          identity,
+          request.hostId,
+          request.sourceId,
+          ctx.invocation.signal?.() ?? undefined,
+        );
+      },
+    ),
+    openTabsAsPanels: guarded(
+      "openTabsAsPanels",
+      async (request: OpenTabsAsPanelsRequest) => {
+        const { identity } = await currentIdentity();
+        await ensureImportHosts(identity);
+        const tabs = await coordinator.listOpenTabs(
+          identity,
+          request.hostId,
+          request.sourceId,
+          ctx.invocation.signal?.() ?? undefined,
+        );
+        const chosen =
+          request.selection.length > 0
+            ? tabs.filter((tab) => request.selection.includes(tab.tabId))
+            : tabs;
+        const sources = await coordinator.listSources(
+          identity,
+          request.hostId,
+          ctx.invocation.signal?.() ?? undefined,
+        );
+        const sourceName =
+          sources.find((source) => source.sourceId === request.sourceId)
+            ?.displayName ?? "Browser";
+        return openTabsAsPanels(chosen, ctx, {
+          destination: request.destination ?? "new-root",
+          groupBy: request.groupBy ?? "window",
+          sourceName,
+        });
+      },
+    ),
 
     // The Base broker owns only non-sensitive browser product records. Protected
     // browser material remains behind host-native effects and never enters this
     // provider or its Durable Object.
     ...storeMethods,
 
-    exportBookmarks: guarded("exportBookmarks", async (format: "html" | "json" | "chrome-json") =>
-      exportBookmarks(format, await callStore("getAllBookmarks"))
+    exportBookmarks: guarded(
+      "exportBookmarks",
+      async (format: "html" | "json" | "chrome-json") =>
+        exportBookmarks(format, await callStore("getAllBookmarks")),
     ),
   } satisfies BrowserDataProvider;
 
@@ -651,105 +734,146 @@ async function storeImportBatch(
     method: K,
     ...args: RpcMethodArgs<(typeof browserStoreRpcMethods)[K]>
   ) => Promise<
-    import("@vibestudio/shared/rpcMethods").RpcMethodResult<(typeof browserStoreRpcMethods)[K]>
-  >
+    import("@vibestudio/shared/rpcMethods").RpcMethodResult<
+      (typeof browserStoreRpcMethods)[K]
+    >
+  >,
 ): Promise<void> {
   const source = { sourceId: batch.sourceId };
   switch (batch.dataType) {
     case "bookmarks":
       await callStore(
         "addBookmarksBatch",
-        ...browserDataMethods.addBookmarksBatch.args.parse([[...batch.items], source])
+        ...browserDataMethods.addBookmarksBatch.args.parse([
+          [...batch.items],
+          source,
+        ]),
       );
       return;
     case "history":
       await callStore(
         "addHistoryBatch",
-        ...browserDataMethods.addHistoryBatch.args.parse([[...batch.items], source])
+        ...browserDataMethods.addHistoryBatch.args.parse([
+          [...batch.items],
+          source,
+        ]),
       );
       return;
     case "searchEngines":
       await callStore(
         "addSearchEnginesBatch",
-        ...browserDataMethods.addSearchEnginesBatch.args.parse([[...batch.items], source])
+        ...browserDataMethods.addSearchEnginesBatch.args.parse([
+          [...batch.items],
+          source,
+        ]),
       );
       return;
     case "favicons":
       await callStore(
         "addFaviconsBatch",
-        ...browserDataMethods.addFaviconsBatch.args.parse([[...batch.items]])
+        ...browserDataMethods.addFaviconsBatch.args.parse([[...batch.items]]),
       );
   }
 }
 
-function assertNonSensitiveImportSelection(selection: BrowserImportSelection): void {
+function assertNonSensitiveImportSelection(
+  selection: BrowserImportSelection,
+): void {
   assertNonSensitiveImportDataTypes(selection.dataTypes);
 }
 
 function orphanedImportJob(job: ImportJobSnapshot): ImportJobSnapshot {
-  if (["complete", "cancelled", "failed", "partial"].includes(job.phase)) return job;
+  if (["complete", "cancelled", "failed", "partial"].includes(job.phase))
+    return job;
   return {
     ...job,
     phase: "failed",
     finishedAt: job.updatedAt,
-    error: "The browser import stopped before it completed. Start the import again to retry.",
+    error:
+      "The browser import stopped before it completed. Start the import again to retry.",
     resumable: true,
   };
 }
 
 function withAvailableSensitiveImportPath(
   source: BrowserImportSource,
-  allowSensitive: boolean
+  allowSensitive: boolean,
 ): BrowserImportSource {
   if (allowSensitive) return source;
   return {
     ...source,
     supportedDataTypes: source.supportedDataTypes.filter(
-      (dataType) => !SENSITIVE_IMPORT_DATA_TYPES.has(dataType as SensitiveBrowserImportDataType)
+      (dataType) =>
+        !SENSITIVE_IMPORT_DATA_TYPES.has(
+          dataType as SensitiveBrowserImportDataType,
+        ),
     ),
   };
 }
 
-function assertNonSensitiveImportDataTypes(dataTypes: readonly BrowserImportDataType[]): void {
-  if (dataTypes.length === 0) throw new Error("At least one browser data type is required");
+function assertNonSensitiveImportDataTypes(
+  dataTypes: readonly BrowserImportDataType[],
+): void {
+  if (dataTypes.length === 0)
+    throw new Error("At least one browser data type is required");
   for (const dataType of dataTypes) assertNonSensitiveImportDataType(dataType);
 }
 
-function assertNonSensitiveImportDataType(dataType: BrowserImportDataType): void {
+function assertNonSensitiveImportDataType(
+  dataType: BrowserImportDataType,
+): void {
   if (!NON_SENSITIVE_IMPORT_DATA_TYPES.has(dataType)) {
     throw Object.assign(
-      new Error(`Sensitive browser data must be imported by the host: ${dataType}`),
-      { code: "EUNSUPPORTED" }
+      new Error(
+        `Sensitive browser data must be imported by the host: ${dataType}`,
+      ),
+      { code: "EUNSUPPORTED" },
     );
   }
 }
 
-function assertSensitiveImportRequest(request: SensitiveBrowserImportRequest): void {
+function assertSensitiveImportRequest(
+  request: SensitiveBrowserImportRequest,
+): void {
   assertSensitiveImportOperationId(request.operationId);
   assertSensitiveImportSelection(request);
 }
 
-function assertSensitiveImportSelection(request: SensitiveBrowserImportSelection): void {
+function assertSensitiveImportSelection(
+  request: SensitiveBrowserImportSelection,
+): void {
   if (
     request.dataTypes.length === 0 ||
     new Set(request.dataTypes).size !== request.dataTypes.length
   ) {
-    throw new Error("Sensitive browser import data types must be non-empty and unique");
+    throw new Error(
+      "Sensitive browser import data types must be non-empty and unique",
+    );
   }
   for (const dataType of request.dataTypes) {
     if (!SENSITIVE_IMPORT_DATA_TYPES.has(dataType)) {
-      throw new Error(`Unsupported sensitive browser import data type: ${dataType}`);
+      throw new Error(
+        `Unsupported sensitive browser import data type: ${dataType}`,
+      );
     }
   }
 }
 
 function assertSensitiveImportOperationId(operationId: string): void {
-  if (!operationId.trim()) throw new Error("Sensitive import operation id is required");
+  if (!operationId.trim())
+    throw new Error("Sensitive import operation id is required");
 }
 
-function assertSelectedImportHost(hosts: ImportHostSummary[], requestedHostId: string): void {
-  if (!hosts.some((host) => host.hostId === requestedHostId && host.connected)) {
-    throw new Error("Sensitive browser operations require the selected protected import host");
+function assertSelectedImportHost(
+  hosts: ImportHostSummary[],
+  requestedHostId: string,
+): void {
+  if (
+    !hosts.some((host) => host.hostId === requestedHostId && host.connected)
+  ) {
+    throw new Error(
+      "Sensitive browser operations require the selected protected import host",
+    );
   }
 }
 
@@ -767,7 +891,7 @@ async function openTabsAsPanels(
     destination: "new-root" | "caller";
     groupBy: "window" | "none";
     sourceName: string;
-  }
+  },
 ): Promise<OpenTabsAsPanelsResult> {
   const importStartedAt = Date.now();
   const slotTimings: Array<{
@@ -776,18 +900,12 @@ async function openTabsAsPanels(
     outcome: string;
   }> = [];
   const panelRuntime = createPanelRuntime({
-    rpc: {
-      call: (target, method, args, options) => ctx.rpc.call(target, method, args, options),
-      emit: async () => {
-        throw new Error("Browser-data panel composition does not emit target events");
-      },
-      on: () => () => {},
-    },
+    rpc: ctx.rpc,
     onCreateSlotTiming: (event) => {
       slotTimings.push(event);
       if (event.durationMs >= 5_000) {
         ctx.log.warn?.(
-          `Slow browser panel creation stage ${event.stage}: ${event.durationMs}ms (${event.outcome})`
+          `Slow browser panel creation stage ${event.stage}: ${event.durationMs}ms (${event.outcome})`,
         );
       }
     },
@@ -832,7 +950,7 @@ async function openTabsAsPanels(
     options: {
       contextId?: string;
       stateArgs?: Record<string, unknown>;
-    } = {}
+    } = {},
   ): Promise<{ id: string; title: string; contextId: string }> => {
     const panel = await panelRuntime.openPanel("about/collection", {
       parentId,
@@ -872,13 +990,18 @@ async function openTabsAsPanels(
       kind: "title-browser-import-windows",
       sourceName: policy.sourceName,
     };
-    const created = await createCollection(null, title, `${policy.sourceName} · browser import`, {
-      stateArgs: {
-        ...session,
-        startupTask,
-        agentConfig: { approvalLevel: 2 },
+    const created = await createCollection(
+      null,
+      title,
+      `${policy.sourceName} · browser import`,
+      {
+        stateArgs: {
+          ...session,
+          startupTask,
+          agentConfig: { approvalLevel: 2 },
+        },
       },
-    });
+    );
     root = { id: created.id, title: created.title, panelsOpened: 0 };
     rootOrchestration = {
       id: created.id,
@@ -891,7 +1014,9 @@ async function openTabsAsPanels(
     orchestrationContextId = created.contextId;
   } else {
     if (!callerId) {
-      throw new Error("The calling panel is unavailable; choose a new workspace root instead");
+      throw new Error(
+        "The calling panel is unavailable; choose a new workspace root instead",
+      );
     }
     anchorId = callerId;
     const anchor = panelRuntime.getPanelHandle(anchorId);
@@ -938,7 +1063,7 @@ async function openTabsAsPanels(
           anchorId,
           group.title,
           `${policy.sourceName} · imported browser window`,
-          { contextId: orchestrationContextId }
+          { contextId: orchestrationContextId },
         );
         collection = {
           id: created.id,
@@ -958,7 +1083,11 @@ async function openTabsAsPanels(
     }
 
     for (const tab of group.tabs) {
-      const title = (tab.title?.trim() || hostnameFromUrl(tab.url) || "Imported Tab").slice(0, 80);
+      const title = (
+        tab.title?.trim() ||
+        hostnameFromUrl(tab.url) ||
+        "Imported Tab"
+      ).slice(0, 80);
       try {
         // Browser panels are intentionally deferred: importing a tab records
         // its durable slot and URL, but must not wait for the external page to
@@ -969,7 +1098,9 @@ async function openTabsAsPanels(
           // A label, not an id: page titles repeat constantly ("New Tab"), and
           // as an id segment they collided.
           title,
-          ...(orchestrationContextId ? { contextId: orchestrationContextId } : {}),
+          ...(orchestrationContextId
+            ? { contextId: orchestrationContextId }
+            : {}),
         });
         panels.push({
           id: created.id,
@@ -991,7 +1122,9 @@ async function openTabsAsPanels(
     }
   }
 
-  const nonEmptyCollections = collections.filter((entry) => entry.panelsOpened > 0);
+  const nonEmptyCollections = collections.filter(
+    (entry) => entry.panelsOpened > 0,
+  );
   if (root?.panelsOpened === 0) {
     await archiveEmptyContainer(root.id, root.title);
     root = undefined;
@@ -1018,7 +1151,7 @@ async function openTabsAsPanels(
       ctx.log.warn?.(
         `Imported tabs, but could not start collection title assignment: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     } finally {
       const durationMs = Date.now() - launchStartedAt;
@@ -1027,20 +1160,19 @@ async function openTabsAsPanels(
       }
     }
   }
-  const stageTotals = slotTimings.reduce<Record<string, { calls: number; durationMs: number }>>(
-    (totals, timing) => {
-      const current = totals[timing.stage] ?? { calls: 0, durationMs: 0 };
-      current.calls += 1;
-      current.durationMs += timing.durationMs;
-      totals[timing.stage] = current;
-      return totals;
-    },
-    {}
-  );
+  const stageTotals = slotTimings.reduce<
+    Record<string, { calls: number; durationMs: number }>
+  >((totals, timing) => {
+    const current = totals[timing.stage] ?? { calls: 0, durationMs: 0 };
+    current.calls += 1;
+    current.durationMs += timing.durationMs;
+    totals[timing.stage] = current;
+    return totals;
+  }, {});
   ctx.log.info(
     `Browser panel import completed: ${panels.length}/${openable.length} panels in ${
       Date.now() - importStartedAt
-    }ms; stages=${JSON.stringify(stageTotals)}`
+    }ms; stages=${JSON.stringify(stageTotals)}`,
   );
   return {
     destination: policy.destination,
@@ -1055,17 +1187,19 @@ async function openTabsAsPanels(
 }
 
 function parentPanelIdFromInvocation(
-  invocation: ReturnType<InvocationLike["current"]>
+  invocation: ReturnType<InvocationLike["current"]>,
 ): string | undefined {
   const caller = invocation?.chainCaller ?? invocation?.caller;
-  return caller && ["panel", "app", "worker", "do"].includes(caller.callerKind) && caller.callerId
+  return caller &&
+    ["panel", "app", "worker", "do"].includes(caller.callerKind) &&
+    caller.callerId
     ? caller.callerId
     : undefined;
 }
 
 function exportBookmarks(
   format: "html" | "json" | "chrome-json",
-  rows: Array<Record<string, unknown>>
+  rows: Array<Record<string, unknown>>,
 ): string {
   const bookmarks: ImportedBookmark[] = rows.map((row) => ({
     title: String(row["title"] ?? ""),
@@ -1074,7 +1208,9 @@ function exportBookmarks(
     folder: String(row["folder_path"] ?? "/")
       .split("/")
       .filter(Boolean),
-    tags: row["tags"] ? String(row["tags"]).split(",").filter(Boolean) : undefined,
+    tags: row["tags"]
+      ? String(row["tags"]).split(",").filter(Boolean)
+      : undefined,
     keyword: row["keyword"] ? String(row["keyword"]) : undefined,
   }));
   if (format === "html") return exportNetscapeBookmarks(bookmarks);
@@ -1082,10 +1218,16 @@ function exportBookmarks(
   return JSON.stringify(bookmarks, null, 2);
 }
 
-function reportImportHealth(ctx: ExtensionContextLike, job: ImportJobSnapshot): void {
+function reportImportHealth(
+  ctx: ExtensionContextLike,
+  job: ImportJobSnapshot,
+): void {
   if (job.phase === "failed" || job.phase === "cancelled") {
     ctx.health?.degraded({
-      summary: job.phase === "cancelled" ? "Browser import cancelled" : "Browser import failed",
+      summary:
+        job.phase === "cancelled"
+          ? "Browser import cancelled"
+          : "Browser import failed",
       reasons: job.error ? [job.error] : undefined,
     });
   } else if (job.phase === "partial" || job.warnings.length > 0) {
