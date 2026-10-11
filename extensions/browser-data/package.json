@@ -318,6 +318,7 @@
     "@vibestudio/service-schemas": "workspace:*"
   },
   "devDependencies": {
+    "@vibestudio/extension": "workspace:*",
     "@vibestudio/rpc": "workspace:*"
   }
 }
