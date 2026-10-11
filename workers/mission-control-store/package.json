@@ -124,10 +124,10 @@
     "@vibestudio/workspace-contracts": "workspace:*",
     "zod": "^3.25.76",
     "@workspace/agentic-core": "workspace:*",
-    "@vibestudio/shared": "workspace:*"
+    "@vibestudio/shared": "workspace:*",
+    "@vibestudio/service-schemas": "workspace:*"
   },
   "devDependencies": {
-    "@vibestudio/service-schemas": "workspace:*",
     "vitest": "^3.2.7",
     "@vibestudio/durable": "workspace:*",
     "@vibestudio/rpc": "workspace:*"
