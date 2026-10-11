@@ -317,5 +317,7 @@
     "@vibestudio/shared": "workspace:*",
     "@vibestudio/service-schemas": "workspace:*"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@vibestudio/rpc": "workspace:*"
+  }
 }
