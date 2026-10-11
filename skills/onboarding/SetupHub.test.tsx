@@ -5,7 +5,7 @@ import { Theme } from "@radix-ui/themes";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { lintRendererSource } from "@workspace/agentic-core";
+import { lintRendererSource } from "@workspace/agentic-core/renderer-lint";
 import SetupHub from "./SetupHub.js";
 import type { SetupCapabilitySnapshot } from "./snapshot.js";
 import {
@@ -101,9 +101,9 @@ beforeEach(() => {
 });
 
 describe("SetupHub", () => {
-  it("uses only renderer-safe imports", () => {
+  it("uses only renderer-safe imports", async () => {
     const source = readFileSync(resolve(__dirname, "SetupHub.tsx"), "utf8");
-    expect(lintRendererSource(source)).toEqual([]);
+    expect(await lintRendererSource(source)).toEqual([]);
   });
 
   it("separates setup state from ready-now capabilities", async () => {

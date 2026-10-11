@@ -76,7 +76,7 @@ Always read before editing, preserve independent fields, and report original fai
           );
           const result = await service.call(operation, args.input ?? {});
           return {
-            content: [
+            output: [
               { type: "text" as const, text: JSON.stringify(result ?? null) },
             ],
             details: copyJson(result ?? null, {

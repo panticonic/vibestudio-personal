@@ -428,7 +428,7 @@ function sqliteContext(db: DatabaseSync): DurableObjectContext {
     },
   };
   return {
-    props: { stateArgs: null, image: null },
+    props: { stateArgs: null, image: null, nativeOwner: null },
     id: { toString: () => "browser-data-test", name: "browser-data-test" },
     storage: {
       sql,

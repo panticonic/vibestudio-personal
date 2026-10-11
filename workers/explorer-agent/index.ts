@@ -409,7 +409,7 @@ export class ExplorerAgentWorker extends SilentAgentWorker {
         }
 
         return {
-          content: [
+          output: [
             {
               type: "text",
               text: `recorded ${op.detail.cls} on ${op.detail.surface} — ${rows.length} finding(s) in ${op.filePath} (main: ${op.publishedMainEventId})`,

@@ -74,7 +74,7 @@ async function agent() {
   const fixture = await createNativeVesselTestDO(TestMissionAgent, {
     WORKER_SOURCE: "workers/mission-agent", WORKER_CLASS_NAME: "MissionAgent",
     __objectKey: "task-agent",
-  }, { props: { stateArgs: null, image: { sourceRef: `state:${"b".repeat(64)}`, effectiveVersion: "a".repeat(64) } } });
+  }, { props: { nativeOwner: null, stateArgs: null, image: { sourceRef: `state:${"b".repeat(64)}`, effectiveVersion: "a".repeat(64) } } });
   databases.add(fixture.db);
   fixture.instance.configureSubscription();
   return fixture.instance;
