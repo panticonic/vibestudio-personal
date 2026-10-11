@@ -989,6 +989,7 @@ describe("Mission Control planning detail and focused views", () => {
           ["shape_json"],
       ),
       durableWorkQueues: [],
+      nativeOwner: false,
     };
     const restored = await createTestDO(
       TestMissionControlStore,
@@ -1363,6 +1364,7 @@ describe("Mission Control active project selection", () => {
         probe.sql.exec("SELECT shape_json FROM _vibestudio_schema").one()["shape_json"],
       ),
       durableWorkQueues: [],
+      nativeOwner: false,
     };
     const restored = await createTestDO(TestMissionControlStore, { ...env, VIBESTUDIO_SCHEMA_DESCRIPTOR: descriptor }, { db: legacy.db });
     expect(restored.instance.overview()).toMatchObject({ view: { ...view, projectId: null }, views: [{ id: "past", view: { projectId: p.id } }] });
