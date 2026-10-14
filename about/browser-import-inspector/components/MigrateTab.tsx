@@ -43,7 +43,7 @@ import type {
   SensitiveBrowserImportRequest,
   SensitiveBrowserImportStatus,
 } from "@vibestudio/browser-data/client";
-import { panel } from "@workspace/runtime";
+import { panel, rpc } from "@workspace/runtime";
 import type { ImportSourceSelection } from "./ImportSourceRail";
 import {
   browserData,
@@ -74,39 +74,50 @@ import {
 
 /** Above this many tabs the window groups start collapsed. */
 const AUTO_COLLAPSE_TABS = 25;
-const SENSITIVE_DATA_TYPES = new Set<string>(["cookies", "passwords", "formFill"]);
+const SENSITIVE_DATA_TYPES = new Set<string>([
+  "cookies",
+  "passwords",
+  "formFill",
+]);
 const SENSITIVE_DATA_TYPE_ORDER: SensitiveBrowserImportDataType[] = [
   "cookies",
   "passwords",
   "formFill",
 ];
 
-export function MigrateTab(props: { selection: ImportSourceSelection; now: number }) {
+export function MigrateTab(props: {
+  selection: ImportSourceSelection;
+  now: number;
+}) {
   const selectionKey = `${props.selection.host.hostId}\0${props.selection.source.sourceId}`;
   const supported = props.selection.source.supportedDataTypes;
   const available = supported;
   const selectableTypes = useMemo(
     () => DATA_TYPES.filter((item) => available.includes(item.key as never)),
-    [available]
+    [available],
   );
   const [types, setTypes] = useState<Set<string>>(() => new Set(available));
   const [preview, setPreview] = useState<Awaited<
     ReturnType<typeof browserData.previewImport>
   > | null>(null);
   const [job, setJob] = useState<ImportJobSnapshot | null>(null);
-  const [publicOperationId, setPublicOperationId] = useState<string | null>(null);
-  const [sensitiveStatus, setSensitiveStatus] = useState<SensitiveBrowserImportStatus | null>(
-    () => {
+  const [publicOperationId, setPublicOperationId] = useState<string | null>(
+    null,
+  );
+  const [sensitiveStatus, setSensitiveStatus] =
+    useState<SensitiveBrowserImportStatus | null>(() => {
       const checkpoint = readSensitiveImportCheckpoint();
       return checkpointMatchesSelection(checkpoint, props.selection)
         ? (checkpoint?.status ?? null)
         : null;
-    }
+    });
+  const [busy, setBusy] = useState<"preview" | "import" | "release" | null>(
+    null,
   );
-  const [busy, setBusy] = useState<"preview" | "import" | "release" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [observationError, setObservationError] = useState<string | null>(null);
   const [observationAttempt, setObservationAttempt] = useState(0);
+  const [connectionGeneration, setConnectionGeneration] = useState(0);
   const displayedError = error ?? observationError;
   const [step, setStep] = useState<Step>("data");
   const [reimporting, setReimporting] = useState(false);
@@ -119,7 +130,9 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
     setPublicOperationId(null);
     const checkpoint = readSensitiveImportCheckpoint();
     setSensitiveStatus(
-      checkpointMatchesSelection(checkpoint, props.selection) ? (checkpoint?.status ?? null) : null
+      checkpointMatchesSelection(checkpoint, props.selection)
+        ? (checkpoint?.status ?? null)
+        : null,
     );
     setError(null);
     setReleased(false);
@@ -129,8 +142,23 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
   }, [selectionKey]);
 
   useEffect(() => {
+    let departed = rpc.status() !== "connected";
+    return rpc.onStatusChange((status) => {
+      if (status === "connected") {
+        if (departed) {
+          departed = false;
+          setConnectionGeneration((generation) => generation + 1);
+        }
+      } else {
+        departed = true;
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     const jobId = publicOperationId ?? job?.jobId;
-    if (!jobId || (job?.jobId === jobId && isTerminalImportPhase(job.phase))) return;
+    if (!jobId || (job?.jobId === jobId && isTerminalImportPhase(job.phase)))
+      return;
     const observation = new AbortController();
     void (async () => {
       let afterVersion: string | undefined;
@@ -145,17 +173,21 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
         afterVersion = next.version;
       }
     })().catch((cause) => {
-      if (!observation.signal.aborted)
+      if (!observation.signal.aborted && rpc.status() === "connected")
         setError(
-          `Lost contact with the import while it was running: ${classifyError(cause).message}`
+          `Lost contact with the import while it was running: ${classifyError(cause).message}`,
         );
     });
     return () => observation.abort();
-  }, [publicOperationId, job?.jobId]);
+  }, [publicOperationId, job?.jobId, connectionGeneration]);
 
   useEffect(() => {
     setObservationError(null);
-    if (!sensitiveStatus || !["running", "applying"].includes(sensitiveStatus.state)) return;
+    if (
+      !sensitiveStatus ||
+      !["running", "applying"].includes(sensitiveStatus.state)
+    )
+      return;
     const observation = new AbortController();
     const observe = async () => {
       // The first read returns the host's current status; each later read
@@ -166,7 +198,7 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
           browserData,
           sensitiveCheckpointStore,
           afterVersion,
-          observation.signal
+          observation.signal,
         );
         if (observation.signal.aborted || !status) return;
         setSensitiveStatus(status);
@@ -175,19 +207,24 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
       }
     };
     observe().catch((cause) => {
-      if (observation.signal.aborted) return;
+      if (observation.signal.aborted || rpc.status() !== "connected") return;
       setObservationError(
-        `Could not read protected import progress: ${classifyError(cause).message}. Your saved data is kept; retry to resume progress.`
+        `Could not read protected import progress: ${classifyError(cause).message}. Your saved data is kept; retry to resume progress.`,
       );
     });
     return () => {
       observation.abort();
     };
-  }, [sensitiveStatus?.operationId, sensitiveStatus?.state, observationAttempt]);
+  }, [
+    sensitiveStatus?.operationId,
+    sensitiveStatus?.state,
+    observationAttempt,
+    connectionGeneration,
+  ]);
 
   const publicDataTypes = (): NonSensitiveBrowserImportDataType[] =>
     [...types].filter(
-      (dataType) => !SENSITIVE_DATA_TYPES.has(dataType)
+      (dataType) => !SENSITIVE_DATA_TYPES.has(dataType),
     ) as NonSensitiveBrowserImportDataType[];
   const sensitiveDataTypes = (): SensitiveBrowserImportDataType[] =>
     SENSITIVE_DATA_TYPE_ORDER.filter((dataType) => types.has(dataType));
@@ -212,9 +249,11 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
               sourceId: props.selection.source.sourceId,
               dataTypes: sensitive,
             }
-          : null
+          : null,
       );
-      setPreview(mergeImportPreviews(publicPreview, sensitivePreview, props.selection));
+      setPreview(
+        mergeImportPreviews(publicPreview, sensitivePreview, props.selection),
+      );
     } catch (cause) {
       setError(classifyError(cause).message);
     } finally {
@@ -242,14 +281,18 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
           : null,
         () => crypto.randomUUID(),
         (update) => {
-          if (update.publicOperationId) setPublicOperationId(update.publicOperationId);
-          if (update.sensitiveStatus) setSensitiveStatus(update.sensitiveStatus);
-        }
+          if (update.publicOperationId)
+            setPublicOperationId(update.publicOperationId);
+          if (update.sensitiveStatus)
+            setSensitiveStatus(update.sensitiveStatus);
+        },
       );
       setJob(result.job);
       setSensitiveStatus(result.sensitiveStatus);
       if (result.errors.length > 0) {
-        throw new Error(result.errors.map((cause) => classifyError(cause).message).join("; "));
+        throw new Error(
+          result.errors.map((cause) => classifyError(cause).message).join("; "),
+        );
       }
       setPreview(null);
       setReimporting(false);
@@ -268,12 +311,14 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
         browserData,
         sensitiveCheckpointStore,
         job,
-        sensitiveStatus
+        sensitiveStatus,
       );
       setJob(result.job);
       setSensitiveStatus(result.sensitiveStatus);
       if (result.errors.length > 0) {
-        throw new Error(result.errors.map((cause) => classifyError(cause).message).join("; "));
+        throw new Error(
+          result.errors.map((cause) => classifyError(cause).message).join("; "),
+        );
       }
     } catch (cause) {
       setError(classifyError(cause).message);
@@ -284,7 +329,9 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
     const checkpoint = readSensitiveImportCheckpoint();
     if (
       !checkpoint ||
-      !["running", "applying", "application_failed"].includes(checkpoint.status.state)
+      !["running", "applying", "application_failed"].includes(
+        checkpoint.status.state,
+      )
     )
       return;
     setBusy("import");
@@ -310,7 +357,7 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
     try {
       await browserData.releaseImportSource(
         props.selection.host.hostId,
-        props.selection.source.sourceId
+        props.selection.source.sourceId,
       );
       setReleased(true);
     } catch (cause) {
@@ -320,31 +367,34 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
     }
   };
 
-  const allSelected = types.size === selectableTypes.length && selectableTypes.length > 0;
+  const allSelected =
+    types.size === selectableTypes.length && selectableTypes.length > 0;
   // Whether this source has ever been imported, not merely whether it was
   // imported in this mount: the panel is routinely revisited, and a footer that
   // forgets would offer "Skip import" to someone who already imported.
   const history = useAsync<ImportJobSnapshot[]>(
     () => browserData.listImportJobs(),
-    [selectionKey, job?.updatedAt]
+    [selectionKey, job?.updatedAt],
   );
   const importedBefore = (history.state.data ?? []).some(
     (entry) =>
       entry.sourceId === props.selection.source.sourceId &&
       entry.hostId === props.selection.host.hostId &&
-      (entry.phase === "complete" || entry.phase === "partial")
+      (entry.phase === "complete" || entry.phase === "partial"),
   );
   const running =
     (job !== null && !isTerminalImportPhase(job.phase)) ||
-    (sensitiveStatus !== null && ["running", "applying"].includes(sensitiveStatus.state));
+    (sensitiveStatus !== null &&
+      ["running", "applying"].includes(sensitiveStatus.state));
   const currentImportComplete = areSelectedImportsComplete(
     publicDataTypes().length > 0,
     job?.phase ?? null,
     sensitiveDataTypes().length > 0,
-    sensitiveStatus?.state ?? null
+    sensitiveStatus?.state ?? null,
   );
   const hasCurrentImport = job !== null || sensitiveStatus !== null;
-  const imported = !running && (hasCurrentImport ? currentImportComplete : importedBefore);
+  const imported =
+    !running && (hasCurrentImport ? currentImportComplete : importedBefore);
   const hasCurrentResult = currentImportComplete;
   const showImportOptions =
     sensitiveStatus !== null &&
@@ -357,9 +407,19 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
       : shouldShowImportOptions(job?.phase ?? null, reimporting);
 
   return (
-    <Flex direction="column" gap="4" p="4" style={{ overflowY: "auto", height: "100%" }}>
+    <Flex
+      direction="column"
+      gap="4"
+      p="4"
+      style={{ overflowY: "auto", height: "100%" }}
+    >
       <SourceHeader selection={props.selection} />
-      <Stepper step={step} onStep={setStep} dataDone={imported} busy={busy !== null || running} />
+      <Stepper
+        step={step}
+        onStep={setStep}
+        dataDone={imported}
+        busy={busy !== null || running}
+      />
 
       {step === "tabs" ? (
         <>
@@ -376,14 +436,18 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
             <Card style={{ flexShrink: 0 }}>
               <Flex justify="between" align="center" mb="1" gap="2">
                 <Heading size="2">
-                  {hasCurrentResult ? "Import more browser data" : "Choose what to import"}
+                  {hasCurrentResult
+                    ? "Import more browser data"
+                    : "Choose what to import"}
                 </Heading>
                 <Button
                   size="1"
                   variant="ghost"
                   onClick={() =>
                     setTypes(
-                      allSelected ? new Set() : new Set(selectableTypes.map((item) => item.key))
+                      allSelected
+                        ? new Set()
+                        : new Set(selectableTypes.map((item) => item.key)),
                     )
                   }
                 >
@@ -391,8 +455,8 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
                 </Button>
               </Flex>
               <Text size="1" color="gray" as="div" mb="3">
-                Copies the data into Vibestudio's own store. Review first to see the counts without
-                writing anything.
+                Copies the data into Vibestudio's own store. Review first to see
+                the counts without writing anything.
               </Text>
 
               <Grid columns={{ initial: "1", sm: "2", lg: "3" }} gap="2">
@@ -433,11 +497,13 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
               job={preview.job}
               detail={`${plural(preview.openTabCount, "open tab")} available · ${plural(
                 preview.localDataSetCount,
-                "local data set"
+                "local data set",
               )}`}
             />
           )}
-          {showImportOptions && preview && <BreakdownCard breakdowns={preview.breakdowns} />}
+          {showImportOptions && preview && (
+            <BreakdownCard breakdowns={preview.breakdowns} />
+          )}
           {job && <ProgressCard mode="import" scope="public" job={job} />}
           {sensitiveStatus && (
             <ProgressCard
@@ -446,7 +512,7 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
               job={sensitiveStatusAsJob(
                 sensitiveStatus,
                 readSensitiveImportCheckpoint()?.request,
-                props.selection
+                props.selection,
               )}
               heading={
                 sensitiveStatus.state === "applying"
@@ -460,7 +526,8 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
                   ? "Your browser data is saved. Applying cookies before completing the import…"
                   : sensitiveStatus.state === "complete" &&
                       sensitiveStatus.counts.some(
-                        (count) => count.dataType === "cookies" && count.stored > 0
+                        (count) =>
+                          count.dataType === "cookies" && count.stored > 0,
                       )
                     ? "Cookies are applied. Save any work in already-open pages, then reload those pages to use the imported sessions."
                     : sensitiveStatus.state === "cancelled"
@@ -472,7 +539,11 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
           {sensitiveStatus?.state === "application_failed" && (
             <Callout.Root color="red">
               <Callout.Text>{sensitiveStatus.error}</Callout.Text>
-              <Button onClick={() => void retrySensitiveImport()} disabled={busy !== null} mt="2">
+              <Button
+                onClick={() => void retrySensitiveImport()}
+                disabled={busy !== null}
+                mt="2"
+              >
                 Apply saved cookies
               </Button>
             </Callout.Root>
@@ -508,16 +579,17 @@ export function MigrateTab(props: { selection: ImportSourceSelection; now: numbe
             <Callout.Root color="red">
               <Flex justify="between" align="center" gap="3" wrap="wrap">
                 <Callout.Text>{displayedError}</Callout.Text>
-                {sensitiveStatus && ["running", "applying"].includes(sensitiveStatus.state) && (
-                  <Button
-                    size="1"
-                    variant="soft"
-                    disabled={busy !== null}
-                    onClick={() => void retrySensitiveImport()}
-                  >
-                    Retry protected import
-                  </Button>
-                )}
+                {sensitiveStatus &&
+                  ["running", "applying"].includes(sensitiveStatus.state) && (
+                    <Button
+                      size="1"
+                      variant="soft"
+                      disabled={busy !== null}
+                      onClick={() => void retrySensitiveImport()}
+                    >
+                      Retry protected import
+                    </Button>
+                  )}
               </Flex>
             </Callout.Root>
           )}
@@ -566,9 +638,14 @@ function readSensitiveImportCheckpoint(): SensitiveImportCheckpoint | null {
     !Array.isArray(request.dataTypes) ||
     !status ||
     status.operationId !== request.operationId ||
-    !["running", "applying", "application_failed", "complete", "cancelled", "failed"].includes(
-      status.state
-    )
+    ![
+      "running",
+      "applying",
+      "application_failed",
+      "complete",
+      "cancelled",
+      "failed",
+    ].includes(status.state)
   ) {
     return null;
   }
@@ -576,12 +653,13 @@ function readSensitiveImportCheckpoint(): SensitiveImportCheckpoint | null {
 }
 
 async function writeSensitiveImportCheckpoint(
-  checkpoint: SensitiveImportCheckpoint
+  checkpoint: SensitiveImportCheckpoint,
 ): Promise<void> {
   await panel.stateArgs.patch({
     sensitiveImport: createJsonMergePatch(
-      panel.stateArgs.get<{ sensitiveImport?: SensitiveImportCheckpoint }>().sensitiveImport ?? {},
-      checkpoint
+      panel.stateArgs.get<{ sensitiveImport?: SensitiveImportCheckpoint }>()
+        .sensitiveImport ?? {},
+      checkpoint,
     ),
   });
 }
@@ -593,8 +671,10 @@ const sensitiveCheckpointStore = {
 
 export function mergeImportPreviews(
   publicPreview: Awaited<ReturnType<typeof browserData.previewImport>> | null,
-  sensitivePreview: Awaited<ReturnType<typeof browserData.previewSensitiveImport>> | null,
-  selection: ImportSourceSelection
+  sensitivePreview: Awaited<
+    ReturnType<typeof browserData.previewSensitiveImport>
+  > | null,
+  selection: ImportSourceSelection,
 ): Awaited<ReturnType<typeof browserData.previewImport>> {
   if (!publicPreview && !sensitivePreview) {
     throw new Error("Select at least one browser data category to review.");
@@ -620,16 +700,29 @@ export function mergeImportPreviews(
       ...job,
       requestedDataTypes: [
         ...(publicPreview?.job.requestedDataTypes ?? []),
-        ...(sensitivePreview?.dataTypes.map((progress) => progress.dataType) ?? []),
+        ...(sensitivePreview?.dataTypes.map((progress) => progress.dataType) ??
+          []),
       ],
-      progress: [...(publicPreview?.job.progress ?? []), ...(sensitivePreview?.dataTypes ?? [])],
-      warnings: [...(publicPreview?.job.warnings ?? []), ...(sensitivePreview?.warnings ?? [])],
+      progress: [
+        ...(publicPreview?.job.progress ?? []),
+        ...(sensitivePreview?.dataTypes ?? []),
+      ],
+      warnings: [
+        ...(publicPreview?.job.warnings ?? []),
+        ...(sensitivePreview?.warnings ?? []),
+      ],
     },
-    breakdowns: [...(publicPreview?.breakdowns ?? []), ...(sensitivePreview?.breakdowns ?? [])],
-    openTabCount: Math.max(publicPreview?.openTabCount ?? 0, sensitivePreview?.openTabCount ?? 0),
+    breakdowns: [
+      ...(publicPreview?.breakdowns ?? []),
+      ...(sensitivePreview?.breakdowns ?? []),
+    ],
+    openTabCount: Math.max(
+      publicPreview?.openTabCount ?? 0,
+      sensitivePreview?.openTabCount ?? 0,
+    ),
     localDataSetCount: Math.max(
       publicPreview?.localDataSetCount ?? 0,
-      sensitivePreview?.localDataSetCount ?? 0
+      sensitivePreview?.localDataSetCount ?? 0,
     ),
   };
 }
@@ -637,7 +730,7 @@ export function mergeImportPreviews(
 export function sensitiveStatusAsJob(
   status: SensitiveBrowserImportStatus,
   request: SensitiveBrowserImportRequest | undefined,
-  selection: ImportSourceSelection
+  selection: ImportSourceSelection,
 ): ImportJobSnapshot {
   const now = Date.now();
   const phase = ["running", "applying"].includes(status.state)
@@ -656,31 +749,38 @@ export function sensitiveStatusAsJob(
     sourceId: selection.source.sourceId,
     browser: selection.source.browser,
     phase,
-    requestedDataTypes: request?.dataTypes ?? status.counts.map((count) => count.dataType),
+    requestedDataTypes:
+      request?.dataTypes ?? status.counts.map((count) => count.dataType),
     startedAt: now,
     updatedAt: now,
-    finishedAt: ["running", "applying"].includes(status.state) ? undefined : now,
+    finishedAt: ["running", "applying"].includes(status.state)
+      ? undefined
+      : now,
     progress: status.counts.map((count) => ({
       ...count,
       itemsProcessed: count.read,
     })),
     warnings: status.counts.flatMap((count) => {
       if (count.dataType !== "cookies" || count.skipped === 0) return [];
-      return [`${count.skipped} cookies were skipped. Some website sign-ins may not transfer.`];
+      return [
+        `${count.skipped} cookies were skipped. Some website sign-ins may not transfer.`,
+      ];
     }),
     error: status.error,
-    resumable: ["running", "applying", "application_failed"].includes(status.state),
+    resumable: ["running", "applying", "application_failed"].includes(
+      status.state,
+    ),
   };
 }
 
 function checkpointMatchesSelection(
   checkpoint: SensitiveImportCheckpoint | null,
-  selection: ImportSourceSelection
+  selection: ImportSourceSelection,
 ): boolean {
   return Boolean(
     checkpoint &&
     checkpoint.request.hostId === selection.host.hostId &&
-    checkpoint.request.sourceId === selection.source.sourceId
+    checkpoint.request.sourceId === selection.source.sourceId,
   );
 }
 
@@ -715,11 +815,25 @@ function DataStepFooter(props: {
     : `Import ${plural(props.selectedCount, "category", "categories")}`;
 
   return (
-    <Flex justify="between" align="center" gap="2" wrap="wrap" style={{ flexShrink: 0 }}>
+    <Flex
+      justify="between"
+      align="center"
+      gap="2"
+      wrap="wrap"
+      style={{ flexShrink: 0 }}
+    >
       {props.choosing ? (
-        <Button variant="ghost" disabled={blocked || !props.reviewable} onClick={props.onReview}>
-          {props.busy === "preview" ? <Spinner size="1" /> : <MagnifyingGlassIcon />} Review without
-          importing
+        <Button
+          variant="ghost"
+          disabled={blocked || !props.reviewable}
+          onClick={props.onReview}
+        >
+          {props.busy === "preview" ? (
+            <Spinner size="1" />
+          ) : (
+            <MagnifyingGlassIcon />
+          )}{" "}
+          Review without importing
         </Button>
       ) : (
         <Box />
@@ -749,11 +863,17 @@ function DataStepFooter(props: {
               </Button>
             ) : (
               <Button variant="soft" onClick={props.onContinue}>
-                {props.imported ? "Open tabs" : "Skip import"} <ArrowRightIcon />
+                {props.imported ? "Open tabs" : "Skip import"}{" "}
+                <ArrowRightIcon />
               </Button>
             )}
             <Button disabled={blocked} onClick={props.onImport}>
-              {props.busy === "import" ? <Spinner size="1" /> : <DownloadIcon />} {importLabel}
+              {props.busy === "import" ? (
+                <Spinner size="1" />
+              ) : (
+                <DownloadIcon />
+              )}{" "}
+              {importLabel}
             </Button>
           </>
         ) : null}
@@ -795,7 +915,11 @@ function Stepper(props: {
               cursor: "pointer",
             }}
           >
-            <button type="button" onClick={() => props.onStep(step.key)} disabled={props.busy}>
+            <button
+              type="button"
+              onClick={() => props.onStep(step.key)}
+              disabled={props.busy}
+            >
               <Flex align="center" gap="2">
                 <Flex
                   align="center"
@@ -835,7 +959,9 @@ function Stepper(props: {
 }
 
 /** Per-category drill-down: which sites/kinds an import would actually bring in. */
-function BreakdownCard(props: { breakdowns: readonly ImportCategoryBreakdown[] }) {
+function BreakdownCard(props: {
+  breakdowns: readonly ImportCategoryBreakdown[];
+}) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const withItems = props.breakdowns.filter((breakdown) => breakdown.total > 0);
   if (withItems.length === 0) return null;
@@ -843,7 +969,8 @@ function BreakdownCard(props: { breakdowns: readonly ImportCategoryBreakdown[] }
     <Card style={{ flexShrink: 0 }}>
       <Heading size="2">What's inside</Heading>
       <Text size="1" color="gray" as="div" mb="2">
-        Counts grouped by site — expand a category to see where the data comes from.
+        Counts grouped by site — expand a category to see where the data comes
+        from.
       </Text>
       <Flex direction="column">
         {withItems.map((breakdown, index) => {
@@ -864,7 +991,8 @@ function BreakdownCard(props: { breakdowns: readonly ImportCategoryBreakdown[] }
                   onClick={() =>
                     setExpanded((current) => {
                       const next = new Set(current);
-                      if (next.has(breakdown.dataType)) next.delete(breakdown.dataType);
+                      if (next.has(breakdown.dataType))
+                        next.delete(breakdown.dataType);
                       else next.add(breakdown.dataType);
                       return next;
                     })
@@ -885,7 +1013,10 @@ function BreakdownCard(props: { breakdowns: readonly ImportCategoryBreakdown[] }
                   {breakdown.groups.map((group) => (
                     <Flex key={group.label} align="center" gap="2">
                       {breakdown.groupedBy === "site" && (
-                        <SiteMark host={group.label} url={`https://${group.label}/`} />
+                        <SiteMark
+                          host={group.label}
+                          url={`https://${group.label}/`}
+                        />
                       )}
                       <Text size="1" truncate style={{ flex: 1 }}>
                         {group.label}
@@ -908,7 +1039,11 @@ function BreakdownCard(props: { breakdowns: readonly ImportCategoryBreakdown[] }
                           }}
                         />
                       </Box>
-                      <Text size="1" color="gray" style={{ width: 56, textAlign: "right" }}>
+                      <Text
+                        size="1"
+                        color="gray"
+                        style={{ width: 56, textAlign: "right" }}
+                      >
                         {group.count.toLocaleString()}
                       </Text>
                     </Flex>
@@ -918,7 +1053,9 @@ function BreakdownCard(props: { breakdowns: readonly ImportCategoryBreakdown[] }
                       … {plural(breakdown.otherItems, "more item")} across{" "}
                       {plural(
                         breakdown.otherGroups,
-                        breakdown.groupedBy === "site" ? "more site" : "more kind"
+                        breakdown.groupedBy === "site"
+                          ? "more site"
+                          : "more kind",
                       )}
                     </Text>
                   )}
@@ -957,13 +1094,20 @@ function SourceHeader(props: { selection: ImportSourceSelection }) {
             <Heading size="4" truncate>
               {name}
             </Heading>
-            <Badge color={props.selection.source.status === "readable" ? "green" : "amber"}>
+            <Badge
+              color={
+                props.selection.source.status === "readable" ? "green" : "amber"
+              }
+            >
               {props.selection.source.status}
             </Badge>
           </Flex>
           <Text size="2" color="gray" as="div">
             On {props.selection.host.displayName} ·{" "}
-            {plural(props.selection.source.localDataSetCount, "readable local data set")}
+            {plural(
+              props.selection.source.localDataSetCount,
+              "readable local data set",
+            )}
           </Text>
         </Box>
       </Flex>
@@ -976,7 +1120,12 @@ function SourceHeader(props: { selection: ImportSourceSelection }) {
   );
 }
 
-function TypeTile(props: { label: string; hint: string; checked: boolean; onToggle: () => void }) {
+function TypeTile(props: {
+  label: string;
+  hint: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
   return (
     <Flex
       asChild
@@ -992,7 +1141,11 @@ function TypeTile(props: { label: string; hint: string; checked: boolean; onTogg
       }}
     >
       <label>
-        <Checkbox checked={props.checked} onCheckedChange={props.onToggle} mt="1" />
+        <Checkbox
+          checked={props.checked}
+          onCheckedChange={props.onToggle}
+          mt="1"
+        />
         <Box style={{ minWidth: 0 }}>
           <Text size="2" as="div" weight={props.checked ? "medium" : "regular"}>
             {props.label}
@@ -1015,7 +1168,8 @@ function ProgressCard(props: {
 }) {
   const running = !isTerminalImportPhase(props.job.phase);
   const status = importStatusPresentation(props.job.phase, props.scope);
-  const title = props.heading ?? (props.mode === "preview" ? "Review" : status.heading);
+  const title =
+    props.heading ?? (props.mode === "preview" ? "Review" : status.heading);
   const surfaceTone =
     props.mode !== "import"
       ? undefined
@@ -1046,7 +1200,10 @@ function ProgressCard(props: {
 
       <Flex direction="column" gap="3" mt="3">
         {props.job.progress.map((progress) => {
-          const progressView = categoryProgressPresentation(progress, props.job.phase);
+          const progressView = categoryProgressPresentation(
+            progress,
+            props.job.phase,
+          );
           return (
             <Box key={progress.dataType}>
               <Flex justify="between" align="baseline" gap="2">
@@ -1071,7 +1228,9 @@ function ProgressCard(props: {
               />
               <Flex gap="2" align="center" mt="1">
                 <Text size="1" color="gray">
-                  {progressView.pending ? "Waiting for results…" : `${progress.stored} stored`}
+                  {progressView.pending
+                    ? "Waiting for results…"
+                    : `${progress.stored} stored`}
                 </Text>
                 {progress.skipped > 0 && (
                   <Badge color="gray" size="1" variant="soft">
@@ -1089,7 +1248,9 @@ function ProgressCard(props: {
         })}
         {props.job.progress.length === 0 && (
           <Text size="1" color="gray">
-            {running ? "Waiting for the first counts…" : "No records were processed."}
+            {running
+              ? "Waiting for the first counts…"
+              : "No records were processed."}
           </Text>
         )}
       </Flex>
@@ -1140,15 +1301,22 @@ function groupByWindow(tabs: readonly ImportedBrowserOpenTab[]): TabWindow[] {
 function OpenTabs(props: { selection: ImportSourceSelection }) {
   const sourceKey = `${props.selection.host.hostId}\0${props.selection.source.sourceId}`;
   const tabs = useAsync<ImportedBrowserOpenTab[]>(
-    () => browserData.listOpenTabs(props.selection.host.hostId, props.selection.source.sourceId),
-    [sourceKey]
+    () =>
+      browserData.listOpenTabs(
+        props.selection.host.hostId,
+        props.selection.source.sourceId,
+      ),
+    [sourceKey],
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [collapsedWindows, setCollapsedWindows] = useState<Set<string>>(new Set());
+  const [collapsedWindows, setCollapsedWindows] = useState<Set<string>>(
+    new Set(),
+  );
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
   const [groupIntoCollections, setGroupIntoCollections] = useState(true);
-  const [destination, setDestination] = useState<OpenTabsPanelDestination>("new-root");
+  const [destination, setDestination] =
+    useState<OpenTabsPanelDestination>("new-root");
   const [message, setMessage] = useState<{
     tone: "green" | "red";
     text: string;
@@ -1182,30 +1350,41 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
     const matching = needle
       ? rows.filter(
           (tab) =>
-            tab.title?.toLowerCase().includes(needle) || tab.url.toLowerCase().includes(needle)
+            tab.title?.toLowerCase().includes(needle) ||
+            tab.url.toLowerCase().includes(needle),
         )
       : rows;
     return groupByWindow(matching);
   }, [rows, needle]);
-  const visibleCount = windows.reduce((sum, window) => sum + window.tabs.length, 0);
-  const visibleTabIds = windows.flatMap((window) => window.tabs.map((tab) => tab.tabId));
+  const visibleCount = windows.reduce(
+    (sum, window) => sum + window.tabs.length,
+    0,
+  );
+  const visibleTabIds = windows.flatMap((window) =>
+    window.tabs.map((tab) => tab.tabId),
+  );
 
   // When the browser is closed we still list its stored sessions, so say which
   // of them a launch would actually reopen.
   const closedSummary = useMemo(() => {
-    if (rows.length === 0 || rows.some((tab) => tab.sessionState === "open")) return null;
+    if (rows.length === 0 || rows.some((tab) => tab.sessionState === "open"))
+      return null;
     const name = props.selection.source.displayName;
-    const restoring = groupByWindow(rows.filter((tab) => tab.sessionState === "restores"));
-    const saved = groupByWindow(rows.filter((tab) => tab.sessionState === "saved"));
+    const restoring = groupByWindow(
+      rows.filter((tab) => tab.sessionState === "restores"),
+    );
+    const saved = groupByWindow(
+      rows.filter((tab) => tab.sessionState === "saved"),
+    );
     if (restoring.length === 0) {
       return `${name} is not running. None of these ${plural(
         saved.length,
-        "window"
+        "window",
       )} would reopen on launch — they are stored sessions from a profile that does not start by default, or restore is switched off.`;
     }
     const head = `${name} is not running. Starting it reopens ${plural(
       restoring.length,
-      "window"
+      "window",
     )}, marked “restores on launch”.`;
     return saved.length === 0
       ? head
@@ -1243,7 +1422,9 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
             ? `Opened ${plural(result.panelsOpened, "panel")} under Browser Migration & State.`
             : `Opened ${plural(result.panelsOpened, "panel")}.`;
       // Never report a silent zero: if panels did not open, say why.
-      const reasons = [...new Set((result.skipped ?? []).map((entry) => entry.reason))];
+      const reasons = [
+        ...new Set((result.skipped ?? []).map((entry) => entry.reason)),
+      ];
       setMessage({
         tone: result.panelsOpened === 0 && reasons.length > 0 ? "red" : "green",
         text: reasons.length
@@ -1266,12 +1447,14 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
         <Heading size="2">Open tabs</Heading>
         {rows.length > 0 && (
           <Badge color="gray">
-            {plural(rows.length, "tab")} in {plural(groupByWindow(rows).length, "window")}
+            {plural(rows.length, "tab")} in{" "}
+            {plural(groupByWindow(rows).length, "window")}
           </Badge>
         )}
       </Flex>
       <Text size="1" color="gray" as="div">
-        Not part of the data import — each selected tab becomes a deferred browser panel.
+        Not part of the data import — each selected tab becomes a deferred
+        browser panel.
       </Text>
       {closedSummary && (
         <Callout.Root color="amber" size="1" mt="2">
@@ -1284,7 +1467,9 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
         </Text>
         <RadioGroup.Root
           value={destination}
-          onValueChange={(value) => setDestination(value as OpenTabsPanelDestination)}
+          onValueChange={(value) =>
+            setDestination(value as OpenTabsPanelDestination)
+          }
         >
           <Flex direction="column" gap="2">
             <Text as="label" size="2">
@@ -1295,8 +1480,8 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
                     In a new workspace root
                   </Text>
                   <Text as="div" size="1" color="gray">
-                    Creates “{props.selection.source.displayName} · Imported Tabs” as a lasting
-                    top-level hierarchy.
+                    Creates “{props.selection.source.displayName} · Imported
+                    Tabs” as a lasting top-level hierarchy.
                   </Text>
                 </Box>
               </Flex>
@@ -1309,7 +1494,8 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
                     Under Browser Migration &amp; State
                   </Text>
                   <Text as="div" size="1" color="gray">
-                    Keeps the imported hierarchy attached to this onboarding panel.
+                    Keeps the imported hierarchy attached to this onboarding
+                    panel.
                   </Text>
                 </Box>
               </Flex>
@@ -1339,8 +1525,9 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
           <Flex gap="2" align="center">
             <Spinner size="1" />
             <Callout.Text>
-              Reading the live session from {props.selection.source.displayName}. Large or active
-              profiles can take a moment; tabs will become selectable when discovery finishes.
+              Reading the live session from {props.selection.source.displayName}
+              . Large or active profiles can take a moment; tabs will become
+              selectable when discovery finishes.
             </Callout.Text>
           </Flex>
         </Callout.Root>
@@ -1414,7 +1601,7 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
                 onToggleWindow={(on) =>
                   setMany(
                     window.tabs.map((tab) => tab.tabId),
-                    on
+                    on,
                   )
                 }
               />
@@ -1457,10 +1644,20 @@ function TabSelectionActions(props: {
 }) {
   return (
     <Flex gap="2" align="center" mt="2">
-      <Button size="1" variant="soft" disabled={props.disabled} onClick={props.onSelect}>
+      <Button
+        size="1"
+        variant="soft"
+        disabled={props.disabled}
+        onClick={props.onSelect}
+      >
         Select all
       </Button>
-      <Button size="1" variant="ghost" disabled={props.disabled} onClick={props.onDeselect}>
+      <Button
+        size="1"
+        variant="ghost"
+        disabled={props.disabled}
+        onClick={props.onDeselect}
+      >
         Deselect all
       </Button>
     </Flex>
@@ -1476,7 +1673,9 @@ function WindowGroup(props: {
   onToggleWindow: (on: boolean) => void;
 }) {
   const tabs = props.window.tabs;
-  const selectedHere = tabs.filter((tab) => props.selected.has(tab.tabId)).length;
+  const selectedHere = tabs.filter((tab) =>
+    props.selected.has(tab.tabId),
+  ).length;
   const allSelected = selectedHere === tabs.length;
   const hosts = useMemo(() => {
     const seen: string[] = [];
@@ -1509,7 +1708,9 @@ function WindowGroup(props: {
         }}
       >
         <Checkbox
-          checked={allSelected ? true : selectedHere > 0 ? "indeterminate" : false}
+          checked={
+            allSelected ? true : selectedHere > 0 ? "indeterminate" : false
+          }
           onCheckedChange={() => props.onToggleWindow(!allSelected)}
           aria-label={`Select all tabs in window ${props.window.ordinal}`}
         />
@@ -1596,7 +1797,10 @@ function TabRow(props: {
       }}
     >
       <label>
-        <Checkbox checked={props.checked} onCheckedChange={() => props.onToggle(!props.checked)} />
+        <Checkbox
+          checked={props.checked}
+          onCheckedChange={() => props.onToggle(!props.checked)}
+        />
         <SiteMark host={host} url={props.tab.url} />
         <Box style={{ minWidth: 0, flex: 1 }}>
           <Flex align="center" gap="1" style={{ minWidth: 0 }}>
@@ -1628,12 +1832,15 @@ const faviconCache = new Map<string, string | null>();
 const faviconRequests = new Map<string, Promise<string | null>>();
 
 function loadStoredFavicon(url: string): Promise<string | null> {
-  if (faviconCache.has(url)) return Promise.resolve(faviconCache.get(url) ?? null);
+  if (faviconCache.has(url))
+    return Promise.resolve(faviconCache.get(url) ?? null);
   const active = faviconRequests.get(url);
   if (active) return active;
   const request = browserData
     .getPageFavicon(url)
-    .then((favicon) => (favicon ? `data:${favicon.mime_type};base64,${favicon.image_data}` : null))
+    .then((favicon) =>
+      favicon ? `data:${favicon.mime_type};base64,${favicon.image_data}` : null,
+    )
     .catch(() => null)
     .then((value) => {
       faviconCache.set(url, value);
@@ -1646,7 +1853,9 @@ function loadStoredFavicon(url: string): Promise<string | null> {
 
 /** Uses only favicon bytes already stored in the workspace; never contacts the site. */
 function SiteMark(props: { host: string; url: string }) {
-  const [src, setSrc] = useState<string | null>(() => faviconCache.get(props.url) ?? null);
+  const [src, setSrc] = useState<string | null>(
+    () => faviconCache.get(props.url) ?? null,
+  );
   useEffect(() => {
     let mounted = true;
     void loadStoredFavicon(props.url).then((value) => {
@@ -1688,7 +1897,10 @@ function SiteMark(props: { host: string; url: string }) {
   );
 }
 
-function ImportHistory(props: { now: number; jobs: readonly ImportJobSnapshot[] }) {
+function ImportHistory(props: {
+  now: number;
+  jobs: readonly ImportJobSnapshot[];
+}) {
   const visible = useMemo(() => props.jobs.slice(0, 8), [props.jobs]);
   if (!visible.length) return null;
   return (

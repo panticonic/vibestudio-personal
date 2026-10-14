@@ -777,7 +777,12 @@ describe("Mission Control interaction ownership", () => {
   });
 
   it("opens commands with the keyboard without hijacking normal task typing", async () => {
+    const addEventListener = vi.spyOn(window, "addEventListener");
     await open();
+    expect(
+      addEventListener.mock.calls.filter(([event]) => event === "keydown"),
+    ).toHaveLength(1);
+    addEventListener.mockRestore();
     const input = screen.getByRole("textbox", { name: "Quick task title" });
     fireEvent.keyDown(input, { key: "n" });
     expect(screen.queryByRole("dialog")).toBeNull();

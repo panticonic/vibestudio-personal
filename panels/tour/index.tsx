@@ -9,7 +9,14 @@
  * (`panel.stateArgs.patchForPanel(id, { scene: "continuum" })`). Unknown scene
  * ids fall back to the opening scene.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import "@radix-ui/themes/styles.css";
 import "@workspace/ui/foundation.css";
 import "@workspace/ui/themes/vibestudio.css";
@@ -49,6 +56,23 @@ function isEditableTarget(target: EventTarget | null): boolean {
   const tag = target.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
   return target.getAttribute("role") === "slider";
+}
+
+function useWindowKeydown(handler: (event: KeyboardEvent) => void) {
+  const handlerRef = useRef(handler);
+
+  // Keep the lifetime-owned listener aligned with the latest committed view.
+  // Replacing the listener in a passive effect can briefly expose shortcuts
+  // from the previous scene or overlay state.
+  useLayoutEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => handlerRef.current(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
 }
 
 function Tour() {
@@ -94,71 +118,66 @@ function Tour() {
     [notesOpen, update],
   );
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey
-      )
-        return;
-      if (isEditableTarget(event.target)) return;
-      const onButton =
-        event.target instanceof HTMLElement &&
-        event.target.tagName === "BUTTON";
-      switch (event.key) {
-        case "ArrowRight":
-        case "PageDown":
-          goToIndex(index + 1);
-          break;
-        case " ":
-        case "Enter":
-          if (onButton) return;
-          goToIndex(index + 1);
-          break;
-        case "ArrowLeft":
-        case "PageUp":
-          goToIndex(index - 1);
-          break;
-        case "Home":
-          goToIndex(0);
-          break;
-        case "End":
-          goToIndex(DECK.length - 1);
-          break;
-        case "n":
-        case "N":
-          toggleNotes();
-          break;
-        case "f":
-        case "F":
-          setPresent((value) => !value);
-          break;
-        case "?":
-          setHelpOpen((value) => !value);
-          break;
-        case "Escape":
-          if (helpOpen) setHelpOpen(false);
-          else if (present) setPresent(false);
-          else return;
-          break;
-        default: {
-          const digit = Number(event.key);
-          if (
-            Number.isInteger(digit) &&
-            digit >= 1 &&
-            digit <= SCENE_COUNT_KEYS
-          )
-            goToIndex(digit - 1);
-          else return;
-        }
+  useWindowKeydown((event) => {
+    if (
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey
+    )
+      return;
+    if (isEditableTarget(event.target)) return;
+    const onButton =
+      event.target instanceof HTMLElement && event.target.tagName === "BUTTON";
+    switch (event.key) {
+      case "ArrowRight":
+      case "PageDown":
+        goToIndex(index + 1);
+        break;
+      case " ":
+      case "Enter":
+        if (onButton) return;
+        goToIndex(index + 1);
+        break;
+      case "ArrowLeft":
+      case "PageUp":
+        goToIndex(index - 1);
+        break;
+      case "Home":
+        goToIndex(0);
+        break;
+      case "End":
+        goToIndex(DECK.length - 1);
+        break;
+      case "n":
+      case "N":
+        toggleNotes();
+        break;
+      case "f":
+      case "F":
+        setPresent((value) => !value);
+        break;
+      case "?":
+        setHelpOpen((value) => !value);
+        break;
+      case "Escape":
+        if (helpOpen) setHelpOpen(false);
+        else if (present) setPresent(false);
+        else return;
+        break;
+      default: {
+        const digit = Number(event.key);
+        if (
+          Number.isInteger(digit) &&
+          digit >= 1 &&
+          digit <= SCENE_COUNT_KEYS
+        )
+          goToIndex(digit - 1);
+        else return;
       }
-      event.preventDefault();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [goToIndex, helpOpen, index, present, toggleNotes]);
+    }
+    event.preventDefault();
+  });
 
   useHostCommands(HOST_COMMANDS, (id) => {
     if (id === "tour-next") goToIndex(index + 1);

@@ -1,5 +1,11 @@
 import { missionControlRpcMethods } from "@workspace/mission-control/rpc-contract";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   createDurableObjectServiceClient,
   openPanel,
@@ -84,6 +90,24 @@ const mergeBy = <T,>(items: T[], key: (item: T) => string) => [
 ];
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
+
+function useWindowKeydown(handler: (event: KeyboardEvent) => void) {
+  const handlerRef = useRef(handler);
+
+  // An installed window listener must dispatch through the state from the
+  // latest committed render. Replacing it in a passive effect leaves a window
+  // where the visible board and its shortcut behavior describe different
+  // renders.
+  useLayoutEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => handlerRef.current(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
+}
 
 export default function MissionControl() {
   const [data, setData] = useState<Overview | null>(null);
@@ -619,42 +643,38 @@ export default function MissionControl() {
       false,
       "export",
     );
-  useEffect(() => {
-    const keyboard = (event: KeyboardEvent) => {
-      if (document.querySelector("dialog[open]")) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        if (commandsReady) setModal("commands");
-        return;
-      }
-      if (
-        (event.target as HTMLElement).matches(
-          "input, textarea, select, [contenteditable]",
-        )
+  useWindowKeydown((event) => {
+    if (document.querySelector("dialog[open]")) return;
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      if (commandsReady) setModal("commands");
+      return;
+    }
+    if (
+      (event.target as HTMLElement).matches(
+        "input, textarea, select, [contenteditable]",
       )
-        return;
-      if (event.key === "/") {
-        event.preventDefault();
-        search.current?.focus();
+    )
+      return;
+    if (event.key === "/") {
+      event.preventDefault();
+      search.current?.focus();
+    }
+    if (event.key === "?" && commandsReady) {
+      event.preventDefault();
+      setModal("shortcuts");
+    }
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && commandsReady) {
+      if (event.key.toLowerCase() === "n") newTask();
+      if (event.key.toLowerCase() === "p") {
+        setEditProject(undefined);
+        setModal("project");
       }
-      if (event.key === "?" && commandsReady) {
-        event.preventDefault();
-        setModal("shortcuts");
-      }
-      if (!event.metaKey && !event.ctrlKey && !event.altKey && commandsReady) {
-        if (event.key.toLowerCase() === "n") newTask();
-        if (event.key.toLowerCase() === "p") {
-          setEditProject(undefined);
-          setModal("project");
-        }
-      }
-      if (event.key === "Escape") {
-        closeDetail();
-        setSelected(new Set());
-      }
-    };
-    window.addEventListener("keydown", keyboard);
-    return () => window.removeEventListener("keydown", keyboard);
+    }
+    if (event.key === "Escape") {
+      closeDetail();
+      setSelected(new Set());
+    }
   });
   const commands = [
     {

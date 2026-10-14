@@ -3,9 +3,33 @@ import { formatRpcFailure, rpcCallerAbortedError } from "@vibestudio/rpc";
 import { expect, it, vi } from "vitest";
 const transport = vi.hoisted(() => ({ call: vi.fn(), stream: vi.fn() }));
 vi.mock("@workspace/runtime", async () => ({
-  rpc: (await import("@vibestudio/rpc/internal")).schemaRpcCaller(transport),
+  rpc: Object.assign(
+    (await import("@vibestudio/rpc/internal")).schemaRpcCaller(transport),
+    {
+      status: () => "connected" as const,
+      onStatusChange: () => () => {},
+    },
+  ),
 }));
 import { openSetupObservation } from "./observation";
+
+function connection(
+  initial: "connected" | "connecting" | "disconnected" = "connected",
+) {
+  let status = initial;
+  const listeners = new Set<(status: typeof initial) => void>();
+  return {
+    status: () => status,
+    onStatusChange(listener: (status: typeof initial) => void) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set(next: typeof initial) {
+      status = next;
+      for (const listener of listeners) listener(next);
+    },
+  };
+}
 
 function owner() {
   let version = "initial";
@@ -129,6 +153,7 @@ it("reports every independent failure in the combined error while preserving the
     "Mission subscription failed",
   );
   const observation = openSetupObservation(vi.fn(), {
+    connection: connection(),
     owners: [
       async () => {
         throw primary;
@@ -166,6 +191,7 @@ it("includes each cleanup failure in the combined close error", async () => {
     new Error("mission release failed"),
   ];
   const observation = openSetupObservation(vi.fn(), {
+    connection: connection(),
     owners: failures.map((failure) => async (afterVersion, signal) => {
       if (afterVersion === undefined) return { version: "initial" };
       return new Promise<{ version: string }>((_resolve, reject) => {
@@ -207,6 +233,7 @@ it("admits every owner before readiness and joins cancellation of all observatio
   });
   const changed = vi.fn(observeChange);
   const observation = openSetupObservation(changed, {
+    connection: connection(),
     owners: owners.map((source) => source.observe),
     watch: async (signal) =>
       (async function* () {
@@ -241,10 +268,87 @@ it("admits every owner before readiness and joins cancellation of all observatio
   expect(streamClosed).toBe(true);
 });
 
+it("replaces every observation after an authoritative disconnect and reconnect", async () => {
+  const transport = connection();
+  const reset = new Error("Reset(514)");
+  let ownerAdmissions = 0;
+  let watchAdmissions = 0;
+  let live = 0;
+  const observe = async (
+    afterVersion: string | undefined,
+    signal: AbortSignal,
+  ): Promise<{ version: string }> => {
+    if (afterVersion === undefined) {
+      ownerAdmissions++;
+      return { version: `generation-${ownerAdmissions}` };
+    }
+    live++;
+    return await new Promise((_resolve, reject) => {
+      const aborted = () => {
+        live--;
+        reject(
+          signal.reason instanceof Error &&
+            signal.reason.message === "SetupHub observation closed"
+            ? signal.reason
+            : reset,
+        );
+      };
+      signal.addEventListener("abort", aborted, { once: true });
+      if (signal.aborted) aborted();
+    });
+  };
+  const changed = vi.fn();
+  const observation = openSetupObservation(changed, {
+    connection: transport,
+    owners: [observe, observe],
+    watch: async (signal) =>
+      (async function* () {
+        watchAdmissions++;
+        yield { kind: "watching" };
+        await new Promise<void>((_resolve, reject) => {
+          const aborted = () =>
+            reject(
+              signal.reason instanceof Error &&
+                signal.reason.message === "SetupHub observation closed"
+                ? signal.reason
+                : reset,
+            );
+          signal.addEventListener("abort", aborted, { once: true });
+          if (signal.aborted) aborted();
+        });
+      })(),
+  });
+
+  await observation.ready;
+  expect(ownerAdmissions).toBe(2);
+  expect(watchAdmissions).toBe(1);
+  expect(live).toBe(2);
+
+  transport.set("connecting");
+  await vi.waitFor(() => expect(live).toBe(0));
+  let completed = false;
+  void observation.completion.finally(() => {
+    completed = true;
+  });
+  await Promise.resolve();
+  expect(completed).toBe(false);
+
+  transport.set("connected");
+  await vi.waitFor(() => expect(ownerAdmissions).toBe(4));
+  expect(watchAdmissions).toBe(2);
+  expect(live).toBe(2);
+  expect(changed).toHaveBeenCalledTimes(1);
+
+  await observation.close();
+  expect(live).toBe(0);
+  await expect(observation.completion).resolves.toBeUndefined();
+});
+
 it("propagates the original owner failure and retires the other observations", async () => {
   const other = owner();
   const failure = new Error("model owner disconnected");
   const observation = openSetupObservation(vi.fn(), {
+    connection: connection(),
     owners: [
       other.observe,
       async () => {
@@ -274,6 +378,7 @@ it("propagates an owner cancellation that happened before aggregate cancellation
     },
   );
   const observation = openSetupObservation(vi.fn(), {
+    connection: connection(),
     owners: [
       async () => {
         throw independent;
@@ -319,6 +424,7 @@ it.each([false, true])(
         if (signal.aborted) aborted();
       });
     const observation = openSetupObservation(vi.fn(), {
+      connection: connection(),
       owners: [
         async () => {
           throw primary;

@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ImportJobSnapshot } from "@vibestudio/browser-data/client";
 import type { ImportSourceSelection } from "./ImportSourceRail";
@@ -14,11 +21,25 @@ const fixtures = vi.hoisted(() => ({
     cancelSensitiveImport: vi.fn(),
   },
   stateArgs: { get: vi.fn(() => ({})), patch: vi.fn(async () => undefined) },
+  rpc: {
+    status: vi.fn(
+      () => "connected" as "connected" | "connecting" | "disconnected",
+    ),
+    onStatusChange: vi.fn(
+      (
+        _listener: (
+          status: "connected" | "connecting" | "disconnected",
+        ) => void,
+      ) =>
+        () => {},
+    ),
+  },
 }));
 
 vi.mock("@workspace/runtime", () => ({
   browserData: fixtures.browserData,
   panel: { stateArgs: fixtures.stateArgs },
+  rpc: fixtures.rpc,
 }));
 
 import { MigrateTab } from "./MigrateTab";
@@ -45,7 +66,7 @@ const selection: ImportSourceSelection = {
 function snapshot(
   phase: ImportJobSnapshot["phase"],
   itemsProcessed = 0,
-  totalItems = 20
+  totalItems = 20,
 ): ImportJobSnapshot {
   return {
     jobId: "import-1",
@@ -84,7 +105,9 @@ interface PendingObservation {
 const observations: PendingObservation[] = [];
 
 function nextObservation(): PendingObservation | undefined {
-  return [...observations].reverse().find(({ settled, signal }) => !settled && !signal.aborted);
+  return [...observations]
+    .reverse()
+    .find(({ settled, signal }) => !settled && !signal.aborted);
 }
 
 function resolveNext(job: ImportJobSnapshot, version: string): void {
@@ -101,9 +124,13 @@ function rejectNext(cause: unknown): void {
   pending.reject(cause);
 }
 
-async function startImport(view = render(<MigrateTab selection={selection} now={500} />)) {
+async function startImport(
+  view = render(<MigrateTab selection={selection} now={500} />),
+) {
   fireEvent.click(screen.getByRole("button", { name: /Import everything/ }));
-  await waitFor(() => expect(fixtures.browserData.startImport).toHaveBeenCalledOnce());
+  await waitFor(() =>
+    expect(fixtures.browserData.startImport).toHaveBeenCalledOnce(),
+  );
   await screen.findByText("Importing browser data");
   await waitFor(() => expect(nextObservation()).toBeDefined());
   return view;
@@ -112,14 +139,21 @@ async function startImport(view = render(<MigrateTab selection={selection} now={
 describe("MigrateTab public import observation", () => {
   beforeEach(() => {
     observations.length = 0;
+    fixtures.rpc.status.mockReset().mockReturnValue("connected");
+    fixtures.rpc.onStatusChange.mockReset().mockReturnValue(() => {});
     fixtures.stateArgs.get.mockReset().mockReturnValue({});
     fixtures.browserData.observeSensitiveImport.mockReset();
     fixtures.browserData.cancelSensitiveImport.mockReset();
     fixtures.browserData.listImportJobs.mockReset().mockResolvedValue([]);
-    fixtures.browserData.startImport.mockReset().mockResolvedValue(snapshot("reading"));
+    fixtures.browserData.startImport
+      .mockReset()
+      .mockResolvedValue(snapshot("reading"));
     fixtures.browserData.cancelImport.mockReset().mockResolvedValue(undefined);
     fixtures.browserData.observeImportJob.mockReset().mockImplementation(
-      (_jobId: string, options: { afterVersion?: string; signal: AbortSignal }) =>
+      (
+        _jobId: string,
+        options: { afterVersion?: string; signal: AbortSignal },
+      ) =>
         new Promise((resolve, reject) => {
           const pending: PendingObservation = {
             afterVersion: options.afterVersion,
@@ -146,7 +180,7 @@ describe("MigrateTab public import observation", () => {
           };
           if (options.signal.aborted) abort();
           else options.signal.addEventListener("abort", abort, { once: true });
-        })
+        }),
     );
   });
 
@@ -158,16 +192,20 @@ describe("MigrateTab public import observation", () => {
     await act(async () => resolveNext(snapshot("reading"), "published-1"));
     await waitFor(() =>
       expect(
-        observations.some((item) => item.afterVersion === "published-1" && !item.signal.aborted)
-      ).toBe(true)
+        observations.some(
+          (item) => item.afterVersion === "published-1" && !item.signal.aborted,
+        ),
+      ).toBe(true),
     );
 
     await act(async () => resolveNext(snapshot("reading", 12), "published-2"));
     await screen.findByText("12 of 20 processed");
     await waitFor(() =>
       expect(
-        observations.some((item) => item.afterVersion === "published-2" && !item.signal.aborted)
-      ).toBe(true)
+        observations.some(
+          (item) => item.afterVersion === "published-2" && !item.signal.aborted,
+        ),
+      ).toBe(true),
     );
 
     await act(async () => resolveNext(snapshot("complete", 20), "published-3"));
@@ -175,7 +213,9 @@ describe("MigrateTab public import observation", () => {
     await act(async () => Promise.resolve());
 
     expect(nextObservation()).toBeUndefined();
-    expect(observations.some((item) => item.afterVersion === "published-3")).toBe(false);
+    expect(
+      observations.some((item) => item.afterVersion === "published-3"),
+    ).toBe(false);
   });
 
   it("aborts only the panel's observation when unmounted", async () => {
@@ -186,6 +226,32 @@ describe("MigrateTab public import observation", () => {
     view.unmount();
 
     expect(active!.signal.aborted).toBe(true);
+    expect(fixtures.browserData.cancelImport).not.toHaveBeenCalled();
+  });
+
+  it("resumes an active import observation after the RPC transport reconnects", async () => {
+    let status: "connected" | "connecting" = "connected";
+    let publishStatus!: (status: "connected" | "connecting") => void;
+    fixtures.rpc.status.mockImplementation(() => status);
+    fixtures.rpc.onStatusChange.mockImplementation((listener) => {
+      publishStatus = listener;
+      return () => {};
+    });
+    await startImport();
+    const first = nextObservation();
+
+    status = "connecting";
+    act(() => publishStatus(status));
+    await act(async () => rejectNext(new Error("Reset(514)")));
+    expect(screen.queryByText(/Lost contact with the import/)).toBeNull();
+
+    status = "connected";
+    act(() => publishStatus(status));
+    await waitFor(() => {
+      const resumed = nextObservation();
+      expect(resumed).toBeDefined();
+      expect(resumed).not.toBe(first);
+    });
     expect(fixtures.browserData.cancelImport).not.toHaveBeenCalled();
   });
 
@@ -217,16 +283,24 @@ describe("MigrateTab public import observation", () => {
         },
       });
       let pendingSignal: AbortSignal | undefined;
-      fixtures.browserData.observeSensitiveImport.mockImplementation((_id, options) => {
-        if (!options.afterVersion) return Promise.resolve(status);
-        pendingSignal = options.signal;
-        return new Promise((_resolve, reject) => {
-          options.signal.addEventListener("abort", () => reject(options.signal.reason), {
-            once: true,
+      fixtures.browserData.observeSensitiveImport.mockImplementation(
+        (_id, options) => {
+          if (!options.afterVersion) return Promise.resolve(status);
+          pendingSignal = options.signal;
+          return new Promise((_resolve, reject) => {
+            options.signal.addEventListener(
+              "abort",
+              () => reject(options.signal.reason),
+              {
+                once: true,
+              },
+            );
           });
-        });
-      });
-      const view = render(<MigrateTab selection={protectedSelection} now={500} />);
+        },
+      );
+      const view = render(
+        <MigrateTab selection={protectedSelection} now={500} />,
+      );
       await waitFor(() => expect(pendingSignal).toBeDefined());
       if (action === "unmount") view.unmount();
       else
@@ -240,11 +314,11 @@ describe("MigrateTab public import observation", () => {
               },
             }}
             now={500}
-          />
+          />,
         );
       await waitFor(() => expect(pendingSignal!.aborted).toBe(true));
       expect(fixtures.browserData.cancelSensitiveImport).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it("shows provider observation failures while leaving the import uncancelled", async () => {
@@ -254,8 +328,8 @@ describe("MigrateTab public import observation", () => {
 
     expect(
       await screen.findByText(
-        "Lost contact with the import while it was running: Import host disconnected"
-      )
+        "Lost contact with the import while it was running: Import host disconnected",
+      ),
     ).toBeTruthy();
     expect(fixtures.browserData.cancelImport).not.toHaveBeenCalled();
   });
