@@ -43,6 +43,7 @@ import type {
   SensitiveBrowserImportRequest,
   SensitiveBrowserImportStatus,
 } from "@vibestudio/browser-data/client";
+import { isRpcConnectionLost } from "@vibestudio/rpc";
 import { panel, rpc } from "@workspace/runtime";
 import type { ImportSourceSelection } from "./ImportSourceRail";
 import {
@@ -141,19 +142,13 @@ export function MigrateTab(props: {
     setReimporting(false);
   }, [selectionKey]);
 
-  useEffect(() => {
-    let departed = rpc.status() !== "connected";
-    return rpc.onStatusChange((status) => {
-      if (status === "connected") {
-        if (departed) {
-          departed = false;
-          setConnectionGeneration((generation) => generation + 1);
-        }
-      } else {
-        departed = true;
-      }
-    });
-  }, []);
+  useEffect(
+    () =>
+      rpc.onRecovery(() =>
+        setConnectionGeneration((generation) => generation + 1),
+      ),
+    [],
+  );
 
   useEffect(() => {
     const jobId = publicOperationId ?? job?.jobId;
@@ -173,7 +168,7 @@ export function MigrateTab(props: {
         afterVersion = next.version;
       }
     })().catch((cause) => {
-      if (!observation.signal.aborted && rpc.status() === "connected")
+      if (!observation.signal.aborted && !isRpcConnectionLost(cause))
         setError(
           `Lost contact with the import while it was running: ${classifyError(cause).message}`,
         );
@@ -207,7 +202,7 @@ export function MigrateTab(props: {
       }
     };
     observe().catch((cause) => {
-      if (observation.signal.aborted || rpc.status() !== "connected") return;
+      if (observation.signal.aborted || isRpcConnectionLost(cause)) return;
       setObservationError(
         `Could not read protected import progress: ${classifyError(cause).message}. Your saved data is kept; retry to resume progress.`,
       );

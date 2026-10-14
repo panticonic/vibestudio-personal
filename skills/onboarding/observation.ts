@@ -7,7 +7,12 @@ import {
   readEventWatchRecords,
   type EventName,
 } from "@vibestudio/shared/events";
-import { isRpcAbortedBy, type RpcConnectionStatus } from "@vibestudio/rpc";
+import {
+  isRpcAbortedBy,
+  isRpcConnectionLost,
+  type RecoveryKind,
+  type RpcConnectionStatus,
+} from "@vibestudio/rpc";
 import { rpc } from "@workspace/runtime";
 
 export interface SetupObservationDependencies {
@@ -19,6 +24,7 @@ export interface SetupObservationDependencies {
   connection: {
     status(): RpcConnectionStatus;
     onStatusChange(handler: (status: RpcConnectionStatus) => void): () => void;
+    onRecovery(handler: (kind: RecoveryKind) => void): () => void;
   };
 }
 
@@ -53,6 +59,7 @@ function dependencies(): SetupObservationDependencies {
     connection: {
       status: () => rpc.status(),
       onStatusChange: (handler) => rpc.onStatusChange(handler),
+      onRecovery: (handler) => rpc.onRecovery(handler),
     },
     watch: async (signal) =>
       readEventWatchRecords(
@@ -110,6 +117,8 @@ export function openSetupObservation(
   let admittedOnce = false;
   let closed = false;
   let settled = false;
+  let recoveryRevision = 0;
+  let awaitingRecovery = false;
   let desiredStatus: RpcConnectionStatus = "connecting";
 
   interface Generation {
@@ -117,6 +126,7 @@ export function openSetupObservation(
     ready: Promise<void>;
     completion: Promise<void>;
     retiredByConnection: boolean;
+    recoveryRevision: number;
   }
 
   const openGeneration = (): Generation => {
@@ -182,6 +192,7 @@ export function openSetupObservation(
       controller,
       ready: generationReady,
       retiredByConnection: false,
+      recoveryRevision,
       completion: Promise.resolve(),
     };
     generation.completion = Promise.all(tasks)
@@ -204,15 +215,19 @@ export function openSetupObservation(
 
   let current: Generation | undefined;
   let reconcileChain = Promise.resolve();
-  const fail = (error: unknown) => {
+  const fail = (error: unknown, readyError: unknown = error) => {
     if (settled) return;
     settled = true;
-    rejectReady(error);
+    rejectReady(readyError);
     rejectCompletion(error);
     unsubscribeStatus();
+    unsubscribeRecovery();
   };
   const reconcile = async () => {
-    if (current && (closed || desiredStatus !== "connected")) {
+    if (
+      current &&
+      (closed || desiredStatus !== "connected" || current.retiredByConnection)
+    ) {
       const retiring = current;
       current = undefined;
       const reason = new Error(
@@ -235,7 +250,7 @@ export function openSetupObservation(
       }
       return;
     }
-    if (desiredStatus !== "connected" || current) return;
+    if (desiredStatus !== "connected" || awaitingRecovery || current) return;
     const generation = openGeneration();
     current = generation;
     void generation.ready
@@ -249,10 +264,7 @@ export function openSetupObservation(
           onChanged();
         }
       })
-      .catch((error: unknown) => {
-        if (!admittedOnce && !generation.retiredByConnection)
-          rejectReady(error);
-      });
+      .catch(() => {});
     void generation.completion
       .then(() => {
         if (current === generation && !generation.controller.signal.aborted)
@@ -262,7 +274,16 @@ export function openSetupObservation(
       })
       .catch((error: unknown) => {
         if (generation.retiredByConnection) return;
-        fail(error);
+        if (isRpcConnectionLost(error)) {
+          if (current === generation) current = undefined;
+          awaitingRecovery = recoveryRevision === generation.recoveryRevision;
+          if (!awaitingRecovery) scheduleReconcile();
+          return;
+        }
+        void generation.ready.then(
+          () => fail(error),
+          (admissionError: unknown) => fail(error, admissionError),
+        );
       });
   };
   const scheduleReconcile = (failure?: unknown) => {
@@ -282,6 +303,18 @@ export function openSetupObservation(
     }
     scheduleReconcile();
   });
+  const unsubscribeRecovery = sources.connection.onRecovery(() => {
+    recoveryRevision++;
+    awaitingRecovery = false;
+    desiredStatus = sources.connection.status();
+    if (current) {
+      current.retiredByConnection = true;
+      current.controller.abort(
+        new Error("Setup observation server generation recovered"),
+      );
+    }
+    scheduleReconcile();
+  });
   desiredStatus = sources.connection.status();
   scheduleReconcile();
 
@@ -296,6 +329,7 @@ export function openSetupObservation(
       if (!closed) {
         closed = true;
         unsubscribeStatus();
+        unsubscribeRecovery();
         scheduleReconcile();
       }
       await reconcileChain;

@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ImportJobSnapshot } from "@vibestudio/browser-data/client";
+import { RemoteRpcError } from "@vibestudio/rpc";
 import type { ImportSourceSelection } from "./ImportSourceRail";
 
 const fixtures = vi.hoisted(() => ({
@@ -33,6 +34,7 @@ const fixtures = vi.hoisted(() => ({
       ) =>
         () => {},
     ),
+    onRecovery: vi.fn((_listener: () => void) => () => {}),
   },
 }));
 
@@ -141,6 +143,7 @@ describe("MigrateTab public import observation", () => {
     observations.length = 0;
     fixtures.rpc.status.mockReset().mockReturnValue("connected");
     fixtures.rpc.onStatusChange.mockReset().mockReturnValue(() => {});
+    fixtures.rpc.onRecovery.mockReset().mockReturnValue(() => {});
     fixtures.stateArgs.get.mockReset().mockReturnValue({});
     fixtures.browserData.observeSensitiveImport.mockReset();
     fixtures.browserData.cancelSensitiveImport.mockReset();
@@ -230,23 +233,22 @@ describe("MigrateTab public import observation", () => {
   });
 
   it("resumes an active import observation after the RPC transport reconnects", async () => {
-    let status: "connected" | "connecting" = "connected";
-    let publishStatus!: (status: "connected" | "connecting") => void;
-    fixtures.rpc.status.mockImplementation(() => status);
-    fixtures.rpc.onStatusChange.mockImplementation((listener) => {
-      publishStatus = listener;
+    let publishRecovery!: () => void;
+    fixtures.rpc.onRecovery.mockImplementation((listener) => {
+      publishRecovery = listener;
       return () => {};
     });
     await startImport();
     const first = nextObservation();
 
-    status = "connecting";
-    act(() => publishStatus(status));
-    await act(async () => rejectNext(new Error("Reset(514)")));
+    await act(async () =>
+      rejectNext(
+        new RemoteRpcError("Reset(514)", "transport", "CONNECTION_LOST"),
+      ),
+    );
     expect(screen.queryByText(/Lost contact with the import/)).toBeNull();
 
-    status = "connected";
-    act(() => publishStatus(status));
+    act(() => publishRecovery());
     await waitFor(() => {
       const resumed = nextObservation();
       expect(resumed).toBeDefined();

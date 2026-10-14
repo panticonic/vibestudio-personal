@@ -1,5 +1,10 @@
 import { durableObjectServiceFixture } from "@vibestudio/service-schemas/test-utils";
-import { formatRpcFailure, rpcCallerAbortedError } from "@vibestudio/rpc";
+import {
+  formatRpcFailure,
+  RemoteRpcError,
+  rpcCallerAbortedError,
+  type RecoveryKind,
+} from "@vibestudio/rpc";
 import { expect, it, vi } from "vitest";
 const transport = vi.hoisted(() => ({ call: vi.fn(), stream: vi.fn() }));
 vi.mock("@workspace/runtime", async () => ({
@@ -8,6 +13,7 @@ vi.mock("@workspace/runtime", async () => ({
     {
       status: () => "connected" as const,
       onStatusChange: () => () => {},
+      onRecovery: () => () => {},
     },
   ),
 }));
@@ -18,6 +24,7 @@ function connection(
 ) {
   let status = initial;
   const listeners = new Set<(status: typeof initial) => void>();
+  const recoveryListeners = new Set<(kind: RecoveryKind) => void>();
   return {
     status: () => status,
     onStatusChange(listener: (status: typeof initial) => void) {
@@ -27,6 +34,13 @@ function connection(
     set(next: typeof initial) {
       status = next;
       for (const listener of listeners) listener(next);
+    },
+    onRecovery(listener: (kind: RecoveryKind) => void) {
+      recoveryListeners.add(listener);
+      return () => recoveryListeners.delete(listener);
+    },
+    recover(kind: RecoveryKind = "resubscribe") {
+      for (const listener of recoveryListeners) listener(kind);
     },
   };
 }
@@ -341,6 +355,92 @@ it("replaces every observation after an authoritative disconnect and reconnect",
 
   await observation.close();
   expect(live).toBe(0);
+  await expect(observation.completion).resolves.toBeUndefined();
+});
+
+it("replaces a hidden server generation when the logical IPC transport recovers", async () => {
+  const transport = connection();
+  let admissions = 0;
+  let loseGeneration!: (error: unknown) => void;
+  let loseWatch!: (error: unknown) => void;
+  const observe = async (
+    afterVersion: string | undefined,
+    signal: AbortSignal,
+  ): Promise<{ version: string }> => {
+    if (afterVersion === undefined) {
+      admissions++;
+      return { version: `generation-${admissions}` };
+    }
+    return await new Promise((_resolve, reject) => {
+      loseGeneration = reject;
+      const aborted = () => reject(signal.reason);
+      signal.addEventListener("abort", aborted, { once: true });
+      if (signal.aborted) aborted();
+    });
+  };
+  const changed = vi.fn();
+  const observation = openSetupObservation(changed, {
+    connection: transport,
+    owners: [observe],
+    watch: async (signal) =>
+      (async function* () {
+        yield { kind: "watching" };
+        await new Promise<void>((_resolve, reject) => {
+          loseWatch = reject;
+          const aborted = () => reject(signal.reason);
+          signal.addEventListener("abort", aborted, { once: true });
+          if (signal.aborted) aborted();
+        });
+      })(),
+  });
+
+  await observation.ready;
+  const connectionLost = new RemoteRpcError(
+    "Reset(514)",
+    "transport",
+    "CONNECTION_LOST",
+  );
+  loseGeneration(connectionLost);
+  loseWatch(connectionLost);
+  await vi.waitFor(() => expect(admissions).toBe(1));
+  expect(transport.status()).toBe("connected");
+
+  transport.recover();
+  await vi.waitFor(() => expect(admissions).toBe(2));
+  expect(changed).toHaveBeenCalledTimes(1);
+  await observation.close();
+  await expect(observation.completion).resolves.toBeUndefined();
+});
+
+it("joins the current generation without opening another when recovery races close", async () => {
+  const transport = connection();
+  let admissions = 0;
+  const source = owner();
+  const observation = openSetupObservation(vi.fn(), {
+    connection: transport,
+    owners: [
+      async (version, signal) => {
+        if (version === undefined) admissions++;
+        return source.observe(version, signal);
+      },
+    ],
+    watch: async (signal) =>
+      (async function* () {
+        yield { kind: "watching" };
+        await new Promise<void>((_resolve, reject) => {
+          const aborted = () => reject(signal.reason);
+          signal.addEventListener("abort", aborted, { once: true });
+          if (signal.aborted) aborted();
+        });
+      })(),
+  });
+  await observation.ready;
+
+  transport.recover();
+  await observation.close();
+
+  expect(admissions).toBe(1);
+  expect(source.live).toBe(0);
   await expect(observation.completion).resolves.toBeUndefined();
 });
 

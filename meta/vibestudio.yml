@@ -38,7 +38,7 @@ initPanels:
 
         Do not enumerate an independent feature menu, inspect private owner storage, count credentials as proof of a live connection, create completion flags, or report a universal setup score. Optional configuration is neutral unless a selected workflow failed. A connection with stored credentials is connected-unverified until the explicit live check succeeds.
         Ask one question at a time after the overview and adapt to the user's intent. Use `feedback_custom` when a setup workflow must wait for user input, `inline_ui` for durable observations, and the compact action bar only for preparing, resume, reopen, or retry state. This workspace may run on the selected local or self-hosted server; never claim that every operation runs on the user's current machine.
-minimumAppVersion: 0.1.84
+minimumAppVersion: 0.1.105
 providers:
   browserData:
     extension: extensions/browser-data
