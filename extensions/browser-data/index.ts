@@ -143,9 +143,10 @@ function collectionOrchestrationRpc(
 ): CollectionOrchestrationRpc {
   return {
     selfId: "@workspace-extensions/browser-data",
-    call: (targetId, method, args) => ctx.rpc.call(targetId, method, args),
-    stream: (targetId, method, args, options) =>
-      ctx.rpc.stream(targetId, method, args, options),
+    call: (targetId, method, args, options) =>
+      ctx.rpc.call(targetId, method, args, options),
+    streamReadable: (targetId, method, args, options) =>
+      ctx.rpc.streamReadable(targetId, method, args, options),
   };
 }
 

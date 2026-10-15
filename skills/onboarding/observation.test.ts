@@ -6,7 +6,10 @@ import {
   type RecoveryKind,
 } from "@vibestudio/rpc";
 import { expect, it, vi } from "vitest";
-const transport = vi.hoisted(() => ({ call: vi.fn(), stream: vi.fn() }));
+const transport = vi.hoisted(() => ({
+  call: vi.fn(),
+  streamReadable: vi.fn(),
+}));
 vi.mock("@workspace/runtime", async () => ({
   rpc: Object.assign(
     (await import("@vibestudio/rpc/internal")).schemaRpcCaller(transport),
@@ -110,7 +113,7 @@ it("admits the real setup dependencies using positional service queries and clos
       return source.observe(args[0].afterVersion, signal);
     },
   );
-  transport.stream.mockImplementation(
+  transport.streamReadable.mockImplementation(
     async (_target, _method, _args, { signal }) => {
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
@@ -125,7 +128,7 @@ it("admits the real setup dependencies using positional service queries and clos
           );
         },
       });
-      return { status: 200, body };
+      return { status: 200, statusText: "OK", headers: [], finalUrl: "", body };
     },
   );
   const changed = vi.fn();

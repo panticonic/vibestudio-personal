@@ -47,12 +47,13 @@ describe("onboarding browser-data component chain", () => {
       method === "listImportJobs" ? [completedImport] : [],
     );
     const rpcClient = schemaRpcClientMock(
-      { call: storeCall, stream: vi.fn(async () => new Response()) },
+      { call: storeCall },
       "onboarding-browser-data-test",
     );
     const rpc: ExtensionRpcLike = {
       call: rpcClient.call,
       stream: rpcClient.stream,
+      streamReadable: rpcClient.streamReadable,
       emit: rpcClient.emit,
       on: (eventName, listener) =>
         rpcClient.on(eventName, listener, {
