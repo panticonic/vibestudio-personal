@@ -32,7 +32,6 @@ const setupEvents: EventName[] = [
   "extensions:@workspace-extensions/local-models::models.changed",
   "extensions:@workspace-extensions/browser-data::import-job-changed",
   "extensions:status",
-  "apps:status",
   "workspace:config-changed",
   "hub:workspace-catalog-changed",
   "server-connection-changed",

@@ -30,7 +30,7 @@ export interface CollectionOrchestrationState {
 
 export interface CollectionOrchestrationRpc {
   call: import("@vibestudio/rpc").RpcCaller["call"];
-  stream: import("@vibestudio/rpc").RpcCaller["stream"];
+  streamReadable: import("@vibestudio/rpc").RpcCaller["streamReadable"];
   selfId: string;
 }
 

@@ -89,7 +89,6 @@ describe("collection orchestration", () => {
       selfId: "@workspace-extensions/browser-data",
       ...schemaRpcMock({
         call: async () => undefined,
-        stream: vi.fn(async () => new Response()),
       }),
     };
 

@@ -435,7 +435,6 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
     },
   );
   const emit = vi.fn();
-  const rpcStream = vi.fn(async () => new Response());
   const rpcWireCall = vi.fn(
     async (
       targetId: string,
@@ -444,12 +443,13 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
     ): Promise<unknown> => rpcCall(targetId, method, ...args),
   );
   const rpcClient = schemaRpcClientMock(
-    { call: rpcWireCall, stream: rpcStream },
+    { call: rpcWireCall },
     "browser-data-test",
   );
   const rpc: ExtensionRpcLike = {
     call: rpcClient.call,
     stream: rpcClient.stream,
+    streamReadable: rpcClient.streamReadable,
     emit: rpcClient.emit,
     on: (eventName, listener) =>
       rpcClient.on(eventName, listener, {
@@ -488,7 +488,6 @@ function makeContext(callerKind: string | null = "shell", callerId = "shell") {
       emit,
     },
     rpcCall,
-    rpcStream,
     resolveService,
     emit,
     health,
