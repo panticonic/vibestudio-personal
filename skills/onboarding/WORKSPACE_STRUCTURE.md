@@ -25,10 +25,10 @@ source/
     workspace-dev/      ← Workspace development skill
   workers/              ← Workerd Durable Object source
     agent-worker/       ← Default AI chat worker
-  apps/                 ← Trusted workspace apps
-    shell/              ← @workspace-apps/shell (Electron shell target)
-    mobile/             ← @workspace-apps/mobile (React Native target)
-    remote-cli/         ← Optional terminal app target shape
+  clients/              ← Trusted clients (System workspace only)
+    desktop-browser/    ← @workspace-clients/desktop-browser (web runtime)
+    mobile-browser/     ← @workspace-clients/mobile-browser (react-native runtime)
+    terminal-browser/   ← @workspace-clients/terminal-browser (terminal runtime)
   extensions/           ← Trusted Node extension units
     shell/              ← @workspace-extensions/shell
   about/                ← Built-in about/help pages
@@ -93,25 +93,29 @@ protected `main` unless given a `ctx:<contextId>` ref. Content-only build
 selectors work for rendering and builds but cannot serve as semantic ancestry
 or authorize mutations.
 
-## Trusted Apps And Extensions
+## Trusted Clients And Extensions
 
-Apps and extensions use flat source paths. A package named `@workspace-apps/foo`
-lives at `apps/foo`; a package named `@workspace-extensions/bar` lives at
+Clients and extensions use flat source paths. A package named `@workspace-clients/foo`
+lives at `clients/foo`; a package named `@workspace-extensions/bar` lives at
 `extensions/bar`. Do not add package scope segments to the path.
 
-Workspace app targets are:
+Client runtimes are:
 
-- `electron`: browser/Electron shell surfaces.
-- `react-native`: mobile workspace app bundles.
-- `terminal`: supervised Node CLI/client processes for terminal-client tooling.
+- `web`: the desktop host's renderer clients (the desktop browser).
+- `react-native`: mobile client bundles run by the Android and iOS hosts.
+- `terminal`: Node ESM client modules run by the terminal host.
 
-Capabilities are declared in `package.json`. User and device invitations are
-account operations on the typed `hubControl` service, not app capabilities.
+Each client declares a `vibestudio.client` block in `package.json` with its
+runtime, host ABI and `required`/`optional` host capabilities. The System
+`meta/vibestudio.yml` lists clients under `clients:`, names each host's default
+under `clientDefaults:`, and lists the clients allowed device-level
+capabilities under `trust.clients:`. User and device invitations are account
+operations on the typed `hubControl` service, not client capabilities.
 
 For the full trust and client-auth model, see `docs/trusted-workspace-units.md`
-in the Vibestudio source checkout. Authoring apps, target contracts,
-capabilities, mobile bootstrap, and terminal clients is covered by the `appdev`
-skill in your System workspace (`skills/appdev/SKILL.md` there); this workspace
+in the Vibestudio source checkout. Authoring clients, runtime contracts,
+capabilities, mobile bootstrap, and terminal clients is covered by the `clientdev`
+skill in your System workspace (`skills/clientdev/SKILL.md` there); this workspace
 does not include it.
 
 ## Plain Projects

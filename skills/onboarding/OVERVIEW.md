@@ -25,12 +25,14 @@ can:
 
 The **chat panel** is the default root panel, where you talk to the AI agent.
 
-### Trusted Apps
+### Trusted Clients
 
-Trusted workspace apps live under `apps/` and use package names such as
-`@workspace-apps/shell`, `@workspace-apps/mobile`, and
-`@workspace-apps/remote-cli`. Apps are trusted client runtimes, not panels. Use
-the `appdev` skill before creating or changing apps.
+Trusted workspace clients live under `clients/` in your System workspace and
+use package names such as `@workspace-clients/desktop-browser`,
+`@workspace-clients/mobile-browser`, and `@workspace-clients/terminal-browser`.
+Clients are trusted top-level programs that a device host runs, not panels. Use
+the `clientdev` skill in your System workspace before creating or changing
+clients.
 
 ### Workspaces
 
