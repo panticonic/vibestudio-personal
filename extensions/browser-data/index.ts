@@ -611,8 +611,8 @@ export async function activate(ctx: ExtensionContextLike) {
         );
       },
     ),
-    openBrowserPrivacyManager: guarded(
-      "openBrowserPrivacyManager",
+    openBrowserDataSettings: guarded(
+      "openBrowserDataSettings",
       async (section?: BrowserPrivacySection): Promise<void> => {
         await currentIdentity();
         await ctx.rpc.call(

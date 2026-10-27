@@ -1,5 +1,5 @@
 /**
- * Data-access helpers for the Browser Migration & State panel.
+ * Data-access helpers for the Browser import panel.
  *
  * Every call goes through the `@workspace-extensions/browser-data` extension.
  * Public browser records use the installed provider. Sensitive review returns

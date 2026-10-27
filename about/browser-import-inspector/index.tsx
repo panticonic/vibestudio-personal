@@ -1,44 +1,35 @@
-/**
- * Browser Migration & State — a first-party operational dashboard for migrating
- * browser data into Vibestudio, safely re-running imports, inspecting the imported
- * store, opening current source-browser tabs as panels, and debugging the
- * address bar.
- *
- * Layout: a left rail of detected browsers/profiles + a three-tab work area
- * (Migrate / Inspect / Debug). Sensitive imports use one sealed host effect and
- * return aggregate counts only; protected values are never exposed to this
- * panel or the Base coordinator.
- */
+/** Import browser data; ongoing management lives in Settings → Browser data. */
 import { useEffect, useState } from "react";
-import { Box, Flex, Tabs, Text, Theme } from "@radix-ui/themes";
+import {
+  Box,
+  Button,
+  Callout,
+  Flex,
+  Heading,
+  Text,
+  Theme,
+} from "@radix-ui/themes";
 import "@radix-ui/themes/styles.css";
 import "@workspace/ui/foundation.css";
 import "@workspace/ui/themes/vibestudio.css";
-import { panel } from "@workspace/runtime";
 import {
   useIsMobile,
   usePanelTheme,
   usePanelThemeConfig,
-  useStateArgs,
 } from "@workspace/react";
 import {
   ImportSourceRail,
   type ImportSourceSelection,
 } from "./components/ImportSourceRail";
 import { MigrateTab } from "./components/MigrateTab";
-import { InspectTab } from "./components/InspectTab";
-import { DebugTab } from "./components/DebugTab";
+import { browserData } from "./useBrowserData";
 
-interface InspectorStateArgs {
-  activeTab?: string;
-}
-
-function useNow(intervalMs = 60_000): number {
+function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
-  }, [intervalMs]);
+  }, []);
   return now;
 }
 
@@ -46,18 +37,19 @@ export default function BrowserImportInspector() {
   const theme = usePanelTheme();
   const appTheme = usePanelThemeConfig();
   const isMobile = useIsMobile();
-  const stateArgs = useStateArgs<InspectorStateArgs>();
   const now = useNow();
   const [selection, setSelection] = useState<ImportSourceSelection | null>(
     null,
   );
-  const [tab, setTab] = useState<string>(stateArgs.activeTab ?? "migrate");
-
-  const changeTab = (value: string) => {
-    setTab(value);
-    panel.stateArgs.patch({ activeTab: value });
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const openSettings = async () => {
+    setSettingsError(null);
+    try {
+      await browserData.openBrowserDataSettings("siteData");
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : String(error));
+    }
   };
-
   return (
     <Theme appearance={theme} {...appTheme}>
       <Flex
@@ -65,54 +57,36 @@ export default function BrowserImportInspector() {
         style={{ height: "100dvh", width: "100%" }}
       >
         <ImportSourceRail selected={selection} onSelect={setSelection} />
-        <Box
-          style={{
-            flex: 1,
-            minWidth: 0,
-            minHeight: 0,
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <Tabs.Root
-            value={tab}
-            onValueChange={changeTab}
-            style={{ display: "flex", flexDirection: "column", height: "100%" }}
-          >
-            <Tabs.List>
-              <Tabs.Trigger value="migrate">Migrate</Tabs.Trigger>
-              <Tabs.Trigger value="inspect">Inspect</Tabs.Trigger>
-              <Tabs.Trigger value="debug">Debug</Tabs.Trigger>
-            </Tabs.List>
-            <Box style={{ flex: 1, minHeight: 0 }}>
-              <Tabs.Content value="migrate" style={{ height: "100%" }}>
-                {selection ? (
-                  <MigrateTab selection={selection} now={now} />
-                ) : (
-                  <EmptyState message="Choose a device and browser to plan an import." />
-                )}
-              </Tabs.Content>
-              <Tabs.Content value="inspect" style={{ height: "100%" }}>
-                <InspectTab now={now} />
-              </Tabs.Content>
-              <Tabs.Content value="debug" style={{ height: "100%" }}>
-                <DebugTab selection={selection} />
-              </Tabs.Content>
-            </Box>
-          </Tabs.Root>
-        </Box>
+        <Flex direction="column" style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+          <Flex align="center" justify="between" gap="3" p="4" wrap="wrap">
+            <Heading size="3">Browser import</Heading>
+            <Button variant="soft" onClick={() => void openSettings()}>
+              Site data in Settings
+            </Button>
+          </Flex>
+          {settingsError && (
+            <Callout.Root color="red" mx="4" mb="3">
+              <Callout.Text>{settingsError}</Callout.Text>
+            </Callout.Root>
+          )}
+          {selection?.source.warnings.map((warning) => (
+            <Callout.Root color="amber" mx="4" mb="3" key={warning}>
+              <Callout.Text>{warning}</Callout.Text>
+            </Callout.Root>
+          ))}
+          <Box style={{ flex: 1, minHeight: 0 }}>
+            {selection ? (
+              <MigrateTab selection={selection} now={now} />
+            ) : (
+              <Flex align="center" justify="center" style={{ height: "100%" }}>
+                <Text size="2" color="gray">
+                  Choose a device and browser to plan an import.
+                </Text>
+              </Flex>
+            )}
+          </Box>
+        </Flex>
       </Flex>
     </Theme>
-  );
-}
-
-function EmptyState(props: { message: string }) {
-  return (
-    <Flex align="center" justify="center" style={{ height: "100%" }}>
-      <Text size="2" color="gray">
-        {props.message}
-      </Text>
-    </Flex>
   );
 }

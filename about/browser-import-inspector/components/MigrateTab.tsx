@@ -1412,9 +1412,9 @@ function OpenTabs(props: { selection: ImportSourceSelection }) {
       const opened = result.root
         ? `Opened ${plural(result.panelsOpened, "panel")} under the new root “${result.root.title}”.`
         : result.destination === "caller" && collections
-          ? `Opened ${plural(result.panelsOpened, "panel")} in ${plural(collections, "collection")} under Browser Migration & State.`
+          ? `Opened ${plural(result.panelsOpened, "panel")} in ${plural(collections, "collection")} under Browser import.`
           : result.destination === "caller"
-            ? `Opened ${plural(result.panelsOpened, "panel")} under Browser Migration & State.`
+            ? `Opened ${plural(result.panelsOpened, "panel")} under Browser import.`
             : `Opened ${plural(result.panelsOpened, "panel")}.`;
       // Never report a silent zero: if panels did not open, say why.
       const reasons = [

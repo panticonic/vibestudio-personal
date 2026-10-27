@@ -270,7 +270,7 @@
             "startSensitiveImport",
             "observeSensitiveImport",
             "cancelSensitiveImport",
-            "openBrowserPrivacyManager",
+            "openBrowserDataSettings",
             "cancelImport",
             "resumeImport",
             "getImportJob",

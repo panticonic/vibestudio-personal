@@ -1039,12 +1039,12 @@ describe("@workspace-extensions/browser-data", () => {
       version: "v2",
     });
     await expect(
-      api.openBrowserPrivacyManager("export"),
+      api.openBrowserDataSettings("siteData"),
     ).resolves.toBeUndefined();
     expect(rpcCall).toHaveBeenCalledWith(
       "main",
       "browserPrivacyPresentation.open",
-      "export",
+      "siteData",
     );
   });
 

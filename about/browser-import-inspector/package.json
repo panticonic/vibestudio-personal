@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "vibestudio": {
-    "title": "Browser Migration & State",
+    "title": "Browser import",
     "icon": "./assets/icon.svg",
     "description": "Import bookmarks, history, passwords, and other browser data",
     "hiddenInLauncher": false,

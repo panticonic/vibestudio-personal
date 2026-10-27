@@ -82,7 +82,7 @@ counts, masked samples, and warnings.
 
 Base has no read, CRUD, or export API for browser passwords, form-fill values,
 or cookies. Importing them is a sealed host operation whose receipt contains
-only counts. `openBrowserPrivacyManager(section)` opens the host's privacy
-manager for a deliberate user action and returns no protected data. Never
+only counts. `openBrowserDataSettings(section)` opens Browser data in Settings
+for a deliberate user action and returns no protected data. Never
 render, log, or forward raw secrets, local files, or decrypted import batches
 through the Base coordinator.

@@ -49,8 +49,11 @@ type CredentialStatus = {
   icon: "active" | "warning" | "revoked";
 };
 
-function credentialStatus(credential: ManagedCredentialSummary): CredentialStatus {
-  if (credential.revokedAt) return { label: "Revoked", color: "red", icon: "revoked" };
+function credentialStatus(
+  credential: ManagedCredentialSummary,
+): CredentialStatus {
+  if (credential.revokedAt)
+    return { label: "Revoked", color: "red", icon: "revoked" };
   if (credential.expiresAt && credential.expiresAt <= Date.now()) {
     return { label: "Expired", color: "amber", icon: "warning" };
   }
@@ -102,12 +105,15 @@ function ownerLabel(credential: ManagedCredentialSummary): string {
 function bindingLabel(credential: ManagedCredentialSummary): string {
   const bindings = credential.bindings ?? [];
   if (bindings.length === 0) return "Not currently assigned to an app";
-  return bindings.map((binding) => binding.label ?? `${binding.use}:${binding.id}`).join(", ");
+  return bindings
+    .map((binding) => binding.label ?? `${binding.use}:${binding.id}`)
+    .join(", ");
 }
 
 function audienceLabel(credential: ManagedCredentialSummary): string {
   const audience =
-    credential.bindings?.flatMap((binding) => binding.audience) ?? credential.audience;
+    credential.bindings?.flatMap((binding) => binding.audience) ??
+    credential.audience;
   const urls = [...new Set(audience.map((entry) => entry.url))];
   if (urls.length === 0) return "No network destination";
   if (urls.length === 1) return urls[0]!;
@@ -159,7 +165,10 @@ function useActionLabel(grant: CredentialAccessGrantSummary): string {
   return `${use} · ${action}`;
 }
 
-function matchesQuery(credential: ManagedCredentialSummary, query: string): boolean {
+function matchesQuery(
+  credential: ManagedCredentialSummary,
+  query: string,
+): boolean {
   const haystack = [
     credential.label,
     credential.id,
@@ -260,7 +269,12 @@ function SubjectRow({
           <Text size="2" weight="medium" style={{ wordBreak: "break-word" }}>
             {subjectLabel(subject)}
           </Text>
-          <Text as="div" size="1" color="gray" style={{ wordBreak: "break-word" }}>
+          <Text
+            as="div"
+            size="1"
+            color="gray"
+            style={{ wordBreak: "break-word" }}
+          >
             {subjectDetail(subject)}
           </Text>
         </Box>
@@ -318,7 +332,12 @@ function GrantRow({
               <Text size="2" weight="medium">
                 {scopeLabel(grant)}
               </Text>
-              <Text as="div" size="1" color="gray" style={{ wordBreak: "break-word" }}>
+              <Text
+                as="div"
+                size="1"
+                color="gray"
+                style={{ wordBreak: "break-word" }}
+              >
                 {useActionLabel(grant)} / {grant.resource}
               </Text>
             </Box>
@@ -329,7 +348,10 @@ function GrantRow({
       {expanded && (
         <Box px="3" pb="3">
           <Grid columns={{ initial: "1", sm: "2" }} gap="3" pb="2">
-            <DetailLine label="Binding" value={grant.bindingLabel ?? grant.bindingId} />
+            <DetailLine
+              label="Binding"
+              value={grant.bindingLabel ?? grant.bindingId}
+            />
             <DetailLine
               label="Granted"
               value={`${formatDate(grant.grantedAt)} by ${grant.grantedBy}`}
@@ -338,7 +360,11 @@ function GrantRow({
           {grant.subjects.length > 0 ? (
             <Box>
               {grant.subjects.map((subject) => (
-                <SubjectRow key={subject.id} subject={subject} onFocus={onFocusSubject} />
+                <SubjectRow
+                  key={subject.id}
+                  subject={subject}
+                  onFocus={onFocusSubject}
+                />
               ))}
             </Box>
           ) : (
@@ -406,7 +432,13 @@ function CredentialSection({
             {expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
             Grants
           </Button>
-          <Button size="2" variant="soft" color="red" onClick={onRevoke} disabled={isRevoked}>
+          <Button
+            size="2"
+            variant="soft"
+            color="red"
+            onClick={onRevoke}
+            disabled={isRevoked}
+          >
             <TrashIcon />
             Revoke
           </Button>
@@ -416,15 +448,22 @@ function CredentialSection({
       <Grid columns={{ initial: "1", sm: "2" }} gap="3" mt="4">
         <DetailLine label="Owner" value={ownerLabel(credential)} />
         <DetailLine label="Available to" value={bindingLabel(credential)} />
-        <DetailLine label="Allowed destinations" value={audienceLabel(credential)} />
+        <DetailLine
+          label="Allowed destinations"
+          value={audienceLabel(credential)}
+        />
         <DetailLine label="How it is sent" value={injectionLabel(credential)} />
         <DetailLine
           label="Expires"
-          value={credential.expiresAt ? formatDate(credential.expiresAt) : "Never"}
+          value={
+            credential.expiresAt ? formatDate(credential.expiresAt) : "Never"
+          }
         />
         <DetailLine
           label="Provider permissions"
-          value={credential.scopes.length ? credential.scopes.join(", ") : "None"}
+          value={
+            credential.scopes.length ? credential.scopes.join(", ") : "None"
+          }
         />
       </Grid>
 
@@ -456,14 +495,19 @@ function CredentialSection({
 
 function CredentialsPage() {
   const isMobile = useIsMobile();
-  const [browserManagerError, setBrowserManagerError] = useState<string | null>(null);
+  const [browserManagerError, setBrowserManagerError] = useState<string | null>(
+    null,
+  );
   const [items, setItems] = useState<ManagedCredentialSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
-  const [expandedCredentials, setExpandedCredentials] = useState<Set<string>>(new Set());
+  const [expandedCredentials, setExpandedCredentials] = useState<Set<string>>(
+    new Set(),
+  );
   const [expandedGrants, setExpandedGrants] = useState<Set<string>>(new Set());
-  const [pendingRevoke, setPendingRevoke] = useState<ManagedCredentialSummary | null>(null);
+  const [pendingRevoke, setPendingRevoke] =
+    useState<ManagedCredentialSummary | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [showRevoked, setShowRevoked] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
@@ -480,14 +524,19 @@ function CredentialsPage() {
     }
   }, []);
 
-  const openBrowserManager = useCallback(async (section: "credentials" | "formFill") => {
-    setBrowserManagerError(null);
-    try {
-      await browserData.openBrowserPrivacyManager(section);
-    } catch (err) {
-      setBrowserManagerError(err instanceof Error ? err.message : String(err));
-    }
-  }, []);
+  const openBrowserManager = useCallback(
+    async (section: "passwords" | "autofill") => {
+      setBrowserManagerError(null);
+      try {
+        await browserData.openBrowserDataSettings(section);
+      } catch (err) {
+        setBrowserManagerError(
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     void load();
@@ -503,12 +552,19 @@ function CredentialsPage() {
   }, [items, filter, showRevoked]);
 
   const metrics = useMemo(() => {
-    const active = items.filter((item) => credentialStatus(item).label === "Active").length;
-    const grantCount = items.reduce((total, item) => total + item.grants.length, 0);
+    const active = items.filter(
+      (item) => credentialStatus(item).label === "Active",
+    ).length;
+    const grantCount = items.reduce(
+      (total, item) => total + item.grants.length,
+      0,
+    );
     const subjects = new Set(
       items.flatMap((item) =>
-        item.grants.flatMap((grant) => grant.subjects.map((subject) => subject.id))
-      )
+        item.grants.flatMap((grant) =>
+          grant.subjects.map((subject) => subject.id),
+        ),
+      ),
     );
     return { active, grantCount, subjectCount: subjects.size };
   }, [items]);
@@ -531,15 +587,18 @@ function CredentialsPage() {
     });
   }, []);
 
-  const focusSubject = useCallback(async (subject: CredentialAccessSubjectSummary) => {
-    if (!subject.focusPanelId) return;
-    try {
-      await panelTree.get(subject.focusPanelId).focus();
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, []);
+  const focusSubject = useCallback(
+    async (subject: CredentialAccessSubjectSummary) => {
+      if (!subject.focusPanelId) return;
+      try {
+        await panelTree.get(subject.focusPanelId).focus();
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [],
+  );
 
   const revokePending = useCallback(async () => {
     if (!pendingRevoke) return;
@@ -560,8 +619,8 @@ function CredentialsPage() {
     <>
       <AboutPage
         icon={<LockClosedIcon width={20} height={20} />}
-        title="Passwords & Form Fill"
-        subtitle="Manage browser passwords, personal form values, and credentials shared with apps"
+        title="App credentials"
+        subtitle="Manage credentials shared with apps"
         maxWidth={980}
         actions={
           <Tooltip content="Refresh">
@@ -576,24 +635,23 @@ function CredentialsPage() {
           </Tooltip>
         }
       >
-        <Section title="Browser passwords & form fill">
+        <Section title="Browser data">
           <Flex direction="column" gap="3">
             <Text size="2" color="gray">
-              Review, edit, or delete protected browser data in Vibestudio's trusted privacy
-              manager. Protected values are never returned to this hosted panel or its extensions.
+              Review, edit, or delete browser data in Settings.
             </Text>
             <Flex gap="2" wrap="wrap">
               <Button
                 variant="soft"
-                onClick={() => void openBrowserManager("credentials")}
+                onClick={() => void openBrowserManager("passwords")}
               >
-                <LockClosedIcon /> Manage browser passwords
+                <LockClosedIcon /> Passwords in Settings
               </Button>
               <Button
                 variant="soft"
-                onClick={() => void openBrowserManager("formFill")}
+                onClick={() => void openBrowserManager("autofill")}
               >
-                <IdCardIcon /> Manage form fill
+                <IdCardIcon /> Autofill in Settings
               </Button>
             </Flex>
             {browserManagerError && (
@@ -611,7 +669,11 @@ function CredentialsPage() {
               <Metric label="Active" value={metrics.active} />
               <Metric label="Granted runtimes" value={metrics.subjectCount} />
             </Grid>
-            <Flex align="center" gap="3" direction={isMobile ? "column" : "row"}>
+            <Flex
+              align="center"
+              gap="3"
+              direction={isMobile ? "column" : "row"}
+            >
               <TextField.Root
                 size="3"
                 placeholder="Filter credentials..."
@@ -628,7 +690,11 @@ function CredentialsPage() {
                 {metrics.grantCount} grants
               </Badge>
               <Flex align="center" gap="2">
-                <Switch size="1" checked={showRevoked} onCheckedChange={setShowRevoked} />
+                <Switch
+                  size="1"
+                  checked={showRevoked}
+                  onCheckedChange={setShowRevoked}
+                />
                 <Text size="1" color="gray">
                   Show revoked
                 </Text>
@@ -637,10 +703,13 @@ function CredentialsPage() {
             <Text size="2" color="gray">
               Looking for lasting app or agent access?{" "}
               <Link
-                href={buildPanelLink("about/permissions", { workspace: { role: "system" } })}
+                href={buildPanelLink("about/permissions", {
+                  workspace: { role: "system" },
+                })}
               >
                 Review saved permissions
-              </Link>.
+              </Link>
+              .
             </Text>
           </Flex>
         </Section>
@@ -710,11 +779,19 @@ function CredentialsPage() {
           ) : null}
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button variant="soft" color="gray" disabled={Boolean(revokingId)}>
+              <Button
+                variant="soft"
+                color="gray"
+                disabled={Boolean(revokingId)}
+              >
                 Cancel
               </Button>
             </AlertDialog.Cancel>
-            <Button color="red" onClick={() => void revokePending()} disabled={Boolean(revokingId)}>
+            <Button
+              color="red"
+              onClick={() => void revokePending()}
+              disabled={Boolean(revokingId)}
+            >
               {revokingId ? <Spinner /> : <TrashIcon />}
               {revokingId ? "Revoking…" : "Revoke"}
             </Button>
