@@ -1,5 +1,10 @@
 # GitHub Troubleshooting
 
+`troubleshootGithub` (see [SKILL.md](SKILL.md)) turns a failure's status and
+message into one of the causes below and returns its steps from
+`natlang/troubleshootGithub/steps.ts`. This page explains each cause for people; change
+the steps in `steps.ts` and the explanation here together.
+
 ## Verification Fails
 
 - `401 Bad credentials`: regenerate the token and save it again.

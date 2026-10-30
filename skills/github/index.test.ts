@@ -21,6 +21,7 @@ const runtimeMock = vi.hoisted(() => ({
 vi.mock("@workspace/runtime", () => runtimeMock);
 
 import {
+  GITHUB_ACCESS_LEVELS,
   buildGitHubTokenSettingsUrl,
   getGitHubOnboardingStatus,
   openGitHubTokenSettings,
@@ -30,6 +31,7 @@ import {
   verifyGitHubCredential,
   verifyGitHubGitRemoteAccess,
 } from "./index.js";
+import { COVERS } from "./natlang/githubSetupRoute/covers.js";
 
 const githubCredential: StoredCredentialSummary = {
   id: "cred-github",
@@ -480,5 +482,28 @@ describe("github skill facade", () => {
       /Multiple active GitHub credentials.*credentialId explicitly/
     );
     expect(runtimeMock.git.publishRepo).not.toHaveBeenCalled();
+  });
+});
+
+describe("access level coverage used by githubSetupRoute", () => {
+  const strength = { read: 1, write: 2 } as const;
+
+  it("matches the fine-grained permissions of GITHUB_ACCESS_LEVELS", () => {
+    const levels = Object.keys(GITHUB_ACCESS_LEVELS) as (keyof typeof GITHUB_ACCESS_LEVELS)[];
+    const derived = Object.fromEntries(
+      levels.map((held) => [
+        held,
+        levels.filter((needed) =>
+          Object.entries(GITHUB_ACCESS_LEVELS[needed].fineGrainedPermissions).every(
+            ([permission, level]) => {
+              const heldLevel = GITHUB_ACCESS_LEVELS[held].fineGrainedPermissions[permission];
+              // Metadata read is implied by every token.
+              return permission === "metadata" || (heldLevel !== undefined && strength[heldLevel] >= strength[level]);
+            },
+          ),
+        ),
+      ]),
+    );
+    expect(COVERS).toEqual(derived);
   });
 });

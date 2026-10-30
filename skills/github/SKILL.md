@@ -10,8 +10,28 @@ description: Connect GitHub, choose access level, use GitHub APIs, clone repos, 
 GitHub setup is a single workflow run by the setup component, not a
 questionnaire.
 
-1. Call `getGitHubOnboardingStatus()` from `@workspace-skills/github`.
-2. When the status is `needs-token`, render the component:
+1. Call `getGitHubOnboardingStatus()` from `@workspace-skills/github`, choose the
+   access level the user's goal needs (see the choices below), and ask the typed
+   router what to do next. Code applies the setup rules and reads the stored
+   credential; nothing in it needs a model.
+
+   ```ts
+   const route = await natlang.load("skills/github/natlang/githubSetupRoute.nl");
+   const { stage, connected, verified, credentialId, error } = await getGitHubOnboardingStatus();
+   // Pass only these fields: the router needs no credential summaries.
+   const next: Route = await route.collect(
+     { stage, connected, verified, credentialId, error },
+     "collaborate",
+   );
+   return next;
+   ```
+
+   `next.action` is one of `render-setup`, `verify`, `proceed`, `repair`;
+   `next.next` is the exact call to make; `next.reason` is a sentence for the
+   user. A verified credential whose access level does not cover the goal comes
+   back as `render-setup` with the higher level, so the user upgrades instead
+   of hitting a 403 later.
+2. For `render-setup`, render the component with the props the route gives:
 
    ```text
    inline_ui({ path: "skills/github/GitHubSetup.tsx", props: {} })
@@ -22,8 +42,9 @@ questionnaire.
 4. Before cloning or pulling a specific Git remote, call
    `verifyGitHubGitRemoteAccess(remoteUrl, credentialId)`.
 
-When the website-publishing workflow asks for GitHub Pages access, render the
-same component with `props: { accessLevel: "publish-pages" }`. This preselects
+When the website-publishing workflow asks for GitHub Pages access, the same
+router returns `publish-pages`; render the same component with
+`props: { accessLevel: "publish-pages" }`. This preselects
 the **Publish websites** option; it is not a separate credential workflow.
 
 Never collect tokens, scopes, repository selections, or browser choice in chat.
@@ -37,10 +58,23 @@ Don't recreate it as a series of questions.
 ## Access outcomes
 
 Use the component's plain-language access choices instead of explaining token
-terminology. Defaults: `collaborate` for repo work, `publish` for creating
-repos, `code-workflows` for changing workflow files, and `broad` only when the
-user explicitly asks. Classic tokens are covered in [SETUP.md](SETUP.md);
-diagnose failures with [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+terminology. Choose by the goal: `read-only` to look and clone, `collaborate` for
+repo work, `publish` for creating repos, `publish-pages` for websites,
+`code-workflows` for changing workflow files, and `broad` only when the user
+explicitly asks. `route.accessLevelFor(goal)` (the same program) is a small-model
+aid for this choice; it matched 4 of 5 locked test cases and misread "pull the
+upstream changes" as `collaborate`, so confirm its answer. Classic tokens are
+covered in [SETUP.md](SETUP.md).
+
+When verification or a Git operation fails, ask the typed troubleshooter with the
+status and message exactly as returned. It names the cause and returns the
+documented steps; [TROUBLESHOOTING.md](TROUBLESHOOTING.md) explains each cause.
+
+```ts
+const troubleshoot = await natlang.load("skills/github/natlang/troubleshootGithub.nl");
+const step: NextStep = await troubleshoot.collect("403 Resource not accessible by personal access token");
+return step; // { cause: "missing-permission", steps: [...] }
+```
 
 Read `index.ts` for the current helper exports and parameter types. Don't copy
 its permission mappings into another workflow.
