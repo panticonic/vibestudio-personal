@@ -35,4 +35,17 @@ file whose relevant text was later removed, reuse the full continuation ref
 returned by `provenance` unchanged. That ref carries the file root and an opaque
 service cursor, which stay inside trusted code.
 
-`memory_recall` is an agent tool, not a portable panel, worker, or VCS API.
+The same search is `memory.recall` in eval and other runtimes, for code that
+needs recalled facts as data:
+
+```ts
+const { results } = await memory.recall({
+  query: "retry backoff policy",
+  kinds: ["file", "commit"],
+  limit: 10,
+});
+// Each result has kind, snippet, where, appendedAt, path, eventId, logId, head.
+```
+
+`memory_recall` and `memory.recall` are one implementation under the caller's
+own graph-read authority; only the tool formats the results as text.
