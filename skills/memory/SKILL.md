@@ -49,22 +49,3 @@ const { results } = await memory.recall({
 
 `memory_recall` and `memory.recall` are one implementation under the caller's
 own graph-read authority; only the tool formats the results as text.
-
-## A cited summary
-
-To state what memory holds about a topic, with each fact tied to the snippets that say
-it, load the typed summary instead of reading result lists:
-
-```ts
-const memory = await natlang.load("skills/memory/recall/recallSummary.nl");
-const found = await memory.recall("retry backoff policy");
-// found.facts[i]: { text, evidence: ["e1", ...], caveats: [{ kind, detail }] }
-// found.evidence: the snippets those ids name, as recall returned them; found.nothingFound
-```
-
-A small model keeps the snippets that bear on the query and states what each says; exact
-checks drop any fact whose figures the snippet lacks. Facts that agree are merged,
-facts that contradict each other carry a `conflicts` caveat, and facts resting on one
-snippet, only on conversation messages, or on sources older than 180 days say so.
-Treat caveats as reasons to verify against the source records (`evidence[i].where`), as
-the summary's `note` says.

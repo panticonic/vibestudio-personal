@@ -20,3 +20,13 @@ that rest on weak sources or contradict each other. The program reads memory (`m
 for the cases (no transcript is recorded). Cases cover conflicting messages, a stale commit, a single message source, a
 fact stated twice, and a query nothing answers. Quality: coverage of the expected facts (60%) and the right caveats (40%),
 zero when a distractor leaks into a fact. Gates: 0.85 on validation and on the locked test split, and every fact tied to listed evidence (`cited`).
+
+## Status: not ported
+
+SKILL.md does not call this function: the gates are not met. Evidence, on the executor (LFM3 1.7B Q8_0, `pnpm natlang:eval`):
+the first sampled case (`all-resolved:summary`, suite settings 4 turns, 192 tokens per turn) failed in `describeUnit` with
+"quiesced: episode turn, token, or wall-clock budget exhausted" and took 20 minutes on the shared server, so quality 0 on it. A full
+validation run (8 cases) did not complete: with the case watchdog removed it stalled with no request in flight after 85 minutes
+(root cause not found), and full runs on the shared machine were not feasible afterwards. The recall suite was not run on the executor at all. The suite, cases and
+checks stay; a later run on a quieter machine, or an instruction that lets the model finish in few turns, decides whether it ports. Until then the agent
+performs this procedure itself.
