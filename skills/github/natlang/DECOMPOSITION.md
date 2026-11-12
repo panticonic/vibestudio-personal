@@ -54,7 +54,7 @@ test split (route: every case exact).
 | `githubSetupRoute`, crisp (this version) | validation (4), test (5) | 1.00, 1.00; no model call | met |
 | `troubleshootGithub` | validation (4), test (4) | 1.00, 1.00 | met |
 
-Cold cost on this CPU: about 25 s per scored decision (a ~3.6k-token opening prefilled for each), so `troubleshootGithub`
+Through `pnpm natlang:eval` on the final tree: validation 12 of 12 cases (all three functions, quality 1.00), test 13 of 14 (0.93; the one miss is the `accessLevelFor` case above). Cold cost on this CPU: about 25 s per scored decision (a ~3.6k-token opening prefilled for each), so `troubleshootGithub`
 costs one decision and `accessLevelFor` one.
 
 Reference model (the agent's own): not measured; no agent-class model is available in the harness. The labels were
