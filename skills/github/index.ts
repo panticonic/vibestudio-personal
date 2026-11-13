@@ -580,6 +580,115 @@ function getNextActions(
   }
 }
 
+/** What to do next in GitHub setup, from the onboarding status and the access level the user's goal needs. */
+export interface GitHubSetupRoute {
+  /**
+   * render-setup: show GitHubSetup.tsx so the user connects or upgrades the credential.
+   * verify: the credential is saved but not verified yet.
+   * proceed: GitHub is connected, verified and allowed to do what the user wants.
+   * repair: setup itself failed; fix the reported error first.
+   */
+  action: "render-setup" | "verify" | "proceed" | "repair";
+  /** For render-setup: the access level to preselect in the component. */
+  accessLevel?: GitHubAccessLevel;
+  /** The exact call to make next. */
+  next: string;
+  /** One sentence for the user. */
+  reason: string;
+}
+
+const PERMISSION_STRENGTH = { read: 1, write: 2 } as const;
+
+/**
+ * Whether a credential created with the `held` access level is enough for the `needed` one: every fine-grained
+ * permission the needed level asks for is held at that strength or stronger (metadata read is implied by every token).
+ */
+export function accessLevelCovers(
+  held: GitHubAccessLevel,
+  needed: GitHubAccessLevel,
+): boolean {
+  const heldPermissions = GITHUB_ACCESS_LEVELS[held].fineGrainedPermissions;
+  return Object.entries(GITHUB_ACCESS_LEVELS[needed].fineGrainedPermissions).every(
+    ([permission, level]) => {
+      const heldLevel = heldPermissions[permission];
+      return (
+        permission === "metadata" ||
+        (heldLevel !== undefined &&
+          PERMISSION_STRENGTH[heldLevel] >= PERMISSION_STRENGTH[level])
+      );
+    },
+  );
+}
+
+/** The component call that connects GitHub; the collaborate default needs no props. */
+function setupComponentCall(level: GitHubAccessLevel): string {
+  return level === "collaborate"
+    ? 'inline_ui({ path: "skills/github/GitHubSetup.tsx", props: {} })'
+    : `inline_ui({ path: "skills/github/GitHubSetup.tsx", props: { accessLevel: "${level}" } })`;
+}
+
+/**
+ * Decide the next step of GitHub setup from `getGitHubOnboardingStatus()` and the access level the user's goal needs
+ * (choose it from the access outcomes in SKILL.md). A verified credential whose recorded access level does not cover
+ * the needed one routes back to `render-setup` with the higher level, so the user upgrades instead of hitting a 403
+ * later. It proposes; rendering the component, saving the token and verifying stay with the caller.
+ */
+export function routeGitHubSetup(
+  status: Pick<
+    GitHubOnboardingStatus,
+    "stage" | "credentialId" | "credentials" | "error"
+  >,
+  needed: GitHubAccessLevel,
+): GitHubSetupRoute {
+  switch (status.stage) {
+    case "error":
+      return {
+        action: "repair",
+        next: "getGitHubOnboardingStatus()",
+        reason: `Setup itself failed: ${status.error ?? "no error was reported"}. Fix that, then ask for the status again.`,
+      };
+    case "needs-token":
+      return {
+        action: "render-setup",
+        accessLevel: needed,
+        next: setupComponentCall(needed),
+        reason: `GitHub is not connected; connect it with ${needed} access.`,
+      };
+    case "connected":
+      return {
+        action: "verify",
+        next: "getGitHubOnboardingStatus({ verify: true })",
+        reason:
+          "A credential is saved but has not been verified against GitHub yet.",
+      };
+    case "verified": {
+      const connected = status.credentials.find(
+        (credential) => credential.id === status.credentialId,
+      );
+      const held = connected?.metadata?.["accessLevel"];
+      if (
+        held &&
+        Object.hasOwn(GITHUB_ACCESS_LEVELS, held) &&
+        !accessLevelCovers(held as GitHubAccessLevel, needed)
+      ) {
+        return {
+          action: "render-setup",
+          accessLevel: needed,
+          next: setupComponentCall(needed),
+          reason: `The connected credential has ${held} access, which does not cover ${needed}; reconnect with ${needed}.`,
+        };
+      }
+      return {
+        action: "proceed",
+        next: "continue with the GitHub task",
+        reason:
+          "GitHub is connected and verified" +
+          (held ? ` with ${held} access.` : "."),
+      };
+    }
+  }
+}
+
 function buildStatus(input: {
   credentials: StoredCredentialSummary[];
   verification?: GitHubVerificationResult;

@@ -22,16 +22,17 @@ vi.mock("@workspace/runtime", () => runtimeMock);
 
 import {
   GITHUB_ACCESS_LEVELS,
+  accessLevelCovers,
   buildGitHubTokenSettingsUrl,
   getGitHubOnboardingStatus,
   openGitHubTokenSettings,
   publishToGitHub,
   requestGitHubTokenCredential,
+  routeGitHubSetup,
   upstreamStatus,
   verifyGitHubCredential,
   verifyGitHubGitRemoteAccess,
 } from "./index.js";
-import { COVERS } from "./natlang/githubSetupRoute/covers.js";
 
 const githubCredential: StoredCredentialSummary = {
   id: "cred-github",
@@ -485,25 +486,97 @@ describe("github skill facade", () => {
   });
 });
 
-describe("access level coverage used by githubSetupRoute", () => {
-  const strength = { read: 1, write: 2 } as const;
+describe("access level coverage", () => {
+  // Which held level is enough for which needed one: the product decision, checked against the permissions of
+  // GITHUB_ACCESS_LEVELS that `accessLevelCovers` derives it from.
+  const covered = {
+    "read-only": ["read-only"],
+    collaborate: ["read-only", "collaborate"],
+    publish: ["publish"],
+    "publish-pages": ["publish-pages"],
+    "code-workflows": ["read-only", "collaborate", "code-workflows"],
+    broad: ["read-only", "collaborate", "publish", "code-workflows", "broad"],
+  } as const;
 
   it("matches the fine-grained permissions of GITHUB_ACCESS_LEVELS", () => {
     const levels = Object.keys(GITHUB_ACCESS_LEVELS) as (keyof typeof GITHUB_ACCESS_LEVELS)[];
-    const derived = Object.fromEntries(
-      levels.map((held) => [
-        held,
-        levels.filter((needed) =>
-          Object.entries(GITHUB_ACCESS_LEVELS[needed].fineGrainedPermissions).every(
-            ([permission, level]) => {
-              const heldLevel = GITHUB_ACCESS_LEVELS[held].fineGrainedPermissions[permission];
-              // Metadata read is implied by every token.
-              return permission === "metadata" || (heldLevel !== undefined && strength[heldLevel] >= strength[level]);
-            },
-          ),
-        ),
-      ]),
-    );
-    expect(COVERS).toEqual(derived);
+    for (const held of levels) {
+      expect(
+        levels.filter((needed) => accessLevelCovers(held, needed)),
+        `held ${held}`
+      ).toEqual(levels.filter((needed) => (covered[held] as readonly string[]).includes(needed)));
+    }
+  });
+});
+
+describe("routeGitHubSetup", () => {
+  const connected = (accessLevel?: string): StoredCredentialSummary => ({
+    ...githubCredential,
+    id: "cred_9a1",
+    metadata: { providerId: "github", ...(accessLevel ? { accessLevel } : {}) },
+  });
+  const status = (
+    stage: "needs-token" | "connected" | "verified" | "error",
+    credentials: StoredCredentialSummary[] = [],
+    error?: string
+  ) => ({
+    stage,
+    credentialId: credentials[0]?.id,
+    credentials,
+    ...(error ? { error } : {}),
+  });
+
+  it.each([
+    ["read-only", 'inline_ui({ path: "skills/github/GitHubSetup.tsx", props: { accessLevel: "read-only" } })'],
+    ["collaborate", 'inline_ui({ path: "skills/github/GitHubSetup.tsx", props: {} })'],
+    ["publish-pages", 'inline_ui({ path: "skills/github/GitHubSetup.tsx", props: { accessLevel: "publish-pages" } })'],
+  ] as const)("renders the setup component with %s access when nothing is connected", (level, next) => {
+    expect(routeGitHubSetup(status("needs-token"), level)).toEqual({
+      action: "render-setup",
+      accessLevel: level,
+      next,
+      reason: `GitHub is not connected; connect it with ${level} access.`,
+    });
+  });
+
+  it("asks for verification of a saved credential, whatever level it holds", () => {
+    expect(routeGitHubSetup(status("connected", [connected("collaborate")]), "collaborate")).toMatchObject({
+      action: "verify",
+      next: "getGitHubOnboardingStatus({ verify: true })",
+    });
+  });
+
+  it("repairs a failed setup and says what failed", () => {
+    expect(routeGitHubSetup(status("error", [], "git runtime is unavailable"), "read-only")).toMatchObject({
+      action: "repair",
+      reason: expect.stringContaining("git runtime is unavailable"),
+    });
+  });
+
+  it.each([
+    ["collaborate", "collaborate"],
+    ["publish", "publish"],
+    ["code-workflows", "collaborate"],
+    ["broad", "collaborate"],
+  ] as const)("proceeds when the credential holds %s and %s is needed", (held, needed) => {
+    expect(routeGitHubSetup(status("verified", [connected(held)]), needed)).toMatchObject({
+      action: "proceed",
+    });
+  });
+
+  it.each([
+    ["read-only", "collaborate"],
+    ["collaborate", "publish"],
+    ["broad", "publish-pages"],
+  ] as const)("routes back to the component with %s held and %s needed", (held, needed) => {
+    expect(routeGitHubSetup(status("verified", [connected(held)]), needed)).toMatchObject({
+      action: "render-setup",
+      accessLevel: needed,
+    });
+  });
+
+  it("proceeds when no access level was recorded or the recorded one is unknown", () => {
+    expect(routeGitHubSetup(status("verified", [connected()]), "collaborate").action).toBe("proceed");
+    expect(routeGitHubSetup(status("verified", [connected("toString")]), "publish").action).toBe("proceed");
   });
 });

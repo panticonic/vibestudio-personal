@@ -1,4 +1,4 @@
-import githubSetupRoute from "./githubSetupRoute.nl";
+import accessLevelFor from "./accessLevelFor.nl";
 import troubleshootGithub from "./troubleshootGithub.nl";
 
-export { githubSetupRoute, troubleshootGithub };
+export { accessLevelFor, troubleshootGithub };

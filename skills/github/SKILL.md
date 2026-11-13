@@ -11,19 +11,13 @@ GitHub setup is a single workflow run by the setup component, not a
 questionnaire.
 
 1. Call `getGitHubOnboardingStatus()` from `@workspace-skills/github`, choose the
-   access level the user's goal needs (see the choices below), and ask the typed
-   router what to do next. Code applies the setup rules and reads the stored
-   credential; nothing in it needs a model.
+   access level the user's goal needs (see the choices below), and ask
+   `routeGitHubSetup` what to do next. It applies the setup rules to the status
+   and its stored credential; nothing in it needs a model.
 
    ```ts
-   const route = await natlang.load("skills/github/natlang/githubSetupRoute.nl");
-   const { stage, connected, verified, credentialId, error } = await getGitHubOnboardingStatus();
-   // Pass only these fields: the router needs no credential summaries.
-   const next: Route = await route.collect(
-     { stage, connected, verified, credentialId, error },
-     "collaborate",
-   );
-   return next;
+   import { getGitHubOnboardingStatus, routeGitHubSetup } from "@workspace-skills/github";
+   return routeGitHubSetup(await getGitHubOnboardingStatus(), "collaborate");
    ```
 
    `next.action` is one of `render-setup`, `verify`, `proceed`, `repair`;
@@ -43,7 +37,7 @@ questionnaire.
    `verifyGitHubGitRemoteAccess(remoteUrl, credentialId)`.
 
 When the website-publishing workflow asks for GitHub Pages access, the same
-router returns `publish-pages`; render the same component with
+route returns `publish-pages`; render the same component with
 `props: { accessLevel: "publish-pages" }`. This preselects
 the **Publish websites** option; it is not a separate credential workflow.
 
@@ -61,10 +55,11 @@ Use the component's plain-language access choices instead of explaining token
 terminology. Choose by the goal: `read-only` to look and clone, `collaborate` for
 repo work, `publish` for creating repos, `publish-pages` for websites,
 `code-workflows` for changing workflow files, and `broad` only when the user
-explicitly asks. `route.accessLevelFor(goal)` (the same program) is a small-model
-aid for this choice; it matched 4 of 5 locked test cases and misread "pull the
-upstream changes" as `collaborate`, so confirm its answer. Classic tokens are
-covered in [SETUP.md](SETUP.md).
+explicitly asks. A small model can help with this choice:
+`natlang.load("skills/github/natlang/accessLevelFor.nl")` takes the user's goal.
+It matched 4 of 5 locked test cases and misread "pull the upstream changes" as
+`collaborate`, so confirm its answer. Classic tokens are covered in
+[SETUP.md](SETUP.md).
 
 When verification or a Git operation fails, ask the typed troubleshooter with the
 status and message exactly as returned. It names the cause and returns the
