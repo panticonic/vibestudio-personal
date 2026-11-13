@@ -23,10 +23,8 @@ zero when a distractor leaks into a fact. Gates: 0.85 on validation and on the l
 
 ## Status: not ported
 
-SKILL.md does not call this function: the gates are not met. Evidence, on the executor (LFM3 1.7B Q8_0, `pnpm natlang:eval`):
-the first sampled case (`all-resolved:summary`, suite settings 4 turns, 192 tokens per turn) failed in `describeUnit` with
-"quiesced: episode turn, token, or wall-clock budget exhausted" and took 20 minutes on the shared server, so quality 0 on it. A full
-validation run (8 cases) did not complete: with the case watchdog removed it stalled with no request in flight after 85 minutes
-(root cause not found), and full runs on the shared machine were not feasible afterwards. The recall suite was not run on the executor at all. The suite, cases and
-checks stay; a later run on a quieter machine, or an instruction that lets the model finish in few turns, decides whether it ports. Until then the agent
-performs this procedure itself.
+SKILL.md does not call this function: the gate is not met. Measured on the executor (LFM3 1.7B Q8_0, `pnpm natlang:eval`, validation split, suite settings 6 turns of 1024 tokens):
+quality 0.25 (mean over 4 cases): `zombie-processes` 1.0; `web-memory-bindings` 0 (no snippet judged relevant, so nothing found; right caveats, 0 of 1 expected facts);
+`workerd-sigkill` and `gateway-hold` 0 with `factFrom` quiesced. 50 model calls, mean 28 minutes a case on the shared local model.
+
+The failure is the same in every case: with the full interpreter surface the model never reaches its answer. Each turn spends the whole token limit reasoning about how to read its arguments (the opening says their values are not shown and offers `eval` to read them) and ends without an action, so the call is `quiesced` after its last turn. `leafCalls: "direct"` (natlang `native/agent.ts` `leafOpening`: a short prompt that shows the arguments whole and offers only `return_result`) is the setting built for such data-only calls, but the Vibestudio runtime (`packages/natlang/src/evalNatlang.ts`) does not set it, so it was not measured and the functions are not called from SKILL.md. No instruction was sharpened: the misses are not about wording, and the test split was never run. Until the gate is met the agent performs this procedure itself.
