@@ -50,6 +50,8 @@ test split (route: every case exact).
 | `accessLevelFor`, second instruction (read-only and code-workflows definitions sharpened, written against the train split) | train (9) | 9 of 9 | |
 | | validation (4) | 4 of 4 | met |
 | | test (5), run once | 0.80: the same "pull the upstream changes" miss | not met (1 case in 5) |
+| `accessLevelFor`, second instruction, the readout scores the object the model answers in (natlang `ee9bb0b22`, measured at `ceb346744`; plans/MODEL_FACING_CHANGES.md, 2026-11-13) | validation (4) | 4 of 4 | met |
+| | test (5), run again | 0.80: the same "pull the upstream changes" miss, `collaborate` at 0.94 (`read-only` 0.03); the other four exact | not met (1 case in 5) |
 | `githubSetupRoute` with the model-chosen level | validation (4), test (5) | 1.00, 1.00 | met |
 | `githubSetupRoute`, crisp (this version) | validation (4), test (5) | 1.00, 1.00; no model call | met |
 | `troubleshootGithub` | validation (4), test (4) | 1.00, 1.00 | met |
