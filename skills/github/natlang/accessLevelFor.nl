@@ -4,7 +4,7 @@ readout: decision
 args:
   intent: string
 returns: GitHubAccessLevel
-budget: { turnTokens: 1024 }
+budget: { maxTurns: 3, maxTokens: 4096 }
 ---
 Choose the access level for intent, what the user wants to do with GitHub. Pick the least access that lets it work.
 
