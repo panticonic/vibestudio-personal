@@ -37,5 +37,5 @@ type CitedFacts = {
   /** Always the same reminder: recall helps find things; it does not prove them. Verify against the source records. */
   note: string;
 };
-declare const fn: NatlangFunction<[query: string], CitedFacts> & { readonly factFrom: NatlangFunction<[query: string, snippet: Snippet], string>; readonly recall: ((query: string) => Promise<CitedFacts>) & {  }; readonly relate: NatlangFunction<[first: string, second: string], Relation>; readonly relevant: NatlangFunction<[query: string, snippet: Snippet], boolean>; readonly verify: { readonly supported: (sentence: string, snippet: string) => boolean } };
+declare const fn: NatlangFunction<[query: string, asOf: number], CitedFacts> & { readonly factFrom: NatlangFunction<[query: string, snippet: Snippet], string>; readonly recall: ((query: string, asOf: number) => Promise<CitedFacts>) & {  }; readonly relate: NatlangFunction<[first: string, second: string], Relation>; readonly relevant: NatlangFunction<[query: string, snippet: Snippet], boolean>; readonly verify: { readonly supported: (sentence: string, snippet: string) => boolean } };
 export default fn;

@@ -17,7 +17,7 @@ type Result = {
   path: string | null;
   eventId: string | null;
 };
-type CaseInput = { query: string; results: Result[] };
+type CaseInput = { query: string; results: Result[]; asOf: number };
 type CaseExpected = {
   /** Each entry is a fact the summary must state: any one of its alternatives appears in some fact. */
   facts: string[][];
@@ -34,7 +34,7 @@ type CaseExpected = {
 
 /**
  * Snippets are real commit messages of this repository and excerpts of its files, plus conversation messages written
- * for the cases (no transcript is recorded). The age caveat reads the clock: a commit recorded 180 days or more before the run is old.
+ * for the cases (no transcript is recorded). The age caveat compares against the case's fixed invocation snapshot.
  */
 const recordedMemory = (input: CaseInput) => ({
   async recall() {
@@ -61,12 +61,12 @@ export default defineEvaluationSuite<CaseInput, CaseExpected>({
   fixture: {
     async create(testCase, context) {
       const app = (await context.loadFreshProgram()) as {
-        recall(query: string): Promise<CitedFacts>;
+        recall(query: string, asOf: number): Promise<CitedFacts>;
       };
       const services = { memory: recordedMemory(testCase.input) };
       return {
         execute: () =>
-          context.runtime.run(() => app.recall(testCase.input.query), {
+          context.runtime.run(() => app.recall(testCase.input.query, testCase.input.asOf), {
             services,
           }),
       };

@@ -1,6 +1,6 @@
 # recallSummary: decomposition
 
-`recallSummary(query): CitedFacts` states what workspace memory holds about a query, with every fact tied to the
+`recallSummary(query, asOf): CitedFacts` states what workspace memory holds about a query, with every fact tied to the
 snippet ids that say it. Recall "helps find things; it does not prove them": the result says so, and flags the facts
 that rest on weak sources or contradict each other. The program reads memory (`memory.recall`) and nothing else.
 
@@ -22,6 +22,11 @@ fact stated twice, and a query nothing answers. Quality: coverage of the expecte
 zero when a distractor leaks into a fact. Gates: 0.85 on validation and on the locked test split, and every fact tied to listed evidence (`cited`).
 
 ## Status: not ported
+
+Collection invokes the `.nl` root through `recall` in `natlang.ts`, rather than bypassing it through its crisp child.
+The host-facing wrapper chooses `asOf` once (Unix milliseconds); cases supply an explicit saved timestamp.
+The helper judges the 180-day source-age caveat against that snapshot, so replay on another day preserves it.
+Earlier measurements below exercised the crisp child and are not measurements of the complete root path.
 
 SKILL.md does not call this function: the gate is not met. Measured on the executor (LFM3 1.7B Q8_0, `pnpm natlang:eval`, validation split, suite settings 6 turns of 1024 tokens):
 quality 0.25 (mean over 4 cases): `zombie-processes` 1.0; `web-memory-bindings` 0 (no snippet judged relevant, so nothing found; right caveats, 0 of 1 expected facts);

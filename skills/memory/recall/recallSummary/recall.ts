@@ -28,6 +28,7 @@ function kindOf(kind: string): Snippet["kind"] {
 
 export default async function recallSummary(
   query: string,
+  asOf: number,
 ): Promise<CitedFacts> {
   const { results } = await memory.recall({ query, limit: 6 });
   const snippets: Snippet[] = results.map((result, index) => ({
@@ -91,7 +92,7 @@ export default async function recallSummary(
     const newest = Math.max(
       ...evidence.map((snippet) => (snippet.at ? Date.parse(snippet.at) : 0)),
     );
-    if (newest > 0 && Date.now() - newest > OLD_DAYS * 86_400_000)
+    if (newest > 0 && asOf - newest > OLD_DAYS * 86_400_000)
       caveats.push({
         kind: "old",
         detail: `The newest source was recorded ${new Date(newest).toISOString().slice(0, 10)}.`,

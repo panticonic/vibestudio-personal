@@ -49,3 +49,13 @@ const { results } = await memory.recall({
 
 `memory_recall` and `memory.recall` are one implementation under the caller's
 own graph-read authority; only the tool formats the results as text.
+
+## Natlang evaluation candidate
+
+`recall/natlang.ts` exports `recall(query, asOf?)`, which runs the
+`recallSummary.nl` program. `asOf` is a snapshot timestamp in Unix milliseconds;
+omitted, the host wrapper captures the current time once. Recorded cases pass
+their saved timestamp so replay judges source age against the same snapshot.
+A direct `natlang.load("skills/memory/recall/recallSummary.nl")` call takes
+both arguments. This candidate has not met its quality gate; verify recalled
+facts through the workflow above.

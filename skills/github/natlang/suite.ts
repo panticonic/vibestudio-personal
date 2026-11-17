@@ -33,14 +33,14 @@ export default defineEvaluationSuite<CaseInput, CaseExpected>({
     async create(testCase, context) {
       const app = (await context.loadFreshProgram()) as {
         accessLevelFor(intent: string): Promise<GitHubAccessLevel>;
-        troubleshootGithub: { collect(failure: string): Promise<NextStep> };
+        troubleshootGithub(failure: string): Promise<NextStep>;
       };
       const input = testCase.input;
       if (input.function === "accessLevelFor") {
         return { execute: () => context.runtime.run(() => app.accessLevelFor(input.input)) };
       }
       return {
-        execute: () => context.runtime.run(() => app.troubleshootGithub.collect(input.input)),
+        execute: () => context.runtime.run(() => app.troubleshootGithub(input.input)),
       };
     },
   },
