@@ -64,3 +64,9 @@ facts through the workflow above.
 a bounded memory branch for goals that combine source history with onboarding
 or repository planning. The report retains the original cited record identity
 and names the sources that need confirmation.
+
+For a decision tied to a named committed revision and file, the shared
+`domains.verifiedMemory.recallDecision` workflow verifies its answer in that
+snapshot. It distinguishes missing search results from a removed file or an
+absent field. The caller provides the bounded recall and historical VCS read
+bindings.

@@ -1,0 +1,11 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-verified-decision-memory",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "recallDecision.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "decisionRecall": ["recallDecision/findDecision/searchHistory.nl"],
+    "decisionSource": ["recallDecision/verifyAtRevision/readDecisionFile.nl"]
+  }
+}
