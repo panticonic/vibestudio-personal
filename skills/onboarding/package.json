@@ -21,6 +21,7 @@
   "exports": {
     ".": "./index.ts",
     "./catalog": "./catalog.ts",
+    "./prepare-installed-setup": "./prepareInstalledSetup.ts",
     "./execution": "./execution.ts",
     "./routing": "./routing.ts",
     "./snapshot": "./snapshot.ts",

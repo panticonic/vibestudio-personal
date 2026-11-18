@@ -120,3 +120,8 @@ Read [GETTING_STARTED.md](GETTING_STARTED.md) for the execution recipe,
 `personalSetupWorkflowInput` projects the existing owner-state snapshot and
 resolved selection into the setup branch of the
 [Personal Natlang workflow](../personal-workflows/DECOMPOSITION.md).
+
+The shared `domains.onboarding.planSetup` workflow plans from a fresh,
+caller-scoped owner receipt. It preserves unknown states and the catalog's
+resolved route, including client-owned destinations. Execution remains with
+the surface that owns that route.
