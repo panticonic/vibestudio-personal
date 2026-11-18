@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { personalSetupWorkflowInput } from "./personal-workflow-input.js";
 import {
   onboardingInteraction,
   resolveOnboardingSelection,
@@ -76,4 +77,27 @@ describe("onboarding selection routing", () => {
       }),
     ).toThrow("connection.device does not offer the install action");
   });
+});
+
+it("projects a real owner route and an unread capability without inventing state", () => {
+  const selected = resolveOnboardingSelection(
+    onboardingInteraction("connection.github", "repair"),
+  );
+  const observed = personalSetupWorkflowInput(
+    "get GitHub ready",
+    "selection",
+    {
+      catalog: [selected.capability],
+      snapshot: [],
+    },
+    selected,
+  );
+  expect(observed.selection).toEqual({
+    id: "connection.github/repair",
+    capabilityId: "connection.github",
+    action: "repair",
+    via: "owner-skill",
+    ownerSkillPath: "skills/github/SKILL.md",
+  });
+  expect(observed.capabilities[0]?.state).toBe("unknown");
 });

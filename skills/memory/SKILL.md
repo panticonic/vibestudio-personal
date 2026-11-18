@@ -59,3 +59,8 @@ their saved timestamp so replay judges source age against the same snapshot.
 A direct `natlang.load("skills/memory/recall/recallSummary.nl")` call takes
 both arguments. This candidate has not met its quality gate; verify recalled
 facts through the workflow above.
+
+[Personal Natlang workflows](../personal-workflows/DECOMPOSITION.md) also offer
+a bounded memory branch for goals that combine source history with onboarding
+or repository planning. The report retains the original cited record identity
+and names the sources that need confirmation.

@@ -114,3 +114,9 @@ a row's new state until the component has read it.
 Read [GETTING_STARTED.md](GETTING_STARTED.md) for the execution recipe,
 [OVERVIEW.md](OVERVIEW.md) for product concepts, and
 [REMOTE_SERVER.md](REMOTE_SERVER.md) for remote setup.
+
+## Personal workflow composition
+
+`personalSetupWorkflowInput` projects the existing owner-state snapshot and
+resolved selection into the setup branch of the
+[Personal Natlang workflow](../personal-workflows/DECOMPOSITION.md).

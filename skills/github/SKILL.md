@@ -97,3 +97,10 @@ reimplement that sync logic here.
 For building, source review, Git publication, Pages configuration, and read-only
 deployment recovery, read [GitHub Pages](PAGES.md). Use the existing
 `publish-pages` access choice and keep the commit/build receipt.
+
+## Personal workflow composition
+
+`personalRepositoryWorkflowInput` projects caller-read worktree, GitHub scope,
+and matching upstream status into the repository planning branch of the
+[Personal Natlang workflow](../personal-workflows/DECOMPOSITION.md). Its plan can
+follow a workspace memory or setup question in the same invocation.

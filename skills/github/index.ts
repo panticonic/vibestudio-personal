@@ -1055,3 +1055,46 @@ export {
   observeGitHubPages,
   type GitHubPagesPublication,
 } from "./pages.js";
+
+/** Observed repository state for the Personal workflow. Credential details stay with the existing owner surface. */
+export function personalRepositoryWorkflowInput(
+  goal: string,
+  repository: string,
+  workingTree: "clean" | "dirty" | "unknown",
+  status: GitHubOnboardingStatus,
+  upstream?: GitHubUpstreamStatusResult,
+) {
+  const credential = status.credentials.find(
+    (entry) => entry.id === status.credentialId,
+  );
+  const held = credential?.metadata?.["accessLevel"];
+  const availableAccess =
+    status.stage === "needs-token"
+      ? []
+      : status.stage === "verified" &&
+          typeof held === "string" &&
+          Object.hasOwn(GITHUB_ACCESS_LEVELS, held)
+        ? (Object.keys(GITHUB_ACCESS_LEVELS) as GitHubAccessLevel[]).filter(
+            (needed) => accessLevelCovers(held as GitHubAccessLevel, needed),
+          )
+        : null;
+  const observed = upstream?.repoPath === repository ? upstream : undefined;
+  const relationship = observed?.relationship;
+  const remoteVerified =
+    observed?.state === "auth-failed"
+      ? false
+      : observed?.observedAt !== undefined
+        ? true
+        : null;
+  return {
+    goal,
+    repository,
+    workingTree,
+    availableAccess,
+    remoteVerified,
+    upstream:
+      relationship === "in-sync"
+        ? ("aligned" as const)
+        : (relationship ?? ("unknown" as const)),
+  };
+}

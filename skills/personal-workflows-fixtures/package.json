@@ -1,0 +1,12 @@
+{
+  "name": "@workspace-skills/personal-workflows-fixtures",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./worlds": "./worlds.ts",
+    "./verify": "./verify.ts"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
+  }
+}

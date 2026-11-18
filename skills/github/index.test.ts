@@ -26,6 +26,7 @@ import {
   buildGitHubTokenSettingsUrl,
   getGitHubOnboardingStatus,
   openGitHubTokenSettings,
+  personalRepositoryWorkflowInput,
   publishToGitHub,
   requestGitHubTokenCredential,
   routeGitHubSetup,
@@ -579,4 +580,13 @@ describe("routeGitHubSetup", () => {
     expect(routeGitHubSetup(status("verified", [connected()]), "collaborate").action).toBe("proceed");
     expect(routeGitHubSetup(status("verified", [connected("toString")]), "publish").action).toBe("proceed");
   });
+});
+
+it("keeps unverified scope and another repository's upstream out of the Personal workflow", () => {
+  const observation = personalRepositoryWorkflowInput(
+    "review upstream", "projects/reports", "clean",
+    {stage:"connected",connected:true,verified:false,credentials:[],nextActions:[],warnings:[]},
+    {repoPath:"projects/other",autoPush:false,state:"behind",relationship:"behind",observedAt:1},
+  );
+  expect(observation).toMatchObject({availableAccess:null,remoteVerified:null,upstream:"unknown"});
 });
