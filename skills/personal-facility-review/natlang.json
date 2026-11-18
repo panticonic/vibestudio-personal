@@ -1,0 +1,7 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-personal-facility-review",
+  "version": "0.1.0",
+  "serviceBinding": "explicit",
+  "targets": { "main": { "entry": "reviewPersonalFacility.nl" } }
+}
