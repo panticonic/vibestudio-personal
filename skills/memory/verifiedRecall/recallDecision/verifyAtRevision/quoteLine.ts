@@ -11,12 +11,13 @@ export function cite(
   const matches = lines.filter(
     (line) => line.startsWith(prefix) && line.slice(prefix.length).trim(),
   );
-  if (matches.length !== 1 || matches[0] !== lines[index]) return null;
+  const [quote] = matches;
+  if (!quote || matches.length !== 1 || quote !== lines[index]) return null;
   return {
     eventId: file.eventId,
     path: file.path,
     contentHash: file.contentHash,
     line: index + 1,
-    quote: matches[0],
+    quote,
   };
 }

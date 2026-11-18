@@ -54,7 +54,12 @@ describe("Personal facility review verification", () => {
     );
     expect(
       new Set(
-        personalFacilityWorlds.map((world) => world.expected.findings[0].code),
+        personalFacilityWorlds.map((world) => {
+          const finding = world.expected.findings[0];
+          if (!finding)
+            throw new Error(`Missing primary finding for ${world.id}`);
+          return finding.code;
+        }),
       ).size,
     ).toBe(personalFacilityWorlds.length);
   });

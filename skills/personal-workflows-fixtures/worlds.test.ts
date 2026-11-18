@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { PersonalWorkflowReport } from "../personal-workflows/types.js";
+import type {
+  PersonalMemoryHit,
+  PersonalWorkflowReport,
+} from "../personal-workflows/types.js";
 import { verifyPersonalWorld } from "./verify.js";
 import { personalWorlds, type PersonalWorld } from "./worlds.js";
 
@@ -11,28 +14,30 @@ function reference(world: PersonalWorld): PersonalWorkflowReport {
         const work = world.work.find(
           (item) => item.kind === "recallWorkspace",
         )!;
-        const evidence = world.memory.flatMap((row, index) => {
-          const id = `e${index + 1}`;
-          return expected.cited.includes(id) &&
-            (row.kind === "file" ||
-              row.kind === "message" ||
-              row.kind === "commit")
-            ? [
-                {
-                  id,
-                  kind: row.kind,
-                  snippet: row.snippet,
-                  where: row.where,
-                  appendedAt: row.appendedAt,
-                  path: row.path ?? null,
-                  eventId: row.eventId ?? null,
-                  logId: row.logId ?? null,
-                  head: row.head ?? null,
-                  contentHash: row.contentHash ?? null,
-                },
-              ]
-            : [];
-        });
+        const evidence = world.memory.flatMap<PersonalMemoryHit>(
+          (row, index) => {
+            const id = `e${index + 1}`;
+            return expected.cited.includes(id) &&
+              (row.kind === "file" ||
+                row.kind === "message" ||
+                row.kind === "commit")
+              ? [
+                  {
+                    id,
+                    kind: row.kind,
+                    snippet: row.snippet,
+                    where: row.where,
+                    appendedAt: row.appendedAt,
+                    path: row.path ?? null,
+                    eventId: row.eventId ?? null,
+                    logId: row.logId ?? null,
+                    head: row.head ?? null,
+                    contentHash: row.contentHash ?? null,
+                  },
+                ]
+              : [];
+          },
+        );
         return {
           kind: expected.kind,
           report: {
