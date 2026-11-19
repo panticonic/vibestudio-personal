@@ -1,0 +1,10 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-explorer-probe",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "probeWorkspaceText.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "explorerTextProbe": ["probeWorkspaceText.nl"]
+  }
+}

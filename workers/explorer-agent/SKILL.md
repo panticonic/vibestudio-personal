@@ -108,3 +108,8 @@ from `eval`; the findings files are the searchable record.
   findings file and adds it to the chat-panel findings card.
 - `notify`: post a summary to the channel (you are silent by default).
 - `read`: load this skill and your earlier findings files.
+
+The shared Natlang [text probe](../../skills/explorer-probe/probeWorkspaceText.nl)
+runs a bounded blobstore and scratch-file comparison. It plans the check before
+the native calls, measures exact digests and byte counts, and returns a
+classification with the cleanup evidence.
