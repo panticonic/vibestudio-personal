@@ -27,3 +27,19 @@ export type DecisionReport = {
   leadId: string | null;
   citation: DecisionCitation | null;
 };
+
+export type DecisionComparisonRequest = {
+  goal: string;
+  query: string;
+  beforeEventId: string;
+  afterEventId: string;
+  field: string;
+};
+
+export type DecisionComparisonStatus = "changed" | "unchanged" | "unverified";
+
+export type DecisionComparisonReport = {
+  status: DecisionComparisonStatus;
+  before: DecisionReport;
+  after: DecisionReport;
+};

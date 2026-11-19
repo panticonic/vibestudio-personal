@@ -14,3 +14,12 @@ returned quote comes from the snapshot.
   indexes, authoring state and uncommitted drafts remain separate.
 - A removed file, a revision with no recalled lead and a present file with
   no matching field produce distinct outcomes.
+
+`compareDecisionRevisions` handles a caller-assigned earlier and later
+revision of the same decision field. It calls `recallDecision` for each
+revision in order, preserves both reports, and delegates the disposition to
+`classifyComparison`. A comparison needs two verified citations. The crisp
+`decisionValue` helper strips the field label and surrounding whitespace
+before comparing values. It leaves the original quotations and line numbers
+intact. If either read is inconclusive, the report preserves both independent
+outcomes with an unverified comparison.

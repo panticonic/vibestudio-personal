@@ -31,5 +31,18 @@ type DecisionReport = {
   leadId: string | null;
   citation: DecisionCitation | null;
 };
+type DecisionComparisonRequest = {
+  goal: string;
+  query: string;
+  beforeEventId: string;
+  afterEventId: string;
+  field: string;
+};
+type DecisionComparisonStatus = "changed" | "unchanged" | "unverified";
+type DecisionComparisonReport = {
+  status: DecisionComparisonStatus;
+  before: DecisionReport;
+  after: DecisionReport;
+};
 declare const fn: NatlangFunction<[request: DecisionRequest], DecisionReport> & { readonly findDecision: NatlangFunction<[request: DecisionRequest], DecisionLead | null> & { readonly chooseLead: NatlangFunction<[request: DecisionRequest, leads: DecisionLead[]], DecisionLead | null>; readonly searchHistory: NatlangFunction<[query: string], DecisionLead[]> }; readonly verifyAtRevision: NatlangFunction<[lead: DecisionLead, field: string], DecisionReport> & { readonly locateField: NatlangFunction<[field: string, content: Untrusted<string>], number | null>; readonly quoteLine: { readonly cite: (file: DecisionFile, field: string, index: number | null) => DecisionCitation | null }; readonly readDecisionFile: NatlangFunction<[leadId: string], DecisionFile | null> } };
 export default fn;
