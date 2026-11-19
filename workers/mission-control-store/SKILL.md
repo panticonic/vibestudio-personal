@@ -35,3 +35,7 @@ recurrence have stopped. Task history is kept across archive and restore.
 Run focused tests through the host's template projection, as described in the
 panel README. Check the unit's build report for source, manifest, and permission
 diagnostics before trying runtime calls.
+
+The [Natlang planning workflow](../../skills/mission-planning/reconcileMissionPlan.nl)
+reconciles prerequisites, relocates cards and prepares Inbox cards for Ready. Bind its
+services to caller-assigned project IDs and use the returned revisions to verify every change.

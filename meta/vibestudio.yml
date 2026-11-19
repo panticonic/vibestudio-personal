@@ -45,6 +45,8 @@ providers:
 services:
   - name: mission-control
     source: workers/mission-control-store
+  - name: mission-planning-fixture
+    source: workers/mission-planning-fixture
   - name: browser.data
     source: workers/browser-data
   - name: tour-sample

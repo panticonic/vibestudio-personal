@@ -1,0 +1,52 @@
+{
+  "name": "@workspace-workers/mission-planning-fixture",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "vibestudio": {
+    "title": "Mission Control planning fixtures",
+    "kind": "worker",
+    "entry": "index.ts",
+    "authority": {
+      "provides": [],
+      "requests": []
+    },
+    "durable": {
+      "classes": [
+        {
+          "className": "MissionPlanningFixtureStore"
+        }
+      ]
+    },
+    "services": [
+      {
+        "name": "mission-planning-fixture",
+        "title": "Mission Control planning fixture",
+        "description": "Isolated Mission Control stores for revision-bound system tests.",
+        "action": "verify Mission Control planning changes",
+        "durableObject": {
+          "className": "MissionPlanningFixtureStore"
+        },
+        "presentation": {
+          "domain": "automation",
+          "verb": "manage"
+        },
+        "authority": {
+          "principals": [
+            "code"
+          ]
+        },
+        "protocols": [
+          "mission-planning-fixture.v1"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*",
+    "@workspace-workers/mission-control-store": "workspace:*"
+  },
+  "exports": {
+    ".": "./index.ts"
+  }
+}

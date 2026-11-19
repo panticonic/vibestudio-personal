@@ -1,0 +1,11 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-mission-planning",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "reconcileMissionPlan.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "missionPlanningState": ["reconcileMissionPlan.nl"],
+    "missionPlanningChange": ["reconcileMissionPlan/applyCardChange.nl"]
+  }
+}
