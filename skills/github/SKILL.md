@@ -102,5 +102,5 @@ deployment recovery, read [GitHub Pages](PAGES.md). Use the existing
 
 `personalRepositoryWorkflowInput` projects caller-read worktree, GitHub scope,
 and matching upstream status into the repository planning branch of the
-[Personal Natlang workflow](../personal-workflows/DECOMPOSITION.md). Its plan can
+[Personal Natlang workflow](../personal-workflows/runPersonalWorkflow.nl). Its plan can
 follow a workspace memory or setup question in the same invocation.
