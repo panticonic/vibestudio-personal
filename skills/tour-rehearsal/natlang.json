@@ -1,0 +1,10 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-tour-rehearsal",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "rehearseTour.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "tourRehearsal": ["rehearseTour.nl", "rehearseTour/reviewStops.nl"]
+  }
+}

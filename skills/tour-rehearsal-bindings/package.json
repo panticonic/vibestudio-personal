@@ -1,0 +1,11 @@
+{
+  "name": "@workspace-skills/tour-rehearsal-bindings",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./index.ts" },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*",
+    "@workspace-panels/tour": "workspace:*"
+  }
+}

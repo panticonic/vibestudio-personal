@@ -111,3 +111,9 @@ paths.
 Before publishing, open the panel from its context
 (`openPanel("panels/tour", { contextId, ref: "ctx:<id>" })`) and check it
 visually in its real host, including a real command-conversation action.
+
+For a live rehearsal of selected topics, use the shared Natlang
+[rehearsal workflow](../../skills/tour-rehearsal/rehearseTour.nl). Bind it to a
+caller-owned tour panel and an explicit list of allowed scenes. The workflow
+confirms each stop against the rendered slide and presenter notes, and can
+restore the initial position.
