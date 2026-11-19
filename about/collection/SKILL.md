@@ -82,12 +82,13 @@ supervise it without a permission prompt per panel. Always pass `contextId`;
 leaving it out creates an unrelated context for the nested collection.
 
 Move or reorder existing panels with their handles. With no placement, the
-panel goes to the top of the new parent; pass `{ beforeSlotId }` or
-`{ afterSlotId }` to place it next to a sibling:
+panel goes to the top of the new parent. Name the sibling that should precede
+the moved panel with `beforeSlotId`, and the one that should follow it with
+`afterSlotId`. Use both for exact placement between two adjacent siblings.
 
 ```ts
 await handle.movePanel(group.id);
-await handle.movePanel(group.id, { afterSlotId: siblingId });
+await handle.movePanel(group.id, { beforeSlotId: previousId, afterSlotId: nextId });
 ```
 
 Rules:
@@ -148,3 +149,8 @@ After changing a collection:
 3. Report structural changes separately from content automation.
 4. List panels you left ambiguous and any CDP failures; a failure on one panel
    does not stop the rest of the batch.
+
+The shared Natlang workflow exposes `domains.collection.organizeCollection`.
+It takes ordered organization requests and a caller-owned root binding,
+resolves references against each fresh panel-tree snapshot, and returns the
+verified or held result of each request.

@@ -72,6 +72,11 @@ counts, masked samples, and warnings.
 
 ## Runtime data
 
+The Natlang [browser library workflow](../../skills/browser-library/curateBrowserLibrary.nl)
+recovers lost links from assigned visit history, organizes bookmarks in caller-assigned
+folders and checks the retained copy before retiring a duplicate. Bind its services to the
+caller’s chosen folder and origin scope.
+
 - Use the bookmark and history methods for normal reads, writes, search, and
   deletion.
 - Use `putPageFavicon` and `getPageFavicon` for page-associated browser icons;

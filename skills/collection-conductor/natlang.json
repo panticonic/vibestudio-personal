@@ -1,0 +1,11 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-collection-conductor",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "organizeCollection.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "collectionState": ["organizeCollection.nl"],
+    "collectionChange": ["organizeCollection/applyCollectionChange.nl"]
+  }
+}

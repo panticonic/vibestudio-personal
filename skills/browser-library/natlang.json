@@ -1,0 +1,11 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-browser-library",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "curateBrowserLibrary.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "browserLibraryState": ["curateBrowserLibrary.nl"],
+    "browserLibraryChange": ["curateBrowserLibrary/applyLibraryChange.nl"]
+  }
+}
