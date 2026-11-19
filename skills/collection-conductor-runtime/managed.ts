@@ -286,8 +286,8 @@ export async function prepareManagedCollection(
     };
   }
 
-  async function reference(): Promise<Report> {
-    let before = await services.collectionState.observe();
+  async function reference(ports = services): Promise<Report> {
+    let before = await ports.collectionState.observe();
     const keys = new Map(ids);
     const results: Finding[] = [];
     for (const [index, plan] of expected.entries()) {
@@ -296,7 +296,7 @@ export async function prepareManagedCollection(
         results.push({ status: "held", evidence: [before.id], panelId: null });
         continue;
       }
-      const after = await services.collectionChange.apply(before.id, change);
+      const after = await ports.collectionChange.apply(before.id, change);
       const targetId =
         change.kind === "group" ? groupMember(before, after) : change.panelId;
       if (plan.kind === "group" && targetId) keys.set(plan.key, targetId);

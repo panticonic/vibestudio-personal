@@ -1,0 +1,13 @@
+{
+  "name": "@workspace-skills/browser-handoff-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "dependencies": {
+    "@workspace-skills/browser-library-runtime": "workspace:*",
+    "@workspace-skills/collection-conductor-runtime": "workspace:*"
+  }
+}

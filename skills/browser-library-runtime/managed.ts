@@ -375,5 +375,5 @@ export async function prepareManagedBrowserLibrary(
     return false;
   }
 
-  return { request, services, verify, reference, close, rejectsOutside };
+  return { origin, request, services, verify, reference, close, rejectsOutside };
 }
