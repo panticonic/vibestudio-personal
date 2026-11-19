@@ -11,3 +11,8 @@ can continue with subsequent independent requests.
 | Interpret user intent | Resolve titles and optional parent names. Plan a rename, note edit, nested collection or move relative to a sibling. | Check the observed basis and enforce scope and structural preconditions. |
 | Confirm each change | Verify titles and notes separately from group placement and ordering. | Read real state after the SDK operation. |
 | Handle ambiguity | Hold missing, ambiguous and structurally impossible requests with the current evidence. | Reject scope escapes, cycles and stale writes at the boundary. |
+
+Title and note verification uses the complete ordered snapshots. A TypeScript
+comparison allows only the assigned field to differ and preserves each
+panel's identity, parent, context, source, and other field. The Natlang
+reviewer returns an unverified finding if that comparison fails.

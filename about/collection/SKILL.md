@@ -28,6 +28,10 @@ panel has no children; it does not mean the panel is a browser panel. After a
 create, move, close, or batch rename, walk again rather than reusing old
 entries. Never keep a full copy of the tree in eval state.
 
+The [Natlang collection workflow](../../skills/collection-conductor/organizeCollection.nl)
+organizes a caller-owned collection by resolving each target in the current
+tree, applying the authorized change, and checking the refreshed state.
+
 ## Titles and notes
 
 Use titles that help navigation, not descriptions. `handle` is the entry's
