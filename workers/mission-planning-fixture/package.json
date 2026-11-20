@@ -24,6 +24,7 @@
         "title": "Mission Control planning fixture",
         "description": "Isolated Mission Control stores for revision-bound system tests.",
         "action": "verify Mission Control planning changes",
+        "notability": "everyday",
         "durableObject": {
           "className": "MissionPlanningFixtureStore"
         },
