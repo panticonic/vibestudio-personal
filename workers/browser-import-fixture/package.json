@@ -1,0 +1,29 @@
+{
+  "name": "@workspace-workers/browser-import-fixture",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "vibestudio": {
+    "kind": "worker",
+    "entry": "index.ts",
+    "agentVisible": false,
+    "title": "Owned browser migration fixture",
+    "durable": {
+      "classes": [
+        {
+          "className": "BrowserImportFixtureStore"
+        }
+      ]
+    },
+    "authority": {
+      "requests": [],
+      "provides": [],
+      "serviceRequests": []
+    }
+  },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*",
+    "@workspace-workers/browser-data": "workspace:*",
+    "@vibestudio/browser-data": "workspace:*"
+  }
+}

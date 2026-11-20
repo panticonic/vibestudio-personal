@@ -15,8 +15,8 @@ import { bindBrowserImportReview } from "./index.js";
 const importStoreMethods = createRpcMethods(
   "browserData",
   {
-    upsertImportJob: browserProductMethods.upsertImportJob,
-    getImportJob: browserProductMethods.getImportJob,
+    seedImportReceipt: browserProductMethods.upsertImportJob,
+    readImportReceipt: browserProductMethods.getImportJob,
   },
   "",
 );
@@ -68,8 +68,11 @@ export async function prepareManagedBrowserImport(world: World) {
     ? await rpc.call("main", mainRpcMethods["runtime.createEntity"], [
         {
           kind: "do",
-          execution: { surface: "code", source: "workers/browser-data" },
-          className: "BrowserDataDO",
+          execution: {
+            surface: "code",
+            source: "workers/browser-import-fixture",
+          },
+          className: "BrowserImportFixtureStore",
           key: id,
           contextId,
         },
@@ -105,13 +108,13 @@ export async function prepareManagedBrowserImport(world: World) {
     warnings: [],
   };
   if (dataStore) {
-    await rpc.call(dataStore.targetId, importStoreMethods.upsertImportJob, [
+    await rpc.call(dataStore.targetId, importStoreMethods.seedImportReceipt, [
       { ...receipt, dataTypes: categories },
     ]);
   }
   const readPersisted = () =>
     dataStore
-      ? rpc.call(dataStore.targetId, importStoreMethods.getImportJob, [id])
+      ? rpc.call(dataStore.targetId, importStoreMethods.readImportReceipt, [id])
       : Promise.resolve(null);
   const initial = await readPersisted();
 
