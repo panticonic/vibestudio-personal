@@ -4,5 +4,9 @@
   "version": "0.1.0",
   "targets": { "main": { "entry": "runPersonalWorkflow.nl" } },
   "serviceBinding": "explicit",
-  "serviceScopes": { "memory": ["runPersonalWorkflow/recallWorkspace.nl"] }
+  "serviceScopes": {
+    "memory": ["runPersonalWorkflow/recallWorkspace.nl"],
+    "repositoryResumeRead": ["runPersonalWorkflow/resumeRepositoryWork/readRepository.nl"],
+    "repositoryOwnerRead": ["runPersonalWorkflow/resumeRepositoryWork/readOwnerRoute.nl"]
+  }
 }

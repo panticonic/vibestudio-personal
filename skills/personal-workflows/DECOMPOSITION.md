@@ -15,3 +15,13 @@ The onboarding status explanation uses the exact selected capability ID or owner
 Use `personalSetupWorkflowInput` from the onboarding skill after an owner-state read. It accepts the `composeOnboardingCapabilities` readback and the existing `resolveOnboardingSelection` result. Use `personalRepositoryWorkflowInput` from the GitHub skill with product worktree and matching upstream observations. It projects the workspace owner's scope check without exposing stored credentials to the model.
 
 Load `skills/personal-workflows/runPersonalWorkflow.nl` with the caller's `memory` binding when the requested work includes recall. A pure setup or repository plan requires no bound service. A composed workflow can use more than one Personal subtree in a single root invocation. Onboarding still owns rendering and the GitHub credential surface owns verification and access changes.
+
+## Repository resumption
+
+`resumeRepositoryWork` starts with a bounded local repository and GitHub
+owner read. It delegates intent, minimum access, and worktree decisions to
+the existing repository planner. A separate decision chooses whether the
+plan needs a live onboarding route. Local changes take precedence over
+credential work. The owner route is read only for an access or remote
+verification blocker, using the product's setup or check action. The report
+keeps the repository plan and the optional onboarding report together.

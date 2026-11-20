@@ -133,14 +133,22 @@ export type PersonalRepoReport = {
   facts: string[];
   next: string[];
 };
+export type RepositoryResumeInput = { goal: string; operationId: string };
+export type RepositoryOwnerAction = "setup" | "check" | "skip";
+export type RepositoryResumeReport = {
+  repository: PersonalRepoReport;
+  owner: PersonalSetupReport | null;
+};
 export type PersonalWork =
   | { kind: "recallWorkspace"; input: PersonalMemoryRequest }
   | { kind: "routeSetup"; input: PersonalSetupRequest }
-  | { kind: "planRepositoryWork"; input: PersonalRepoRequest };
+  | { kind: "planRepositoryWork"; input: PersonalRepoRequest }
+  | { kind: "resumeRepositoryWork"; input: RepositoryResumeInput };
 export type PersonalWorkResult =
   | { kind: "recallWorkspace"; report: PersonalMemoryReport }
   | { kind: "routeSetup"; report: PersonalSetupReport }
-  | { kind: "planRepositoryWork"; report: PersonalRepoReport };
+  | { kind: "planRepositoryWork"; report: PersonalRepoReport }
+  | { kind: "resumeRepositoryWork"; report: RepositoryResumeReport };
 export type PersonalWorkflowRequest = { goal: string; work: PersonalWork[] };
 export type PersonalWorkflowReport = {
   results: PersonalWorkResult[];
