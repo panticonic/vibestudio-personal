@@ -76,10 +76,10 @@ export function bindBrowserImportReview(
           throw new Error("Browser import preview differs from the assignment");
         }
         return {
+          status: "previewed",
           totals: preview.breakdowns.flatMap(({ dataType, total }) =>
             isPublicCategory(dataType) ? [{ category: dataType, total }] : [],
           ),
-          status: "previewed",
           warningCount: preview.job.warnings.length,
         };
       },
