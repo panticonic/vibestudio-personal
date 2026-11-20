@@ -5,6 +5,7 @@
   "targets": { "main": { "entry": "reviewBrowserImport.nl" } },
   "serviceBinding": "explicit",
   "serviceScopes": {
+    "openBrowserMigration": ["workOnBrowserMigrationGoal.nl", "workOnBrowserMigrationGoal/leaveMigrationHandoff.nl"],
     "browserImportStart": [
       "reviewBrowserImport/executeApprovedImport/startApprovedImport.nl"
     ],

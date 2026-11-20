@@ -68,3 +68,60 @@ export type BrowserImportReviewReport = {
   progress: ImportProgress[];
   findings: string[];
 };
+
+export type MigrationProfile = {
+  id: string;
+  label: string;
+  device: string;
+  categories: PublicImportCategory[];
+  approved: PublicImportCategory[];
+  retained: RetainedImportObservation["phase"] | null;
+};
+export type MigrationCatalog = {
+  revision: string;
+  profiles: MigrationProfile[];
+  collection: string | null;
+};
+export type MigrationChoice = {
+  sourceId: string;
+  operation: "preview" | "execute" | "recover";
+  categories: PublicImportCategory[];
+};
+export type MigrationBookmark = { title: string; url: string };
+export type MigrationTarget = {
+  id: string;
+  title: string;
+  parent: string | null;
+};
+export type MigrationHandoffView = {
+  revision: string;
+  receiptId: string;
+  bookmarks: MigrationBookmark[];
+  targets: MigrationTarget[];
+};
+export type MigrationHandoffChoice = {
+  bookmark: MigrationBookmark;
+  targetId: string;
+};
+export type MigrationDelivery = {
+  receiptId: string;
+  targetId: string;
+  bookmark: MigrationBookmark;
+  note: string;
+};
+export type MigrationOutcomeEvidence = {
+  preview: ImportPreviewObservation | null;
+  approvedPreview: ImportPreviewObservation | null;
+  receiptId: string | null;
+  phase: RetainedImportObservation["phase"] | null;
+  retainedBookmarks: MigrationBookmark[];
+};
+export type OpenMigrationReport =
+  | { status: "unresolved"; reason: string }
+  | {
+      status: "observed" | "imported" | "retained" | "held" | "handed-off";
+      choice: MigrationChoice;
+      review: BrowserImportReviewReport;
+      evidence: MigrationOutcomeEvidence;
+      delivery: MigrationDelivery | null;
+    };

@@ -63,5 +63,60 @@ type BrowserImportReviewReport = {
   progress: ImportProgress[];
   findings: string[];
 };
+type MigrationProfile = {
+  id: string;
+  label: string;
+  device: string;
+  categories: PublicImportCategory[];
+  approved: PublicImportCategory[];
+  retained: RetainedImportObservation["phase"] | null;
+};
+type MigrationCatalog = {
+  revision: string;
+  profiles: MigrationProfile[];
+  collection: string | null;
+};
+type MigrationChoice = {
+  sourceId: string;
+  operation: "preview" | "execute" | "recover";
+  categories: PublicImportCategory[];
+};
+type MigrationBookmark = { title: string; url: string };
+type MigrationTarget = {
+  id: string;
+  title: string;
+  parent: string | null;
+};
+type MigrationHandoffView = {
+  revision: string;
+  receiptId: string;
+  bookmarks: MigrationBookmark[];
+  targets: MigrationTarget[];
+};
+type MigrationHandoffChoice = {
+  bookmark: MigrationBookmark;
+  targetId: string;
+};
+type MigrationDelivery = {
+  receiptId: string;
+  targetId: string;
+  bookmark: MigrationBookmark;
+  note: string;
+};
+type MigrationOutcomeEvidence = {
+  preview: ImportPreviewObservation | null;
+  approvedPreview: ImportPreviewObservation | null;
+  receiptId: string | null;
+  phase: RetainedImportObservation["phase"] | null;
+  retainedBookmarks: MigrationBookmark[];
+};
+type OpenMigrationReport = | { status: "unresolved"; reason: string }
+  | {
+      status: "observed" | "imported" | "retained" | "held" | "handed-off";
+      choice: MigrationChoice;
+      review: BrowserImportReviewReport;
+      evidence: MigrationOutcomeEvidence;
+      delivery: MigrationDelivery | null;
+    };
 declare const fn: NatlangFunction<[request: BrowserImportReviewRequest], BrowserImportReviewReport> & { readonly executeApprovedImport: NatlangFunction<[request: BrowserImportReviewRequest], BrowserImportReviewReport> & { readonly compareApprovedPreview: NatlangFunction<[approved: ImportPreviewObservation, observed: ImportPreviewObservation], boolean>; readonly startApprovedImport: NatlangFunction<[observed: ImportPreviewObservation], BrowserImportDispatch>; readonly inspectAssignedSource: NatlangFunction<[requested: PublicImportCategory[]], { observation: ImportSourceObservation; usable: boolean; findings: string[] }>; readonly inspectPreview: NatlangFunction<[requested: PublicImportCategory[]], { next: BrowserImportNext; totals: ImportTotal[]; findings: string[]; observation: ImportPreviewObservation }>; readonly inspectRetainedJob: NatlangFunction<[], RetainedImportObservation | null>; readonly interpretRetainedJob: NatlangFunction<[job: RetainedImportObservation], { next: BrowserImportNext; findings: string[] }> }; readonly inspectAssignedSource: NatlangFunction<[requested: PublicImportCategory[]], { observation: ImportSourceObservation; usable: boolean; findings: string[] }>; readonly inspectPreview: NatlangFunction<[requested: PublicImportCategory[]], { next: BrowserImportNext; totals: ImportTotal[]; findings: string[]; observation: ImportPreviewObservation }>; readonly inspectRetainedJob: NatlangFunction<[], RetainedImportObservation | null>; readonly interpretRetainedJob: NatlangFunction<[job: RetainedImportObservation], { next: BrowserImportNext; findings: string[] }> };
 export default fn;
