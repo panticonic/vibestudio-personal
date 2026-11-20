@@ -1,0 +1,11 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-open-personal-artifacts",
+  "version": "0.1.0",
+  "serviceBinding": "explicit",
+  "targets": { "main": { "entry": "workOnPersonalArtifactsGoal.nl" } },
+  "serviceScopes": {
+    "artifactLibrary": ["workOnPersonalArtifactsGoal/maintainLibrary.nl"],
+    "artifactCollection": ["workOnPersonalArtifactsGoal/arrangeCollection.nl"]
+  }
+}
