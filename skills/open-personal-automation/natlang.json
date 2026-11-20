@@ -1,0 +1,13 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-open-personal-automation",
+  "version": "0.1.0",
+  "serviceBinding": "explicit",
+  "targets": { "main": { "entry": "coordinatePersonalAutomation.nl" } },
+  "serviceScopes": {
+    "operatorQueue": [
+      "coordinatePersonalAutomation.nl",
+      "coordinatePersonalAutomation/operateMonitor.nl"
+    ]
+  }
+}

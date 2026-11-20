@@ -5,13 +5,15 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
-    "./managed": "./managed.ts"
+    "./managed": "./managed.ts",
+    "./open-migration-managed": "./open-migration-managed.ts"
   },
   "dependencies": {
     "@workspace/runtime": "workspace:*",
     "@vibestudio/service-schemas": "workspace:*",
     "@vibestudio/shared": "workspace:*",
-    "@vibestudio/browser-data": "workspace:*"
+    "@vibestudio/browser-data": "workspace:*",
+    "@workspace-skills/collection-conductor-runtime": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.2.7"

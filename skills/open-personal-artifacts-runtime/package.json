@@ -1,0 +1,14 @@
+{
+  "name": "@workspace-skills/open-personal-artifacts-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./managed.ts"
+  },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*",
+    "@workspace-skills/browser-library-runtime": "workspace:*",
+    "@workspace-skills/collection-conductor-runtime": "workspace:*"
+  }
+}

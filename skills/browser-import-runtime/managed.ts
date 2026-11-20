@@ -46,7 +46,7 @@ const batchMethods = createReceiverRpcMethods<{
 }>(["storeFixtureBookmarks", "readFixtureBookmarks"]);
 
 type Read = "source" | "preview" | "history" | "start";
-type World = {
+export type ManagedBrowserImportWorld = {
   id: string;
   goal: string;
   kind: BrowserImportReviewRequest["kind"];
@@ -76,18 +76,26 @@ type World = {
   reads: readonly Read[];
   expected: {
     next: BrowserImportReviewReport["next"];
-    source: World["source"] | null;
+    source: ManagedBrowserImportWorld["source"] | null;
     totals: Readonly<BrowserImportReviewReport["totals"]>;
     progress: Readonly<BrowserImportReviewReport["progress"]>;
   };
 };
 
-export async function prepareManagedBrowserImport(world: World) {
+export async function prepareManagedBrowserImport(
+  world: ManagedBrowserImportWorld,
+  options?: {
+    hostId: string;
+    sourceId: string;
+    loseOwnershipBeforeStart?: boolean;
+    retainedBookmarks?: readonly { title: string; url: string }[];
+  },
+) {
   if (!contextId)
     throw new Error("Browser import fixtures require an owning test context");
   const id = `browser-import-fixture-${crypto.randomUUID()}`;
-  const hostId = "migration-host",
-    sourceId = "selected-firefox";
+  const hostId = options?.hostId ?? "migration-host",
+    sourceId = options?.sourceId ?? "selected-firefox";
   const categories = [...world.categories];
   const { execution, job, preview } = world;
   const request: BrowserImportReviewRequest =
@@ -155,7 +163,32 @@ export async function prepareManagedBrowserImport(world: World) {
     dataStore
       ? rpc.call(dataStore.targetId, importStoreMethods.readImportReceipt, [id])
       : Promise.resolve(null);
+  if (dataStore && job && !execution && options?.retainedBookmarks?.length) {
+    await rpc.call(dataStore.targetId, batchMethods.storeFixtureBookmarks, [
+      id,
+      0,
+      options.retainedBookmarks.map((item) => ({
+        ...item,
+        folder: ["Migration"],
+        dateAdded: 10,
+      })),
+      sourceId,
+    ]);
+  }
   const initial = await readPersisted();
+  const readBookmarks = () =>
+    dataStore
+      ? rpc.call(dataStore.targetId, batchMethods.readFixtureBookmarks, [id])
+      : Promise.resolve([]);
+  async function readEvidence() {
+    return {
+      id,
+      hostId,
+      sourceId,
+      receipt: await readPersisted(),
+      bookmarks: await readBookmarks(),
+    };
+  }
 
   let hostReads = 0;
   let previewCalls = 0;
@@ -201,9 +234,12 @@ export async function prepareManagedBrowserImport(world: World) {
     },
   });
   let starts = 0;
+  let ownerChanged = false;
+  let revokeOwner: (() => void) | undefined;
   const readClient = {
     async listImportHosts() {
-      const connected = !(world.dropSourceBeforePreview && ++hostReads > 1);
+      const connected =
+        !ownerChanged && !(world.dropSourceBeforePreview && ++hostReads > 1);
       return [
         {
           hostId,
@@ -335,7 +371,7 @@ export async function prepareManagedBrowserImport(world: World) {
       : null;
   if (execute) {
     const [host] = await readClient.listImportHosts();
-    coordinator.registerHost({
+    revokeOwner = coordinator.registerHost({
       ...host!,
       ownerUserId: identity.ownerUserId,
       provider,
@@ -350,7 +386,7 @@ export async function prepareManagedBrowserImport(world: World) {
 
   const reads: { kind: Read; value: unknown }[] = [];
   async function record<T>(kind: Read, observe: () => Promise<T>) {
-    if (world.reads[reads.length] !== kind)
+    if (!options && world.reads[reads.length] !== kind)
       throw new Error("Unexpected browser migration read");
     const value = await observe();
     reads.push({ kind, value });
@@ -358,7 +394,13 @@ export async function prepareManagedBrowserImport(world: World) {
   }
   const start = async (observed: ImportPreviewObservation) =>
     execute
-      ? record("start", () => execute.browserImportStart.start(observed))
+      ? record("start", () => {
+          if (options?.loseOwnershipBeforeStart && previewCalls) {
+            revokeOwner?.();
+            ownerChanged = true;
+          }
+          return execute.browserImportStart.start(observed);
+        })
       : ("held" as const);
   const services = {
     ...(execute && { browserImportStart: { start } }),
@@ -382,13 +424,7 @@ export async function prepareManagedBrowserImport(world: World) {
     const { findings: _findings, ...decision } = report ?? {};
     const persisted = await readPersisted();
     const bookmarks =
-      dataStore && execution
-        ? await rpc.call(
-            dataStore.targetId,
-            batchMethods.readFixtureBookmarks,
-            [id],
-          )
-        : [];
+      execution || options?.retainedBookmarks ? await readBookmarks() : [];
     const checks = {
       exactReads: isDeepStrictEqual(
         reads,
@@ -400,7 +436,8 @@ export async function prepareManagedBrowserImport(world: World) {
           persisted?.phase === job?.phase &&
           isDeepStrictEqual(bookmarks, execution.bookmarks)
         : isDeepStrictEqual(persisted, initial) &&
-          (!job || initial?.phase === job.phase),
+          (!job || initial?.phase === job.phase) &&
+          isDeepStrictEqual(bookmarks, options?.retainedBookmarks ?? []),
       previewCalls: previewCalls === (preview?.status === "previewed" ? 1 : 0),
     };
     return {
@@ -419,6 +456,24 @@ export async function prepareManagedBrowserImport(world: World) {
     request,
     services,
     verify,
+    readEvidence,
+    async readOutcome() {
+      const receipt = await readPersisted();
+      const bookmarks = receipt ? await readBookmarks() : [];
+      return {
+        preview:
+          (reads.findLast(({ kind }) => kind === "preview")?.value as
+            | ImportPreviewObservation
+            | undefined) ?? null,
+        approvedPreview:
+          request.kind === "execute" ? request.approvedPreview : null,
+        receiptId: receipt?.jobId ?? null,
+        phase: receipt?.phase ?? null,
+        retainedBookmarks: bookmarks.flatMap(({ title, url }) =>
+          url ? [{ title, url }] : [],
+        ),
+      };
+    },
     async qualify() {
       const byRead = {
         source: services.browserImportSource.observe,
@@ -454,13 +509,13 @@ export async function prepareManagedBrowserImport(world: World) {
       };
       let rejectedExtraRead = false;
       try {
-        await services.browserImportPreview.observe();
+        if (!options) await services.browserImportPreview.observe();
       } catch (error) {
         rejectedExtraRead =
           error instanceof Error &&
           error.message === "Unexpected browser migration read";
       }
-      return { verification: await verify(report), rejectedExtraRead };
+      return { report, verification: await verify(report), rejectedExtraRead };
     },
   };
 }

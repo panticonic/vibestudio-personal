@@ -1,0 +1,13 @@
+{
+  "name": "@workspace-skills/open-personal-history-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./managed.ts"
+  },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*",
+    "@vibestudio/content-addressing": "workspace:*"
+  }
+}
