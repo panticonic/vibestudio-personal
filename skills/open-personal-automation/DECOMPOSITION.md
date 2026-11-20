@@ -9,7 +9,7 @@
 | Verify independently | The fixture checks persisted definition, scheduling and absence of run dispatch, controller attempts, protected default, exact observation coordinates and the full goal report. |
 
 The installed system-test worker provisions the owned manual definitions
-and retires them after the run. The existing durable caller compiles their
+and pauses them before the disposable workspace is destroyed. The durable caller compiles their
 authority plans. The eval session checks the seeded records against the live
 controller before exposing the queue. Review and
 discovery expose names, team, dependencies, current definition digest and
