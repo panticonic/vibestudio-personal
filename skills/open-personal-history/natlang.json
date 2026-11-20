@@ -1,0 +1,13 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-open-personal-history",
+  "version": "0.1.0",
+  "serviceBinding": "explicit",
+  "targets": { "main": { "entry": "reviewPersonalHistory.nl" } },
+  "serviceScopes": {
+    "archiveTimeline": [
+      "reviewPersonalHistory.nl",
+      "reviewPersonalHistory/inspectMilestone.nl"
+    ]
+  }
+}
