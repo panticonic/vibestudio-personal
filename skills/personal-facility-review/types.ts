@@ -229,4 +229,5 @@ export type FacilityRequest =
   | CollectionFacilityEvidence
   | TourFacilityEvidence
   | MissionFacilityEvidence
+  | { kind: "mission-live"; goal: string; operationId: string }
   | ExplorerFacilityEvidence;

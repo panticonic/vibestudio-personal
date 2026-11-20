@@ -11,3 +11,8 @@ A Personal-workspace caller supplies observed receipts for a selected facility. 
 | Explorer | Verify a documented prior expectation and disposable scope; classify a bounded observation. | The authorized focus, attributed operation, expectation and normalized comparison. Reporting remains with the user or the Explorer worker. |
 
 Result records contain status, finding codes and ordered evidence identifiers. The fixture verifier is independent of the program. These paths interpret existing evidence and plan the next review condition.
+
+The live Mission Control branch reads an assigned card, project and prerequisites
+through a scoped service, then reuses the existing mission review. The planning
+gate checks revision and prerequisites before the execution review. A planning
+card by itself cannot establish that an executor admitted a run.

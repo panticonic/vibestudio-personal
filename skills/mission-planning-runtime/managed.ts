@@ -7,6 +7,10 @@ import type { Task } from "@workspace/mission-control";
 import { missionControlRpcMethods } from "@workspace/mission-control/rpc-contract";
 import { bindMissionPlanning } from "./index.js";
 import type {
+  FacilityReview,
+  MissionFacilityEvidence,
+} from "../personal-facility-review/types.js";
+import type {
   MissionChanges,
   MissionFinding,
   MissionPlanningReport,
@@ -36,13 +40,18 @@ type World = {
   expected: readonly Outcome[];
 };
 
-export async function prepareManagedMissionPlanning(world: World, seed: Seed) {
+function fixtureStore() {
   const objectKey = `natlang-mission-planning-${contextId}`;
   const client = createDurableObjectServiceClient(
     "mission-planning-fixture.v1",
     missionControlRpcMethods,
     objectKey,
   );
+  return { objectKey, client };
+}
+
+export async function prepareManagedMissionPlanning(world: World, seed: Seed) {
+  const { objectKey, client } = fixtureStore();
   const projects = new Map<string, string>();
   const cards = new Map<string, string>();
   const key = (keys: Map<string, string>, name: string) => {
@@ -313,4 +322,97 @@ export async function prepareManagedMissionPlanning(world: World, seed: Seed) {
   }
 
   return { request: world.request, services, verify, qualify };
+}
+
+type FacilityWorld = {
+  id: string;
+  goal: string;
+  stale: boolean;
+  prerequisite: "done" | "review";
+  status: FacilityReview["status"];
+  code: string;
+};
+
+export async function prepareManagedMissionFacility(world: FacilityWorld) {
+  const { client } = fixtureStore();
+  const project = await client.call("createProject", { name: "Assigned launch project", repos: [] });
+  const prerequisite = await client.call("createTask", {
+    projectId: project.id, title: "Accept release evidence", status: world.prerequisite,
+  });
+  const assigned = await client.call("createTask", {
+    projectId: project.id, title: "Prepare the release run", status: "ready",
+    dependencies: [prerequisite.id],
+  });
+  if (world.stale) {
+    await client.call("updateTask", {
+      id: assigned.id, expectedRevision: assigned.revision,
+      changes: { description: "The owner revised the release scope." },
+    });
+  }
+  const read = async () => {
+    const [card, dependency, board] = await Promise.all([
+      client.call("getTask", { id: assigned.id }),
+      client.call("getTask", { id: prerequisite.id }),
+      client.call("overview", { limit: 1 }),
+    ]);
+    const currentProject = board.projects.find(({ id }) => id === card.projectId);
+    if (currentProject?.id !== project.id || card.dependencies.length !== 1 ||
+        card.dependencies[0] !== dependency.id)
+      throw new Error("The assigned planning records no longer join");
+    return { card, dependency, project: currentProject };
+  };
+  const baseline = await read();
+  const operationId = crypto.randomUUID();
+  const request = { kind: "mission-live", goal: world.goal, operationId };
+  let observed: MissionFacilityEvidence | undefined;
+  const services = {
+    missionFacilityRead: {
+      async inspect(id: string) {
+        if (id !== operationId || observed)
+          throw new Error("Read the assigned Mission Control card once");
+        const current = await read();
+        observed = {
+          kind: "mission",
+          goal: world.goal,
+          target: { id: operationId, taskId: assigned.id, expectedRevision: assigned.revision },
+          card: {
+            id: current.card.id, taskId: current.card.id, revision: current.card.revision,
+            state: current.card.status, projectArchived: current.project.archived,
+            dependencyAccepted: current.dependency.status === "done",
+            automationId: current.card.automationId,
+          },
+          detail: { kind: "execution", intent: "start", automationKind: null, receipt: null },
+        };
+        return structuredClone(observed);
+      },
+    },
+  };
+  const expected: FacilityReview = {
+    status: world.status,
+    findings: [{ code: world.code, evidenceIds: world.stale ? [operationId, assigned.id] : [assigned.id] }],
+  };
+  async function verify(report: FacilityReview | null) {
+    const after = await read();
+    const checks = {
+      attribution: observed?.target.taskId === assigned.id && observed?.card.id === assigned.id &&
+        observed.target.expectedRevision === assigned.revision && observed.card.revision === baseline.card.revision,
+      assignedState: observed?.card.state === "ready" && !observed.card.projectArchived &&
+        observed.card.automationId === null && baseline.dependency.status === world.prerequisite &&
+        observed.card.dependencyAccepted === (world.prerequisite === "done") &&
+        baseline.card.revision === assigned.revision + Number(world.stale),
+      preserved: isDeepStrictEqual(after, baseline),
+      outcome: isDeepStrictEqual(report, expected),
+    };
+    return {
+      contextId, caseId: world.id, request, observed,
+      checks, passed: Object.values(checks).every(Boolean),
+    };
+  }
+  return {
+    request, services, verify,
+    async qualify() {
+      await services.missionFacilityRead.inspect(operationId);
+      return verify(expected);
+    },
+  };
 }
