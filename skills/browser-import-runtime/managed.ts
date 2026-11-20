@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { contextId, rpc } from "@workspace/runtime";
 import { mainRpcMethods } from "@vibestudio/service-schemas/mainRpc";
+import { createRpcMethods } from "@vibestudio/shared/rpcMethods";
 import { browserProductMethods } from "@vibestudio/service-schemas/browserData";
 import type {
   BrowserImportReviewReport,
@@ -10,6 +11,15 @@ import type {
   RetainedImportObservation,
 } from "../browser-import-review/types.js";
 import { bindBrowserImportReview } from "./index.js";
+
+const importStoreMethods = createRpcMethods(
+  "browserData",
+  {
+    upsertImportJob: browserProductMethods.upsertImportJob,
+    getImportJob: browserProductMethods.getImportJob,
+  },
+  "",
+);
 
 type Read = "source" | "preview" | "history";
 type World = {
@@ -95,13 +105,13 @@ export async function prepareManagedBrowserImport(world: World) {
     warnings: [],
   };
   if (dataStore) {
-    await rpc.call(dataStore.targetId, browserProductMethods.upsertImportJob, [
+    await rpc.call(dataStore.targetId, importStoreMethods.upsertImportJob, [
       { ...receipt, dataTypes: categories },
     ]);
   }
   const readPersisted = () =>
     dataStore
-      ? rpc.call(dataStore.targetId, browserProductMethods.getImportJob, [id])
+      ? rpc.call(dataStore.targetId, importStoreMethods.getImportJob, [id])
       : Promise.resolve(null);
   const initial = await readPersisted();
 
