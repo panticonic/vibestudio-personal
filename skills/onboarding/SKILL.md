@@ -120,6 +120,9 @@ Read [GETTING_STARTED.md](GETTING_STARTED.md) for the execution recipe,
 `personalSetupWorkflowInput` projects the existing owner-state snapshot and
 resolved selection into the setup branch of the
 [Personal Natlang workflow](../personal-workflows/DECOMPOSITION.md).
+The repository-resume branch calls this route only after the worktree and
+access checks identify a setup prerequisite. Follow the returned GitHub owner
+route on the existing setup surface.
 
 The shared `domains.onboarding.planSetup` workflow plans from a fresh,
 caller-scoped owner receipt. It preserves unknown states and the catalog's
