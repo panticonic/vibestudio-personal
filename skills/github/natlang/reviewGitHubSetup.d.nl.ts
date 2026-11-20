@@ -66,5 +66,95 @@ type GitHubDiagnosisReport = {
   diagnosis: NextStep | null;
   setup: GitHubSetupReport | null;
 };
+type GitHubOpenRepository = {
+  id: string;
+  title: string;
+  intendedOwner: string;
+};
+type GitHubApproval = {
+  id: string;
+  owner: string;
+  state: "approved" | "pending" | "denied" | "partial" | "expired";
+};
+type GitHubOpenProfile = {
+  id: string;
+  owner: string;
+  label: string;
+  approval: GitHubApproval;
+  retained: GitHubApproval[];
+};
+type GitHubOpenCatalog = {
+  revision: string;
+  repositories: GitHubOpenRepository[];
+  profiles: GitHubOpenProfile[];
+  interactive: boolean;
+};
+type GitHubLocalView = {
+  id: string;
+  repository: GitHubOpenRepository;
+  head: string;
+  branch: string | null;
+  trackedHead: string | null;
+  ahead: number;
+  behind: number;
+  changes: string[];
+  remote: string | null;
+  normalizedRemote: string | null;
+  remoteOwner: string | null;
+};
+type GitHubOpenIntent = {
+  repositoryId: string;
+  localOnly: boolean;
+  explicitOwner: string | null;
+  profileId: string | null;
+};
+type GitHubOpenPreflight = {
+  id: string;
+  status:
+    | "available"
+    | "unconnected"
+    | "ambiguous"
+    | "wrong-owner"
+    | "scope-or-binding"
+    | "profile-unavailable";
+  failure: string | null;
+  profile: GitHubOpenProfile | null;
+  setup: GitHubSetupRequest | null;
+};
+type GitHubOpenRoute = | "report-local"
+  | "repair-remote"
+  | "preserve-local-work"
+  | "integrate-local-history"
+  | "choose-account"
+  | "wait-for-owner"
+  | "offer-setup"
+  | "verify-account"
+  | "repair-account"
+  | "request-scoped-access"
+  | "ready-for-owner";
+type GitHubOpenDecision = {
+  route: GitHubOpenRoute;
+  access: GitHubAccessLevel;
+  profileId: string | null;
+  currentApproval: string | null;
+  retainedApprovals: string[];
+  reason: string;
+};
+type GitHubOpenHandoff = {
+  revision: string;
+  receipt: string;
+  decision: GitHubOpenDecision;
+};
+type OpenGitHubReport = | { status: "unresolved"; reason: string }
+  | {
+      status: "reviewed";
+      local: GitHubLocalView;
+      intent: GitHubOpenIntent;
+      preflight: GitHubOpenPreflight | null;
+      setup: GitHubSetupReport | null;
+      diagnosis: NextStep | null;
+      decision: GitHubOpenDecision;
+      handoff: GitHubOpenHandoff | null;
+    };
 declare const fn: NatlangFunction<[request: GitHubSetupRequest], GitHubSetupReport> & { readonly chooseSetupHandoff: NatlangFunction<[route: GitHubSetupReceipt, interactive: boolean], GitHubSetupHandoff>; readonly readGitHubSetup: NatlangFunction<[operationId: string], GitHubSetupStatus>; readonly resolveGitHubRoute: NatlangFunction<[operationId: string, accessLevel: GitHubAccessLevel], GitHubSetupReceipt>; readonly accessLevelFor: NatlangFunction<[intent: string], GitHubAccessLevel> };
 export default fn;

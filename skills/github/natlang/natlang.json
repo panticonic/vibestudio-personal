@@ -3,6 +3,8 @@
   "name": "personal-github-setup",
   "version": "0.1.0",
   "include": [
+    "workOnGitHubGoal.nl",
+    "workOnGitHubGoal",
     "reviewGitHubSetup.nl",
     "reviewGitHubSetup",
     "diagnoseGitHubOperation.nl",
@@ -16,6 +18,7 @@
   "targets": { "main": { "entry": "reviewGitHubSetup.nl" } },
   "serviceBinding": "explicit",
   "serviceScopes": {
+    "openGitHubWork": ["workOnGitHubGoal.nl", "workOnGitHubGoal/stageGitHubHandoff.nl"],
     "githubSetupRead": ["reviewGitHubSetup/readGitHubSetup.nl"],
     "githubSetupRoute": ["reviewGitHubSetup/resolveGitHubRoute.nl"],
     "githubDiagnosisRead": ["diagnoseGitHubOperation/readGitHubDiagnosis.nl"]

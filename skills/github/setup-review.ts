@@ -5,7 +5,11 @@ import {
 } from "./index.js";
 import type { GitHubSetupRequest } from "./natlang/types.js";
 
-export function bindGitHubSetupReview(goal: string, interactive: boolean) {
+export function bindGitHubSetupReview(
+  goal: string,
+  interactive: boolean,
+  readStatus: typeof getGitHubOnboardingStatus = getGitHubOnboardingStatus,
+) {
   const request: GitHubSetupRequest = {
     goal,
     operationId: crypto.randomUUID(),
@@ -26,7 +30,7 @@ export function bindGitHubSetupReview(goal: string, interactive: boolean) {
               "GitHub status can only be read for the assigned setup review",
             );
           claimed = true;
-          observed = await getGitHubOnboardingStatus();
+          observed = await readStatus();
           const { stage, connected, verified } = observed;
           return { stage, connected, verified };
         },
