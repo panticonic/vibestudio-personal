@@ -1,0 +1,13 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "open-personal-goal",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "workOnMissionGoal.nl" } },
+  "serviceBinding": "explicit",
+  "include": ["workOnMissionGoal.nl", "workOnMissionGoal", "types.ts", "services.d.ts"],
+  "serviceScopes": {
+    "missionGoalBoard": ["workOnMissionGoal.nl"],
+    "missionGoalChange": ["workOnMissionGoal/executeMissionStep.nl"],
+    "missionGoalHandoff": ["workOnMissionGoal/prepareMissionHandoff.nl"]
+  }
+}
