@@ -21,6 +21,13 @@ when the caller has an assigned source or retained public import receipt.
 It reviews preview counts and checks recovery against the original source
 before suggesting a retry in the inspector.
 
+An explicitly approved public import can use
+[`bindBrowserImportExecution`](../../skills/browser-import-runtime/index.ts).
+Bind the selected source, approved preview, and a caller-created operation ID.
+The workflow verifies a fresh preview before starting, then reports the
+stored progress from that operation's retained receipt. When preview counts
+or warning counts change, return to the inspector for fresh approval.
+
 For setup the user drives, open `about/browser-import-inspector`. It handles
 device and browser selection, data categories, preview, warnings, progress,
 cancellation, retry, and history in one workflow. Do not recreate it as chat
