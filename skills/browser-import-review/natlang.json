@@ -1,0 +1,12 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "vibestudio-browser-import-review",
+  "version": "0.1.0",
+  "targets": { "main": { "entry": "reviewBrowserImport.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "browserImportSource": ["reviewBrowserImport/inspectAssignedSource.nl"],
+    "browserImportPreview": ["reviewBrowserImport/inspectPreview.nl"],
+    "browserImportHistory": ["reviewBrowserImport/inspectRetainedJob.nl"]
+  }
+}

@@ -16,6 +16,11 @@ or filesystem path.
 
 An import is a one-time migration snapshot, not a sync.
 
+Use the [typed migration review](../../skills/browser-import-review/reviewBrowserImport.nl)
+when the caller has an assigned source or retained public import receipt.
+It reviews preview counts and checks recovery against the original source
+before suggesting a retry in the inspector.
+
 For setup the user drives, open `about/browser-import-inspector`. It handles
 device and browser selection, data categories, preview, warnings, progress,
 cancellation, retry, and history in one workflow. Do not recreate it as chat
@@ -34,8 +39,8 @@ complete selection the user approved:
 2. `listImportSources(hostId)`
 3. `previewImport({ hostId, sourceId, dataTypes })`, for bookmarks, history,
    search engines, and favicons only.
-4. `startImport({ hostId, sourceId, dataTypes })` for those non-sensitive
-   categories.
+4. `startImport({ hostId, sourceId, dataTypes }, operationId)` for those non-sensitive
+   categories. Generate the operation ID before starting.
 5. For cookies, passwords, or form fill:
    - Call `previewSensitiveImport({ hostId, sourceId, dataTypes })` for
      aggregate review counts.
