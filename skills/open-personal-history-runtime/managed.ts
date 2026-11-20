@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { sha256HexSyncText } from "@vibestudio/content-addressing";
+import { compareUtf16CodeUnits, sha256HexSyncText } from "@vibestudio/content-addressing";
 import {
   blobstore,
   contextId as runtimeContext,
@@ -74,11 +74,13 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
     ordinal: number,
   ) {
     const stored = await Promise.all(
-      files.map(async ({ path, text }) => ({
-        path,
-        contentHash: (await blobstore.putText(text)).digest,
-        mode: 0o644,
-      })),
+      [...files]
+        .sort((left, right) => compareUtf16CodeUnits(left.path, right.path))
+        .map(async ({ path, text }) => ({
+          path,
+          contentHash: (await blobstore.putText(text)).digest,
+          mode: 0o644,
+        })),
     );
     const result = await vcs.importSnapshot({
       contextId: input.contextId,
