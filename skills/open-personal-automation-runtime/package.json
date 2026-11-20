@@ -1,0 +1,12 @@
+{
+  "name": "@workspace-skills/open-personal-automation-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./managed.ts"
+  },
+  "dependencies": {
+    "@workspace/runtime": "workspace:*"
+  }
+}
