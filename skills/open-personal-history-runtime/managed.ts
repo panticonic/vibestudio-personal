@@ -357,6 +357,7 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
     return {
       contextId: input.contextId,
       caseId: world.id,
+      goal: world.goal,
       catalogEvent,
       repositoryId: ownedRepository,
       milestones,
