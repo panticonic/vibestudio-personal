@@ -8,6 +8,9 @@
 | Bind live receipts and effect boundaries | TypeScript calls the installed Missions controller. It validates the observed basis, exact revision, dependency state and assigned permissions. The service accepts only pause and resume on owned manual definitions. |
 | Verify independently | The fixture checks persisted definition, scheduling and absence of run dispatch, controller attempts, protected default, exact observation coordinates and the full goal report. |
 
-Managed fixtures use controller definitions with manual triggers. Review and
+The installed system-test worker provisions the owned manual definitions
+and retires them after the run. The existing durable caller compiles their
+authority plans. The eval session checks the seeded records against the live
+controller before exposing the queue. Review and
 discovery expose names, team, dependencies, current definition digest and
 reviewed digest. Desired outcomes and scoring rules stay outside model context.

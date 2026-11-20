@@ -54,6 +54,7 @@ type Metadata = {
   note?: string;
 };
 type Owned = { spec: Spec; seed: Mission; suffix: string; metadata: Metadata };
+type Seed = { defaultMonitor: Mission; items: { key: string; record: Mission; suffix: string }[] };
 type Op = {
   key: string;
   id: string;
@@ -102,36 +103,17 @@ const activeState = (mission: Mission): State => {
 export async function prepareOpenPersonalAutomation(
   input: { contextId: string; caseId: string },
   world: World,
+  seed: Seed,
 ) {
   if (input.contextId !== liveContext || input.caseId !== world.id)
     throw new Error("Automation queue belongs to another context");
-  const namespace = crypto.randomUUID().slice(0, 12);
-  const installedDefault = await missions.getDefault(defaultId);
-  if (!installedDefault)
-    throw new Error("Workspace update monitor could not be verified");
-  const defaultMonitor = installedDefault;
-  const allocations = new Set<string>();
+  const { defaultMonitor, items } = seed;
   const owned = new Map<string, Owned>();
   const attempts: Op[] = [];
   const requests: { id: string; action: Action }[] = [];
   const observations: Queue[] = [];
   let current: Queue | undefined;
   let pending = false;
-  let cleanup: Promise<void> | undefined;
-
-  function close() {
-    cleanup ??= (async () => {
-      const outcomes = await Promise.allSettled(
-        [...allocations].map((id) => missions.retire(id)),
-      );
-      const errors = outcomes.flatMap((result) =>
-        result.status === "rejected" ? [result.reason] : [],
-      );
-      if (errors.length)
-        throw new AggregateError(errors, "Owned manual monitor cleanup failed");
-    })();
-    return cleanup;
-  }
 
   function fromId(id: string) {
     return [...owned.values()].find(({ seed }) => seed.missionId === id);
@@ -181,41 +163,21 @@ export async function prepareOpenPersonalAutomation(
     }
   }
 
-  try {
-    for (const spec of world.monitors) {
-      const suffix = ` [${namespace}-${spec.key}]`;
-      const metadata: Metadata = {
-        team: spec.team,
-        needs: spec.needs ?? [],
-        permitted: spec.permitted ?? ["pause", "resume"],
-      };
-      const created = await missions.launch({
-        name: spec.name + suffix,
-        charter: {
-          ...defaultMonitor.charter,
-          summary: JSON.stringify(metadata),
-          trigger: { kind: "manual" },
-        },
-      });
-      allocations.add(created.missionId);
-      const seed =
-        spec.initial === "paused"
-          ? await missions.transitionAtRevision(
-              created.missionId,
-              "pause",
-              created.revisionDigest,
-            )
-          : created;
-      const item = { spec, seed, suffix, metadata };
-      owned.set(spec.key, item);
-      if (spec.fault === "before-review")
-        await missions.edit(created.missionId, {
-          charter: revisedCharter(item),
-        });
-    }
-  } catch (error) {
-    await close();
-    throw error;
+  if (items.length !== world.monitors.length)
+    throw new Error("The owned automation seed is incomplete");
+  for (const spec of world.monitors) {
+    const seeded = items.find(({ key }) => key === spec.key);
+    if (!seeded) throw new Error("The owned automation seed is missing a monitor");
+    const { record, suffix } = seeded;
+    const observed = await missions.get(record.missionId);
+    if (!observed || !isDeepStrictEqual(own(observed), own(record)) ||
+        !isDeepStrictEqual(revision(observed), revision(record)) ||
+        observed.state !== spec.initial || observed.charter.trigger.kind !== "manual")
+      throw new Error("Automation seed differs from the live owned manual monitor");
+    const item = { spec, seed: record, suffix, metadata: JSON.parse(record.charter.summary) as Metadata };
+    owned.set(spec.key, item);
+    if (spec.fault === "before-review")
+      await missions.edit(record.missionId, { charter: revisedCharter(item) });
   }
 
   const services = {
@@ -535,5 +497,5 @@ export async function prepareOpenPersonalAutomation(
     };
   }
 
-  return { goal: world.goal, services, verify, qualify, close };
+  return { goal: world.goal, services, verify, qualify };
 }
