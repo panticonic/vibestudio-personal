@@ -1,6 +1,7 @@
 declare module "natlang:services" {
   import type {
     GitHubAccessLevel,
+    GitHubDiagnosisObservation,
     GitHubSetupReceipt,
     GitHubSetupStatus,
   } from "./types.js";
@@ -10,5 +11,8 @@ declare module "natlang:services" {
   };
   export const githubSetupRoute: {
     resolve(operationId: string, accessLevel: GitHubAccessLevel): Promise<GitHubSetupReceipt>;
+  };
+  export const githubDiagnosisRead: {
+    inspect(operationId: string): Promise<GitHubDiagnosisObservation>;
   };
 }

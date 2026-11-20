@@ -71,12 +71,17 @@ documented steps; [TROUBLESHOOTING.md](TROUBLESHOOTING.md) explains each cause.
 
 ```ts
 const troubleshoot = await natlang.load("skills/github/natlang/troubleshootGithub.nl");
-const step: NextStep = await troubleshoot.collect("403 Resource not accessible by personal access token");
+const step: NextStep = await troubleshoot("403 Resource not accessible by personal access token");
 return step; // { cause: "missing-permission", steps: [...] }
 ```
 
 Read `index.ts` for the current helper exports and parameter types. Don't copy
 its permission mappings into another workflow.
+
+For a live local preflight, use `@workspace-skills/github/diagnosis` and call
+`github/diagnoseGitHubOperation` through the shared program. It reads the
+assigned URL or credential preflight and hands a missing connection to the
+existing setup route with the requested access and surface.
 
 ## Repository work
 

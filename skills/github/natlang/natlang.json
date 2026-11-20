@@ -5,6 +5,8 @@
   "include": [
     "reviewGitHubSetup.nl",
     "reviewGitHubSetup",
+    "diagnoseGitHubOperation.nl",
+    "diagnoseGitHubOperation",
     "accessLevelFor.nl",
     "troubleshootGithub.nl",
     "troubleshootGithub",
@@ -15,6 +17,7 @@
   "serviceBinding": "explicit",
   "serviceScopes": {
     "githubSetupRead": ["reviewGitHubSetup/readGitHubSetup.nl"],
-    "githubSetupRoute": ["reviewGitHubSetup/resolveGitHubRoute.nl"]
+    "githubSetupRoute": ["reviewGitHubSetup/resolveGitHubRoute.nl"],
+    "githubDiagnosisRead": ["diagnoseGitHubOperation/readGitHubDiagnosis.nl"]
   }
 }

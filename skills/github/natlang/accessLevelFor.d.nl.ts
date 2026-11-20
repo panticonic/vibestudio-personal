@@ -18,6 +18,8 @@ type FailureCause = | "bad-credentials"
   | "org-approval"
   | "audience-mismatch"
   | "publish-preflight"
+  | "invalid-remote"
+  | "not-connected"
   | "unknown";
 type NextStep = {
   cause: FailureCause;
@@ -52,6 +54,17 @@ type GitHubSetupReport = {
   accessLevel: GitHubAccessLevel;
   route: GitHubSetupReceipt;
   handoff: GitHubSetupHandoff;
+};
+type GitHubDiagnosisRequest = { goal: string; operationId: string };
+type GitHubDiagnosisObservation = {
+  operationId: string;
+  failure: string | null;
+  setup: GitHubSetupRequest | null;
+};
+type GitHubDiagnosisReport = {
+  observation: GitHubDiagnosisObservation;
+  diagnosis: NextStep | null;
+  setup: GitHubSetupReport | null;
 };
 declare const fn: NatlangFunction<[intent: string], GitHubAccessLevel>;
 export default fn;

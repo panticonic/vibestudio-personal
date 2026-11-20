@@ -18,7 +18,7 @@ adaptation. The agent's own choice of level is what `routeGitHubSetup` takes.
 
 | Part | Decision | Why |
 |---|---|---|
-| Name the cause of a failure text | own function `troubleshootGithub/cause.nl`, `readout: decision` | Free text in, six causes out; the cause definitions are `TROUBLESHOOTING.md`'s headings. |
+| Name the cause of a failure text | own function `troubleshootGithub/cause.nl`, `readout: decision` | Free text in and a typed cause out. The troubleshooting guide explains each cause. |
 | The steps for each cause | crisp data, `troubleshootGithub/steps.ts` | The documented fixes, one table. `TROUBLESHOOTING.md` points here. |
 
 ## Suite
@@ -63,3 +63,11 @@ component remains the place where the user connects or upgrades a credential.
 | Choose the minimum access for the goal | Reuse `accessLevelFor` as a separate decision lambda. |
 | Resolve next action | `resolveGitHubRoute` submits the chosen level to the host binding, which uses `routeGitHubSetup` on the same snapshot. Credential identifiers and metadata stay in that binding. |
 | Decide whether the current surface can continue | `chooseSetupHandoff` interprets the returned action and caller-supplied surface capability. |
+
+## Diagnose a live local preflight
+
+`diagnoseGitHubOperation` reads the assigned URL validation or local credential
+preflight, then calls the existing troubleshooter. With a missing connection it
+reuses `reviewGitHubSetup` and its scoped status and route reads. The publish
+preflight reused here is the local, read-only part of the production publish
+operation. The binding omits credential details and raw URL text.

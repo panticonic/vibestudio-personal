@@ -18,6 +18,8 @@ type FailureCause = | "bad-credentials"
   | "org-approval"
   | "audience-mismatch"
   | "publish-preflight"
+  | "invalid-remote"
+  | "not-connected"
   | "unknown";
 type NextStep = {
   cause: FailureCause;
@@ -53,5 +55,16 @@ type GitHubSetupReport = {
   route: GitHubSetupReceipt;
   handoff: GitHubSetupHandoff;
 };
-declare const fn: NatlangFunction<[failure: string], NextStep> & { readonly cause: NatlangFunction<[failure: string], FailureCause>; readonly collect: ((failure: string) => Promise<NextStep>) & {  }; readonly steps: ((cause: FailureCause) => NextStep) & {  } };
+type GitHubDiagnosisRequest = { goal: string; operationId: string };
+type GitHubDiagnosisObservation = {
+  operationId: string;
+  failure: string | null;
+  setup: GitHubSetupRequest | null;
+};
+type GitHubDiagnosisReport = {
+  observation: GitHubDiagnosisObservation;
+  diagnosis: NextStep | null;
+  setup: GitHubSetupReport | null;
+};
+declare const fn: NatlangFunction<[failure: string], NextStep> & { readonly cause: NatlangFunction<[failure: string], FailureCause>; readonly steps: ((cause: FailureCause) => NextStep) & {  } };
 export default fn;

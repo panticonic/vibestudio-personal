@@ -15,4 +15,6 @@ Name the cause of failure, the status and message GitHub or the setup helpers re
 - audience-mismatch: "credential-audience-mismatch": the publish path could not bind the credential to GitHub's account
   API or Git HTTPS address.
 - publish-preflight: "GitHub publish preflight failed": publishing a repository was refused before anything was created.
+- invalid-remote: the runtime rejected the URL, required a GitHub HTTPS remote, or required the .git path.
+- not-connected: the local inventory has no active GitHub credential.
 - unknown: none of these.

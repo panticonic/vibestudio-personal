@@ -12,6 +12,10 @@ the steps in `steps.ts` and the explanation here together.
   repository access or the missing fine-grained permission.
 - Organization repositories may need organization approval for fine-grained PAT
   access.
+- An invalid GitHub remote URL must be corrected before checking access. Use
+  the repository's HTTPS Git URL on github.com with a `.git` path.
+- If the local inventory has no active GitHub credential, use the installed
+  setup owner to connect only the access needed by the operation.
 - `credential-audience-mismatch`: the publish path could not bind the selected
   credential to GitHub's account API or Git HTTPS audience. Retry with the
   credential ID returned by onboarding, or omit `credentialId` so the runtime

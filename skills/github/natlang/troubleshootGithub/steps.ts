@@ -32,6 +32,16 @@ const FIXES: Record<FailureCause, Omit<NextStep, "cause">> = {
     ],
     accessLevel: "publish",
   },
+  "invalid-remote": {
+    steps: [
+      "Use the assigned repository's HTTPS Git URL on github.com with a .git path, then repeat the local remote check.",
+    ],
+  },
+  "not-connected": {
+    steps: [
+      "Use the GitHub setup owner to connect the minimum access needed for the requested work.",
+    ],
+  },
   unknown: {
     steps: [
       "Report the exact status code and message to the user, and read skills/github/TROUBLESHOOTING.md for a matching case.",

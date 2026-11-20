@@ -832,7 +832,7 @@ export async function verifyGitHubConnection(
   return verifyGitHubCredential(connectionId);
 }
 
-function normalizeGitHubRemoteUrl(remoteUrl: string): string {
+export function normalizeGitHubRemoteUrl(remoteUrl: string): string {
   let parsed: URL;
   try {
     parsed = new URL(remoteUrl);

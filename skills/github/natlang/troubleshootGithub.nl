@@ -5,5 +5,4 @@ args:
 returns: NextStep
 budget: { maxTurns: 4, maxTokens: 6144 }
 ---
-Call collect with failure and return its result exactly as collect gave it, from eval. It names the cause of the
-failure and looks up the steps that fix it.
+Call cause with the supplied failure. Pass that cause to steps and return the exact documented result from eval.

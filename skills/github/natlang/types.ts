@@ -20,6 +20,8 @@ export type FailureCause =
   | "org-approval"
   | "audience-mismatch"
   | "publish-preflight"
+  | "invalid-remote"
+  | "not-connected"
   | "unknown";
 
 /** What to do about a GitHub failure. */
@@ -58,4 +60,15 @@ export type GitHubSetupReport = {
   accessLevel: GitHubAccessLevel;
   route: GitHubSetupReceipt;
   handoff: GitHubSetupHandoff;
+};
+export type GitHubDiagnosisRequest = { goal: string; operationId: string };
+export type GitHubDiagnosisObservation = {
+  operationId: string;
+  failure: string | null;
+  setup: GitHubSetupRequest | null;
+};
+export type GitHubDiagnosisReport = {
+  observation: GitHubDiagnosisObservation;
+  diagnosis: NextStep | null;
+  setup: GitHubSetupReport | null;
 };
