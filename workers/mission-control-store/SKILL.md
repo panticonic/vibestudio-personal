@@ -39,3 +39,8 @@ diagnostics before trying runtime calls.
 The [Natlang planning workflow](../../skills/mission-planning/reconcileMissionPlan.nl)
 reconciles prerequisites, relocates cards and prepares Inbox cards for Ready. Bind its
 services to caller-assigned project IDs and use the returned revisions to verify every change.
+
+The [Personal facility reviewer](../../skills/personal-facility-review/reviewPersonalFacility.nl)
+can read an assigned live card with `kind: "mission-live"` and a caller-owned
+operation ID. Its finding distinguishes stale revisions and pending
+prerequisites from missing evidence of executor admission.
