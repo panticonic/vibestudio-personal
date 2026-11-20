@@ -74,3 +74,37 @@ export function resolveOnboardingSelection(
       : {}),
   };
 }
+
+/** Keep the exact owner/client route usable by readers that already have a catalog. */
+export function projectSetupRoute(
+  interaction: unknown,
+  catalog: readonly OnboardingCapabilityDefinition[] = onboardingCatalog,
+): import("./prepareSetup/types.js").SetupRoute | null {
+  if (interaction === null) return null;
+  let resolved;
+  try {
+    resolved = resolveOnboardingSelection(interaction, catalog);
+  } catch {
+    return null;
+  }
+  const { action, capability, target } = resolved;
+  const destination =
+    target.via === "owner-skill"
+      ? (resolved.ownerSkillPath ?? null)
+      : target.via === "about-page"
+        ? `about/${target.page}`
+        : target.via === "panel"
+          ? target.path
+          : target.via === "shell-navigation" &&
+              target.target.kind === "settings"
+            ? `settings/${target.target.section}`
+            : target.via === "shell-navigation"
+              ? target.target.kind
+              : null;
+  return {
+    capabilityId: capability.id,
+    action,
+    via: target.via,
+    destination,
+  };
+}
