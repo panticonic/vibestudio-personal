@@ -5,6 +5,9 @@
   "targets": { "main": { "entry": "reviewBrowserImport.nl" } },
   "serviceBinding": "explicit",
   "serviceScopes": {
+    "browserImportStart": [
+      "reviewBrowserImport/executeApprovedImport/startApprovedImport.nl"
+    ],
     "browserImportSource": ["reviewBrowserImport/inspectAssignedSource.nl"],
     "browserImportPreview": ["reviewBrowserImport/inspectPreview.nl"],
     "browserImportHistory": ["reviewBrowserImport/inspectRetainedJob.nl"]

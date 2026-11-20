@@ -1,5 +1,6 @@
 import { browserData } from "@workspace/runtime";
 import type {
+  BrowserImportDispatch,
   ImportPreviewObservation,
   ImportSourceObservation,
   PublicImportCategory,
@@ -13,10 +14,21 @@ export type BrowserImportReviewAssignment = {
   jobId?: string;
 };
 
+export type BrowserImportExecutionAssignment = Omit<
+  BrowserImportReviewAssignment,
+  "jobId"
+> & {
+  operationId: string;
+  approvedPreview: ImportPreviewObservation;
+};
+
 type BrowserImportReadClient = Pick<
   typeof browserData,
   "listImportHosts" | "listImportSources" | "previewImport" | "getImportJob"
 >;
+
+type BrowserImportExecutionClient = BrowserImportReadClient &
+  Pick<typeof browserData, "startImport">;
 
 function isPublicCategory(category: string): category is PublicImportCategory {
   return ["bookmarks", "history", "searchEngines", "favicons"].includes(
@@ -106,6 +118,113 @@ export function bindBrowserImportReview(
                 : [],
           ),
         };
+      },
+    },
+  };
+}
+
+export function bindBrowserImportExecution(
+  assignment: BrowserImportExecutionAssignment,
+  client: BrowserImportExecutionClient = browserData,
+) {
+  const { hostId, sourceId, operationId } = assignment;
+  const categories = [...assignment.categories];
+  const approved = structuredClone(assignment.approvedPreview);
+  if (!operationId.trim() || operationId.length > 200) {
+    throw new Error("Assign the caller's stable browser import operation ID");
+  }
+  const review = bindBrowserImportReview(
+    { hostId, sourceId, categories, jobId: operationId },
+    client,
+  );
+  function matchesApproval(observation: ImportPreviewObservation) {
+    if (
+      approved.status !== "previewed" ||
+      observation.status !== "previewed" ||
+      approved.warningCount !== observation.warningCount ||
+      approved.totals.length !== categories.length ||
+      observation.totals.length !== categories.length
+    )
+      return false;
+    const observedCounts = new Map(
+      observation.totals.map(({ category, total }) => [category, total]),
+    );
+    const approvedCounts = new Map(
+      approved.totals.map(({ category, total }) => [category, total]),
+    );
+    return categories.every((category) => {
+      const total = approvedCounts.get(category);
+      return (
+        typeof total === "number" &&
+        Number.isSafeInteger(total) &&
+        total >= 0 &&
+        observedCounts.get(category) === total
+      );
+    });
+  }
+  let lastPreview: ImportPreviewObservation | undefined;
+  let pending: Promise<BrowserImportDispatch> | undefined;
+  return {
+    ...review,
+    browserImportPreview: {
+      async observe() {
+        const observed = await review.browserImportPreview.observe();
+        lastPreview = structuredClone(observed);
+        return observed;
+      },
+    },
+    browserImportStart: {
+      async start(
+        observed: ImportPreviewObservation,
+      ): Promise<BrowserImportDispatch> {
+        if (
+          !lastPreview ||
+          !matchesApproval(lastPreview) ||
+          !matchesApproval(observed)
+        )
+          return "held";
+        if (!pending) {
+          pending = (async () => {
+            const source = await review.browserImportSource.observe();
+            if (
+              source.state !== "available" ||
+              !categories.every((category) =>
+                source.categories.includes(category),
+              ) ||
+              !lastPreview ||
+              !matchesApproval(lastPreview)
+            )
+              return "held";
+            const job = await client.startImport(
+              { hostId, sourceId, dataTypes: categories },
+              operationId,
+            );
+            if (
+              job.jobId !== operationId ||
+              job.hostId !== hostId ||
+              job.sourceId !== sourceId ||
+              job.requestedDataTypes.length !== categories.length ||
+              !categories.every((category) =>
+                job.requestedDataTypes.includes(category),
+              )
+            ) {
+              throw new Error(
+                "Started browser import differs from its assigned operation",
+              );
+            }
+            return "started";
+          })();
+          const started = pending;
+          void started.then(
+            (status) => {
+              if (status === "held" && pending === started) pending = undefined;
+            },
+            () => {
+              if (pending === started) pending = undefined;
+            },
+          );
+        }
+        return pending;
       },
     },
   };

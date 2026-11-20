@@ -8,9 +8,12 @@ type PublicImportCategory = | "bookmarks"
   | "favicons";
 type BrowserImportReviewRequest = {
   goal: string;
-  kind: "preview" | "recover";
   categories: PublicImportCategory[];
-};
+} & (
+  | { kind: "preview" | "recover" }
+  | { kind: "execute"; approvedPreview: ImportPreviewObservation }
+);
+type BrowserImportDispatch = "started" | "held";
 type ImportSourceObservation = {
   state: "available" | "host-unavailable" | "source-unavailable" | "blocked";
   categories: PublicImportCategory[];
@@ -56,5 +59,5 @@ type BrowserImportReviewReport = {
   progress: ImportProgress[];
   findings: string[];
 };
-declare const fn: NatlangFunction<[request: BrowserImportReviewRequest], BrowserImportReviewReport> & { readonly inspectAssignedSource: NatlangFunction<[requested: PublicImportCategory[]], { observation: ImportSourceObservation; usable: boolean; findings: string[] }>; readonly inspectPreview: NatlangFunction<[requested: PublicImportCategory[]], { next: BrowserImportNext; totals: ImportTotal[]; findings: string[] }>; readonly inspectRetainedJob: NatlangFunction<[], RetainedImportObservation | null>; readonly interpretRetainedJob: NatlangFunction<[job: RetainedImportObservation], { next: BrowserImportNext; findings: string[] }> };
+declare const fn: NatlangFunction<[request: BrowserImportReviewRequest], BrowserImportReviewReport> & { readonly executeApprovedImport: NatlangFunction<[request: BrowserImportReviewRequest], BrowserImportReviewReport> & { readonly compareApprovedPreview: NatlangFunction<[approved: ImportPreviewObservation, observed: ImportPreviewObservation], boolean>; readonly startApprovedImport: NatlangFunction<[observed: ImportPreviewObservation], BrowserImportDispatch>; readonly inspectAssignedSource: NatlangFunction<[requested: PublicImportCategory[]], { observation: ImportSourceObservation; usable: boolean; findings: string[] }>; readonly inspectPreview: NatlangFunction<[requested: PublicImportCategory[]], { next: BrowserImportNext; totals: ImportTotal[]; findings: string[]; observation: ImportPreviewObservation }>; readonly inspectRetainedJob: NatlangFunction<[], RetainedImportObservation | null>; readonly interpretRetainedJob: NatlangFunction<[job: RetainedImportObservation], { next: BrowserImportNext; findings: string[] }> }; readonly inspectAssignedSource: NatlangFunction<[requested: PublicImportCategory[]], { observation: ImportSourceObservation; usable: boolean; findings: string[] }>; readonly inspectPreview: NatlangFunction<[requested: PublicImportCategory[]], { next: BrowserImportNext; totals: ImportTotal[]; findings: string[]; observation: ImportPreviewObservation }>; readonly inspectRetainedJob: NatlangFunction<[], RetainedImportObservation | null>; readonly interpretRetainedJob: NatlangFunction<[job: RetainedImportObservation], { next: BrowserImportNext; findings: string[] }> };
 export default fn;

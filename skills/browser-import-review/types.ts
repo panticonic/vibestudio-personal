@@ -6,9 +6,13 @@ export type PublicImportCategory =
 
 export type BrowserImportReviewRequest = {
   goal: string;
-  kind: "preview" | "recover";
   categories: PublicImportCategory[];
-};
+} & (
+  | { kind: "preview" | "recover" }
+  | { kind: "execute"; approvedPreview: ImportPreviewObservation }
+);
+
+export type BrowserImportDispatch = "started" | "held";
 
 export type ImportSourceObservation = {
   state: "available" | "host-unavailable" | "source-unavailable" | "blocked";

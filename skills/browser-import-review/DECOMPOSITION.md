@@ -10,3 +10,13 @@ The caller assigns an opaque source selected in the Browser Import Inspector and
 | Review a possible retry | Recheck the original source and its categories. Keep previous progress and route to the inspector when the original source is unavailable. | Expose a fresh read of the assigned source without starting or cancelling import jobs. |
 
 The preview and recovery reports advise the caller through the same inspector that owns migration. They carry counts, the number of preview warnings, and the next action. Host and source identity, profile data, preview samples, and sealed transfers stay inside the extension.
+
+## Execute an approved public migration
+
+The caller binds an operation ID and the aggregate preview it approved. The
+execution branch checks readiness, delegates a fresh preview, compares the
+observed counts and warning count with that approval, and calls the start
+lambda only if they agree. The start service enforces the same bound approval
+and checks the selected source again before calling the native import client.
+After dispatch, the program reads the exact job through the existing retained
+receipt lambda and applies the recovery interpretation to its actual progress.

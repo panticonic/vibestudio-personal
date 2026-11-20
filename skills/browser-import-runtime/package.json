@@ -10,7 +10,8 @@
   "dependencies": {
     "@workspace/runtime": "workspace:*",
     "@vibestudio/service-schemas": "workspace:*",
-    "@vibestudio/shared": "workspace:*"
+    "@vibestudio/shared": "workspace:*",
+    "@vibestudio/browser-data": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.2.7"

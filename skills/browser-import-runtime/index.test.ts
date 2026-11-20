@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { bindBrowserImportReview } from "./index.js";
+import {
+  bindBrowserImportExecution,
+  bindBrowserImportReview,
+} from "./index.js";
 
 vi.mock("@workspace/runtime", () => ({ browserData: {} }));
 
@@ -128,4 +131,74 @@ describe("browser migration review binding", () => {
     source.getImportJob.mockResolvedValue(other);
     await expect(review.browserImportHistory.observe()).resolves.toBeNull();
   });
+});
+
+const approvedPreview = {
+  status: "previewed",
+  totals: [
+    { category: "bookmarks", total: 4 },
+    { category: "history", total: 0 },
+  ],
+  warningCount: 1,
+} satisfies import("../browser-import-review/types.js").ImportPreviewObservation;
+
+function execution() {
+  const source = client();
+  const startImport = vi.fn(() => source.getImportJob());
+  const service = bindBrowserImportExecution(
+    { ...assignment, operationId: assignment.jobId, approvedPreview },
+    { ...source, startImport },
+  );
+  return { source, startImport, service };
+}
+
+it("joins concurrent starts to the caller's one approved operation", async () => {
+  const { service, startImport } = execution();
+  await expect(service.browserImportStart.start(approvedPreview)).resolves.toBe(
+    "held",
+  );
+  const observed = await service.browserImportPreview.observe();
+  await expect(
+    Promise.all([
+      service.browserImportStart.start(observed),
+      service.browserImportStart.start(approvedPreview),
+    ]),
+  ).resolves.toEqual(["started", "started"]);
+  expect(startImport.mock.calls).toEqual([
+    [
+      {
+        hostId: assignment.hostId,
+        sourceId: assignment.sourceId,
+        dataTypes: assignment.categories,
+      },
+      assignment.jobId,
+    ],
+  ]);
+});
+
+it("holds if the source loses a category after preview", async () => {
+  const { source, service, startImport } = execution();
+  const observed = await service.browserImportPreview.observe();
+  source.listImportSources.mockResolvedValue([
+    {
+      sourceId: assignment.sourceId,
+      status: "readable",
+      supportedDataTypes: ["bookmarks"],
+    },
+  ]);
+  await expect(service.browserImportStart.start(observed)).resolves.toBe(
+    "held",
+  );
+  expect(startImport).not.toHaveBeenCalled();
+});
+
+it("requires the adapter's own fresh counts even when the model supplies the approved counts", async () => {
+  const { source, service, startImport } = execution();
+  const preview = await source.previewImport();
+  preview.breakdowns[0].total = 1;
+  await service.browserImportPreview.observe();
+  await expect(service.browserImportStart.start(approvedPreview)).resolves.toBe(
+    "held",
+  );
+  expect(startImport).not.toHaveBeenCalled();
 });
