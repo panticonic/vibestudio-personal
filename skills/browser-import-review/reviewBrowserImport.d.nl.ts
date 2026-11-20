@@ -6,13 +6,17 @@ type PublicImportCategory = | "bookmarks"
   | "history"
   | "searchEngines"
   | "favicons";
-type BrowserImportReviewRequest = {
-  goal: string;
-  categories: PublicImportCategory[];
-} & (
-  | { kind: "preview" | "recover" }
-  | { kind: "execute"; approvedPreview: ImportPreviewObservation }
-);
+type BrowserImportReviewRequest = | {
+      goal: string;
+      kind: "preview" | "recover";
+      categories: PublicImportCategory[];
+    }
+  | {
+      goal: string;
+      kind: "execute";
+      categories: PublicImportCategory[];
+      approvedPreview: ImportPreviewObservation;
+    };
 type BrowserImportDispatch = "started" | "held";
 type ImportSourceObservation = {
   state: "available" | "host-unavailable" | "source-unavailable" | "blocked";

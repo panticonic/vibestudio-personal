@@ -427,9 +427,9 @@ export async function prepareManagedBrowserImport(world: World) {
       };
       if (
         execute &&
-        (await execute.browserImportStart.start(
-          request.kind === "execute" ? request.approvedPreview : preview!,
-        )) !== "held"
+        request.kind === "execute" &&
+        (await execute.browserImportStart.start(request.approvedPreview)) !==
+          "held"
       )
         throw new Error("Import must be held before a preview");
       for (const kind of world.reads) {

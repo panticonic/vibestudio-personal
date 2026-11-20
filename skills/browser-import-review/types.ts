@@ -4,13 +4,18 @@ export type PublicImportCategory =
   | "searchEngines"
   | "favicons";
 
-export type BrowserImportReviewRequest = {
-  goal: string;
-  categories: PublicImportCategory[];
-} & (
-  | { kind: "preview" | "recover" }
-  | { kind: "execute"; approvedPreview: ImportPreviewObservation }
-);
+export type BrowserImportReviewRequest =
+  | {
+      goal: string;
+      kind: "preview" | "recover";
+      categories: PublicImportCategory[];
+    }
+  | {
+      goal: string;
+      kind: "execute";
+      categories: PublicImportCategory[];
+      approvedPreview: ImportPreviewObservation;
+    };
 
 export type BrowserImportDispatch = "started" | "held";
 
