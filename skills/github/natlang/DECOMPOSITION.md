@@ -49,3 +49,17 @@ costs one decision and `accessLevelFor` one.
 
 Reference model (the agent's own): not measured; no agent-class model is available in the harness. The labels were
 written by the author from `SKILL.md` and `SETUP.md`.
+
+## Review the assigned setup handoff
+
+`reviewGitHubSetup` reads one caller-assigned local connection status, chooses
+the access needed for the requested work, and returns the exact setup route.
+It also explains whether that route needs an interactive surface. The setup
+component remains the place where the user connects or upgrades a credential.
+
+| Responsibility | Implementation |
+| --- | --- |
+| Observe connection state | `readGitHubSetup` calls the normal onboarding helper through a read-only port. The model receives stage and two flags. |
+| Choose the minimum access for the goal | Reuse `accessLevelFor` as a separate decision lambda. |
+| Resolve next action | `resolveGitHubRoute` submits the chosen level to the host binding, which uses `routeGitHubSetup` on the same snapshot. Credential identifiers and metadata stay in that binding. |
+| Decide whether the current surface can continue | `chooseSetupHandoff` interprets the returned action and caller-supplied surface capability. |

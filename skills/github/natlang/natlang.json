@@ -1,0 +1,20 @@
+{
+  "schema": "natlang.package/v2",
+  "name": "personal-github-setup",
+  "version": "0.1.0",
+  "include": [
+    "reviewGitHubSetup.nl",
+    "reviewGitHubSetup",
+    "accessLevelFor.nl",
+    "troubleshootGithub.nl",
+    "troubleshootGithub",
+    "types.ts",
+    "services.d.ts"
+  ],
+  "targets": { "main": { "entry": "reviewGitHubSetup.nl" } },
+  "serviceBinding": "explicit",
+  "serviceScopes": {
+    "githubSetupRead": ["reviewGitHubSetup/readGitHubSetup.nl"],
+    "githubSetupRoute": ["reviewGitHubSetup/resolveGitHubRoute.nl"]
+  }
+}

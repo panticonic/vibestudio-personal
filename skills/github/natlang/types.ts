@@ -30,3 +30,32 @@ export type NextStep = {
   /** Set when reconnecting with a specific access level fixes it. */
   accessLevel?: GitHubAccessLevel;
 };
+
+export type GitHubSetupRequest = {
+  goal: string;
+  operationId: string;
+  interactive: boolean;
+};
+export type GitHubSetupStatus = {
+  stage: "needs-token" | "connected" | "verified" | "error";
+  connected: boolean;
+  verified: boolean;
+};
+export type GitHubSetupReceipt = {
+  action: "render-setup" | "verify" | "proceed" | "repair";
+  accessLevel?: GitHubAccessLevel;
+  next: string;
+  reason: string;
+};
+export type GitHubSetupHandoff =
+  | "offer-setup"
+  | "interactive-required"
+  | "verify"
+  | "proceed"
+  | "repair";
+export type GitHubSetupReport = {
+  status: GitHubSetupStatus;
+  accessLevel: GitHubAccessLevel;
+  route: GitHubSetupReceipt;
+  handoff: GitHubSetupHandoff;
+};

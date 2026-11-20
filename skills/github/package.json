@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./setup-review": "./setup-review.ts"
   },
   "dependencies": {
     "@workspace/integrations": "workspace:*",

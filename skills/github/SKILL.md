@@ -49,6 +49,10 @@ cancels, stop.
 Without `inline_ui`, explain that setup needs an interactive Vibestudio panel.
 Don't recreate it as a series of questions.
 
+The [Natlang GitHub setup review](natlang/reviewGitHubSetup.nl) reads the
+assigned workspace connection and chooses the access level and handoff for
+the current surface. A setup handoff still uses the component above.
+
 ## Access outcomes
 
 Use the component's plain-language access choices instead of explaining token

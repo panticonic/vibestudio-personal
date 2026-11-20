@@ -35,6 +35,8 @@ import {
   verifyGitHubGitRemoteAccess,
 } from "./index.js";
 
+import { bindGitHubSetupReview } from "./setup-review.js";
+
 const githubCredential: StoredCredentialSummary = {
   id: "cred-github",
   label: "GitHub",
@@ -92,6 +94,37 @@ describe("github skill facade", () => {
     expect(status.nextActions.join(" ")).toContain("GitHubSetup.tsx");
     expect(status.nextActions.join(" ")).toContain("inline_ui");
     expect(status.nextActions.join(" ")).not.toContain("choose fine-grained");
+  });
+
+  it("seals the setup route to a local snapshot without exposing credential metadata", async () => {
+    runtimeMock.credentials.listStoredCredentials.mockResolvedValue([githubCredential]);
+    const { request, services } = bindGitHubSetupReview("Review open pull requests", false);
+    await expect(services.githubSetupRoute.resolve(request.operationId, "read-only"))
+      .rejects.toThrow("Read the assigned GitHub connection");
+    await expect(services.githubSetupRead.inspect("foreign-assignment"))
+      .rejects.toThrow("assigned setup review");
+    await expect(services.githubSetupRead.inspect(request.operationId)).resolves.toEqual({
+      stage: "connected", connected: true, verified: false,
+    });
+    runtimeMock.credentials.listStoredCredentials.mockResolvedValue([]);
+    await expect(services.githubSetupRoute.resolve(request.operationId, "read-only"))
+      .resolves.toMatchObject({ action: "verify" });
+    await expect(services.githubSetupRoute.resolve(request.operationId, "read-only"))
+      .rejects.toThrow("Read the assigned GitHub connection");
+    expect(runtimeMock.credentials.listStoredCredentials).toHaveBeenCalledTimes(1);
+    expect(runtimeMock.credentials.fetch).not.toHaveBeenCalled();
+    expect(runtimeMock.credentials.requestCredentialInput).not.toHaveBeenCalled();
+  });
+
+  it("returns a repair route without copying raw provider errors", async () => {
+    runtimeMock.credentials.listStoredCredentials.mockRejectedValue(new Error("private diagnostic"));
+    const { request, services } = bindGitHubSetupReview("Read GitHub issues", true);
+    await expect(services.githubSetupRead.inspect(request.operationId)).resolves.toEqual({
+      stage: "error", connected: false, verified: false,
+    });
+    const route = await services.githubSetupRoute.resolve(request.operationId, "read-only");
+    expect(route.action).toBe("repair");
+    expect(route.reason).not.toContain("private diagnostic");
   });
 
   it("defaults credential setup to ordinary code collaboration", async () => {

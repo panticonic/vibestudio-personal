@@ -26,5 +26,32 @@ type NextStep = {
   /** Set when reconnecting with a specific access level fixes it. */
   accessLevel?: GitHubAccessLevel;
 };
+type GitHubSetupRequest = {
+  goal: string;
+  operationId: string;
+  interactive: boolean;
+};
+type GitHubSetupStatus = {
+  stage: "needs-token" | "connected" | "verified" | "error";
+  connected: boolean;
+  verified: boolean;
+};
+type GitHubSetupReceipt = {
+  action: "render-setup" | "verify" | "proceed" | "repair";
+  accessLevel?: GitHubAccessLevel;
+  next: string;
+  reason: string;
+};
+type GitHubSetupHandoff = | "offer-setup"
+  | "interactive-required"
+  | "verify"
+  | "proceed"
+  | "repair";
+type GitHubSetupReport = {
+  status: GitHubSetupStatus;
+  accessLevel: GitHubAccessLevel;
+  route: GitHubSetupReceipt;
+  handoff: GitHubSetupHandoff;
+};
 declare const fn: NatlangFunction<[intent: string], GitHubAccessLevel>;
 export default fn;
