@@ -407,6 +407,9 @@ export async function prepareManagedBrowserImport(world: World) {
       caseId: world.id,
       request,
       reads,
+      ...(execution && {
+        importReadback: { starts, phase: persisted?.phase ?? null, bookmarks },
+      }),
       checks,
       passed: Object.values(checks).every(Boolean),
     };
