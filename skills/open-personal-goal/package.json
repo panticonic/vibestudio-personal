@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./managed": "./managed.ts"
+    "./managed": "./managed.ts",
+    "./editorial-owner": "./editorial-owner.ts"
   },
   "dependencies": {
     "@vibestudio/content-addressing": "workspace:*",
