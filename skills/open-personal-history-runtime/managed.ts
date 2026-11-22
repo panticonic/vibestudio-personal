@@ -1,3 +1,4 @@
+import { joinHistoryEvidence, matchHistoryFindings } from "./finding-evidence.js";
 import { isDeepStrictEqual } from "node:util";
 import { compareUtf16CodeUnits, sha256HexSyncText } from "@vibestudio/content-addressing";
 import {
@@ -290,15 +291,7 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
     const reportedFindings = Array.isArray(report?.findings)
       ? report.findings
       : [];
-    const matchedFindings =
-      reportedFindings.length === expected.findings.length &&
-      expected.findings.every((finding, index) => {
-        const reported = reportedFindings[index];
-        return (
-          reported?.label === finding.label &&
-          reported.status === finding.status
-        );
-      });
+    const matchedFindings = matchHistoryFindings(expected.findings, reportedFindings);
     const checks = {
       protectedHistory:
         before.mainEventId === after.mainEventId &&
@@ -327,30 +320,10 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
             ),
           );
         }),
-      joinedSourceEvidence:
-        matchedFindings &&
-        expected.findings.every((finding, index) => {
-          const citations = reportedFindings[index]?.citations;
-          return (
-            Array.isArray(citations) &&
-            citations.every(
-              (entry) =>
-                entry &&
-                typeof entry.path === "string" &&
-                typeof entry.line === "number" &&
-                reads.some(
-                  (source) =>
-                    source.eventId === entry.eventId &&
-                    source.path === entry.path &&
-                    isDeepStrictEqual(cite(source, entry.line), entry),
-                ),
-            ) &&
-            isDeepStrictEqual(
-              [...citations].sort(citationOrder),
-              finding.citations,
-            )
-          );
-        }),
+      joinedSourceEvidence: joinHistoryEvidence(expected.findings, reportedFindings, entry =>
+        typeof entry.path === "string" && typeof entry.line === "number" && reads.some(source =>
+          source.eventId === entry.eventId && source.path === entry.path &&
+          isDeepStrictEqual(cite(source, entry.line), entry))),
       matchedDecision:
         matchedFindings &&
         report?.relation === expected.relation &&

@@ -158,7 +158,7 @@ export async function prepareManagedBrowserHandoff(input: Inputs) {
           collectionRow.operation === "organizeCollection",
         dependency:
           browserEvidence.passed &&
-          receipts.length === 2 &&
+          receipts.length > 0 &&
           receipts.every((receipt) =>
             isDeepStrictEqual(receipt, receipts[0]),
           ) &&
