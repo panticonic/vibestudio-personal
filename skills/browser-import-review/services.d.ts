@@ -1,22 +1,15 @@
-import type {
-  BrowserImportDispatch,
-  ImportPreviewObservation,
-  ImportSourceObservation,
-  RetainedImportObservation,
-} from "./types.js";
-
 declare module "natlang:services" {
   export const browserImportStart: {
-    start(observed: ImportPreviewObservation): Promise<BrowserImportDispatch>;
+    start(observed: import("./types.js").ImportPreviewObservation): Promise<import("./types.js").BrowserImportDispatch>;
   };
   export const browserImportSource: {
-    observe(): Promise<ImportSourceObservation>;
+    observe(): Promise<import("./types.js").ImportSourceObservation>;
   };
   export const browserImportPreview: {
-    observe(): Promise<ImportPreviewObservation>;
+    observe(): Promise<import("./types.js").ImportPreviewObservation>;
   };
   export const browserImportHistory: {
-    observe(): Promise<RetainedImportObservation | null>;
+    observe(): Promise<import("./types.js").RetainedImportObservation | null>;
   };
   export const openBrowserMigration: {
     discover(): Promise<import("./types.js").MigrationCatalog>;

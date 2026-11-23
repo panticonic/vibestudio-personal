@@ -1,0 +1,272 @@
+{
+  "schema": "natlang.native-passthrough-inventory/1",
+  "root": "/home/werg/data/vibestudio-open-goal-live/full-luna-campaign-yci2LB1N/rejection-audit/native-passthrough-personal",
+  "rows": [
+    {
+      "path": "skills/browser-import-review/reviewBrowserImport/executeApprovedImport/startApprovedImport.nl",
+      "line": 1,
+      "body_line": 7,
+      "source_sha256": "17b8e3747d482ae3a7c88e15ceea400f76185a289abb7ee69e6a1c0d216bcd6c",
+      "service": "browserImportStart",
+      "method": "start",
+      "arguments": "observed",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/browser-import-review",
+      "metadata": {
+        "description": "Submit the reviewed preview to the caller-bound public import operation.",
+        "args": {
+          "observed": "ImportPreviewObservation"
+        },
+        "returns": "BrowserImportDispatch"
+      },
+      "output": "skills/browser-import-review/reviewBrowserImport/executeApprovedImport/startApprovedImport.ts",
+      "generated": "import {browserImportStart} from \"natlang:services\";\nimport type {BrowserImportDispatch, ImportPreviewObservation} from \"../../types.js\";\n/** Submit the reviewed preview to the caller-bound public import operation. */\nexport default async function startApprovedImport(observed: ImportPreviewObservation):Promise<BrowserImportDispatch>{\n return browserImportStart.start(observed);\n}\n",
+      "source_body": "Call browserImportStart.start with observed and return its exact result."
+    },
+    {
+      "path": "skills/browser-import-review/reviewBrowserImport/inspectRetainedJob.nl",
+      "line": 1,
+      "body_line": 5,
+      "source_sha256": "368588e95411060bd7cb567189b9b47bb88025d3fd20acbffc39413e851dd13d",
+      "service": "browserImportHistory",
+      "method": "observe",
+      "arguments": "",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/browser-import-review",
+      "metadata": {
+        "description": "Observe exactly the caller's retained public import receipt.",
+        "returns": "RetainedImportObservation | null"
+      },
+      "output": "skills/browser-import-review/reviewBrowserImport/inspectRetainedJob.ts",
+      "generated": "import {browserImportHistory} from \"natlang:services\";\nimport type {RetainedImportObservation} from \"../types.js\";\n/** Observe exactly the caller's retained public import receipt. */\nexport default async function inspectRetainedJob():Promise<RetainedImportObservation | null>{\n return browserImportHistory.observe();\n}\n",
+      "source_body": "Call browserImportHistory.observe and return the exact result."
+    },
+    {
+      "path": "skills/github/natlang/diagnoseGitHubOperation/readGitHubDiagnosis.nl",
+      "line": 1,
+      "body_line": 7,
+      "source_sha256": "a19e3acfa939d1d304f2cd60c4b1431a42297e915d25fd035bf33f99b3774326",
+      "service": "githubDiagnosisRead",
+      "method": "inspect",
+      "arguments": "operationId",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/github/natlang",
+      "metadata": {
+        "description": "Read the bounded outcome of the caller-assigned local GitHub preflight.",
+        "args": {
+          "operationId": "string"
+        },
+        "returns": "GitHubDiagnosisObservation"
+      },
+      "output": "skills/github/natlang/diagnoseGitHubOperation/readGitHubDiagnosis.ts",
+      "generated": "import {githubDiagnosisRead} from \"natlang:services\";\nimport type {GitHubDiagnosisObservation} from \"../types.js\";\n/** Read the bounded outcome of the caller-assigned local GitHub preflight. */\nexport default async function readGitHubDiagnosis(operationId: string):Promise<GitHubDiagnosisObservation>{\n return githubDiagnosisRead.inspect(operationId);\n}\n",
+      "source_body": "Call githubDiagnosisRead.inspect once with operationId and return the exact observation from eval."
+    },
+    {
+      "path": "skills/github/natlang/reviewGitHubSetup/readGitHubSetup.nl",
+      "line": 1,
+      "body_line": 7,
+      "source_sha256": "ee938c06b2b07084477222eee5a27b158b6ab118b0c6e4513b99e5ee852ad41f",
+      "service": "githubSetupRead",
+      "method": "inspect",
+      "arguments": "operationId",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/github/natlang",
+      "metadata": {
+        "description": "Read local connection state for the assigned GitHub setup review.",
+        "args": {
+          "operationId": "string"
+        },
+        "returns": "GitHubSetupStatus"
+      },
+      "output": "skills/github/natlang/reviewGitHubSetup/readGitHubSetup.ts",
+      "generated": "import {githubSetupRead} from \"natlang:services\";\nimport type {GitHubSetupStatus} from \"../types.js\";\n/** Read local connection state for the assigned GitHub setup review. */\nexport default async function readGitHubSetup(operationId: string):Promise<GitHubSetupStatus>{\n return githubSetupRead.inspect(operationId);\n}\n",
+      "source_body": "Call githubSetupRead.inspect once with operationId and return its exact status."
+    },
+    {
+      "path": "skills/github/natlang/reviewGitHubSetup/resolveGitHubRoute.nl",
+      "line": 1,
+      "body_line": 8,
+      "source_sha256": "7b9c5755f28fdfa2ed3b3e24c2005e10d188ae231f11eb9e3bf15752260c0f64",
+      "service": "githubSetupRoute",
+      "method": "resolve",
+      "arguments": "operationId, accessLevel",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/github/natlang",
+      "metadata": {
+        "description": "Resolve the product's setup route using the same observed connection and the chosen access level.",
+        "args": {
+          "operationId": "string",
+          "accessLevel": "GitHubAccessLevel"
+        },
+        "returns": "GitHubSetupReceipt"
+      },
+      "output": "skills/github/natlang/reviewGitHubSetup/resolveGitHubRoute.ts",
+      "generated": "import {githubSetupRoute} from \"natlang:services\";\nimport type {GitHubAccessLevel, GitHubSetupReceipt} from \"../types.js\";\n/** Resolve the product's setup route using the same observed connection and the chosen access level. */\nexport default async function resolveGitHubRoute(operationId: string, accessLevel: GitHubAccessLevel):Promise<GitHubSetupReceipt>{\n return githubSetupRoute.resolve(operationId, accessLevel);\n}\n",
+      "source_body": "Call githubSetupRoute.resolve once with operationId and accessLevel. Return the exact route."
+    },
+    {
+      "path": "skills/github/natlang/workOnGitHubGoal/stageGitHubHandoff.nl",
+      "line": 1,
+      "body_line": 8,
+      "source_sha256": "2f443a4ebf1a21ac3fb8ed386d12ff5c42c46a89a7d1e0629aa086ead5ae3d03",
+      "service": "openGitHubWork",
+      "method": "stage",
+      "arguments": "revision, decision",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/github/natlang",
+      "metadata": {
+        "description": "Leave the owner's requested durable local handoff after checking the current evidence.",
+        "args": {
+          "revision": "string",
+          "decision": "GitHubOpenDecision"
+        },
+        "returns": "GitHubOpenHandoff | null"
+      },
+      "output": "skills/github/natlang/workOnGitHubGoal/stageGitHubHandoff.ts",
+      "generated": "import {openGitHubWork} from \"natlang:services\";\nimport type {GitHubOpenDecision, GitHubOpenHandoff} from \"../types.js\";\n/** Leave the owner's requested durable local handoff after checking the current evidence. */\nexport default async function stageGitHubHandoff(revision: string, decision: GitHubOpenDecision):Promise<GitHubOpenHandoff | null>{\n return openGitHubWork.stage(revision, decision);\n}\n",
+      "source_body": "Call openGitHubWork.stage with the current revision and actual decision. Return the exact receipt returned by that service, including null for a held stage."
+    },
+    {
+      "path": "skills/memory/verifiedRecall/recallDecision/findDecision/searchHistory.nl",
+      "line": 1,
+      "body_line": 7,
+      "source_sha256": "df24f5e48f5fd78ae9d0b82e0b4dbb63541df3800f70ab715c1d2ae30681ceec",
+      "service": "decisionRecall",
+      "method": "search",
+      "arguments": "query",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/memory/verifiedRecall",
+      "metadata": {
+        "description": "Search the scoped workspace memory index for this decision.",
+        "args": {
+          "query": "string"
+        },
+        "returns": "DecisionLead[]"
+      },
+      "output": "skills/memory/verifiedRecall/recallDecision/findDecision/searchHistory.ts",
+      "generated": "import {decisionRecall} from \"natlang:services\";\nimport type {DecisionLead} from \"../../types.js\";\n/** Search the scoped workspace memory index for this decision. */\nexport default async function searchHistory(query: string):Promise<DecisionLead[]>{\n return decisionRecall.search(query);\n}\n",
+      "source_body": "Return the results of decisionRecall.search(query)."
+    },
+    {
+      "path": "skills/personal-facility-review/reviewPersonalFacility/reviewLiveMission/readMissionCard.nl",
+      "line": 1,
+      "body_line": 7,
+      "source_sha256": "8f7938c4642dd6345a40618672e067be0933410ad140d669fac3e749b44aa3fd",
+      "service": "missionFacilityRead",
+      "method": "inspect",
+      "arguments": "operationId",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/personal-facility-review",
+      "metadata": {
+        "description": "Read the exact assigned Mission Control card and its prerequisite state.",
+        "args": {
+          "operationId": "string"
+        },
+        "returns": "MissionFacilityEvidence"
+      },
+      "output": "skills/personal-facility-review/reviewPersonalFacility/reviewLiveMission/readMissionCard.ts",
+      "generated": "import {missionFacilityRead} from \"natlang:services\";\nimport type {MissionFacilityEvidence} from \"../../types.js\";\n/** Read the exact assigned Mission Control card and its prerequisite state. */\nexport default async function readMissionCard(operationId: string):Promise<MissionFacilityEvidence>{\n return missionFacilityRead.inspect(operationId);\n}\n",
+      "source_body": "Call missionFacilityRead.inspect once with operationId and return the exact result from eval."
+    },
+    {
+      "path": "skills/personal-workflows/runPersonalWorkflow/resumeRepositoryWork/readOwnerRoute.nl",
+      "line": 1,
+      "body_line": 8,
+      "source_sha256": "d8adc4fb724b87a4404b96c832cd326cc1404704945b781d110268a94e83e800",
+      "service": "repositoryOwnerRead",
+      "method": "resolve",
+      "arguments": "operationId, action",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/personal-workflows",
+      "metadata": {
+        "description": "Resolve the assigned repository's onboarding action against the current owner catalog.",
+        "args": {
+          "operationId": "string",
+          "action": "\"setup\" | \"check\""
+        },
+        "returns": "PersonalSetupRequest"
+      },
+      "output": "skills/personal-workflows/runPersonalWorkflow/resumeRepositoryWork/readOwnerRoute.ts",
+      "generated": "import {repositoryOwnerRead} from \"natlang:services\";\nimport type {PersonalSetupRequest} from \"../../types.js\";\n/** Resolve the assigned repository's onboarding action against the current owner catalog. */\nexport default async function readOwnerRoute(operationId: string, action: \"setup\" | \"check\"):Promise<PersonalSetupRequest>{\n return repositoryOwnerRead.resolve(operationId, action);\n}\n",
+      "source_body": "Call repositoryOwnerRead.resolve once with operationId and action. Return the exact projected owner request from eval."
+    },
+    {
+      "path": "skills/personal-workflows/runPersonalWorkflow/resumeRepositoryWork/readRepository.nl",
+      "line": 1,
+      "body_line": 7,
+      "source_sha256": "84eca95cddd14fc44c617a149e0445bcf5eaf770cb767dd4ce69fd2cc35f8132",
+      "service": "repositoryResumeRead",
+      "method": "inspect",
+      "arguments": "operationId",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/personal-workflows",
+      "metadata": {
+        "description": "Read the assigned repository's current local and GitHub owner state.",
+        "args": {
+          "operationId": "string"
+        },
+        "returns": "PersonalRepoRequest"
+      },
+      "output": "skills/personal-workflows/runPersonalWorkflow/resumeRepositoryWork/readRepository.ts",
+      "generated": "import {repositoryResumeRead} from \"natlang:services\";\nimport type {PersonalRepoRequest} from \"../../types.js\";\n/** Read the assigned repository's current local and GitHub owner state. */\nexport default async function readRepository(operationId: string):Promise<PersonalRepoRequest>{\n return repositoryResumeRead.inspect(operationId);\n}\n",
+      "source_body": "Call repositoryResumeRead.inspect once with operationId and return the exact observation from eval."
+    },
+    {
+      "path": "skills/memory/verifiedRecall/recallDecision/verifyAtRevision/readDecisionFile.nl",
+      "source_sha256": "7ff881a64c9150ac5224f1766fc3e83652745a4329e09b64f6ece94d49caec74",
+      "service": "decisionSource",
+      "method": "read",
+      "arguments": "leadId",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/memory/verifiedRecall",
+      "metadata": {
+        "description": "Open the assigned VCS snapshot and file for the selected memory lead.",
+        "args": {
+          "leadId": "string"
+        },
+        "returns": "DecisionFile | null"
+      },
+      "output": "skills/memory/verifiedRecall/recallDecision/verifyAtRevision/readDecisionFile.ts",
+      "generated": "import {decisionSource} from \"natlang:services\";\nimport type {DecisionFile} from \"../../types.js\";\n/** Open the assigned VCS snapshot and file for the selected memory lead. */\nexport default async function readDecisionFile(leadId: string):Promise<DecisionFile | null>{\n return decisionSource.read(leadId);\n}\n",
+      "source_body": "Return decisionSource.read(leadId)."
+    },
+    {
+      "path": "skills/onboarding/prepareSetup/planSetup/observeSetup/readOwnerSnapshot.nl",
+      "source_sha256": "c744aa0d223ad076c037a126bf63d432428c0d332a8724465003927069a02998",
+      "service": "onboardingRead",
+      "method": "inspect",
+      "arguments": "",
+      "status": "converted",
+      "reason": "Exact native service call, typed signature, no semantic judgment or child subtree",
+      "package": "skills/onboarding/prepareSetup",
+      "metadata": {
+        "description": "Read the actual onboarding receipt within the caller's workspace.",
+        "args": {},
+        "returns": "SetupObservation"
+      },
+      "output": "skills/onboarding/prepareSetup/planSetup/observeSetup/readOwnerSnapshot.ts",
+      "generated": "import {onboardingRead} from \"natlang:services\";\nimport type {SetupObservation} from \"../../types.js\";\n/** Read the actual onboarding receipt within the caller's workspace. */\nexport default async function readOwnerSnapshot():Promise<SetupObservation>{\n return onboardingRead.inspect();\n}\n",
+      "source_body": "Return onboardingRead.inspect()."
+    }
+  ],
+  "verification": {
+    "compiler": "actual VibeStudio compileProgram and workspaceModules, all affected packages plus every public entry root",
+    "packages": 81,
+    "aggregate_linked_files": 3708,
+    "ledger_unit": "native-passthrough-compile-20261123c",
+    "teacher_calls": 0,
+    "runtime_capture_dependency": "Deploy with Core native-service frame recording fix; raw service frame binding is insufficient."
+  }
+}

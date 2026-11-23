@@ -1,9 +1,8 @@
-import type { DecisionFile, DecisionLead } from "./types.js";
 declare module "natlang:services" {
   export const decisionRecall: {
-    search(query: string): Promise<DecisionLead[]>;
+    search(query: string): Promise<import("./types.js").DecisionLead[]>;
   };
   export const decisionSource: {
-    read(leadId: string): Promise<DecisionFile | null>;
+    read(leadId: string): Promise<import("./types.js").DecisionFile | null>;
   };
 }

@@ -15,12 +15,18 @@
     "types.ts",
     "services.d.ts"
   ],
-  "targets": { "main": { "entry": "reviewGitHubSetup.nl" } },
+  "targets": {
+    "main": {
+      "entry": "reviewGitHubSetup.nl"
+    }
+  },
   "serviceBinding": "explicit",
   "serviceScopes": {
-    "openGitHubWork": ["workOnGitHubGoal.nl", "workOnGitHubGoal/stageGitHubHandoff.nl"],
-    "githubSetupRead": ["reviewGitHubSetup/readGitHubSetup.nl"],
-    "githubSetupRoute": ["reviewGitHubSetup/resolveGitHubRoute.nl"],
-    "githubDiagnosisRead": ["diagnoseGitHubOperation/readGitHubDiagnosis.nl"]
+    "openGitHubWork": [
+      "workOnGitHubGoal.nl"
+    ],
+    "githubSetupRead": [],
+    "githubSetupRoute": [],
+    "githubDiagnosisRead": []
   }
 }

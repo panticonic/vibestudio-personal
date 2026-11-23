@@ -1,8 +1,7 @@
-import type { Scope, Source } from "./types.js";
 declare module "natlang:services" {
   export const archiveTimeline: {
-    discover(): Promise<Scope>;
+    discover(): Promise<import("./types.js").Scope>;
     list(eventId: string): Promise<string[]>;
-    read(eventId: string, path: string): Promise<Source | null>;
+    read(eventId: string, path: string): Promise<import("./types.js").Source | null>;
   };
 }

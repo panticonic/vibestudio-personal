@@ -2,9 +2,13 @@
   "schema": "natlang.package/v2",
   "name": "vibestudio-live-onboarding",
   "version": "0.1.0",
-  "targets": { "main": { "entry": "planSetup.nl" } },
+  "targets": {
+    "main": {
+      "entry": "planSetup.nl"
+    }
+  },
   "serviceBinding": "explicit",
   "serviceScopes": {
-    "onboardingRead": ["planSetup/observeSetup/readOwnerSnapshot.nl"]
+    "onboardingRead": []
   }
 }

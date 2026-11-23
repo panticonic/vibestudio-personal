@@ -2,11 +2,17 @@
   "schema": "natlang.package/v2",
   "name": "vibestudio-personal-workflows",
   "version": "0.1.0",
-  "targets": { "main": { "entry": "runPersonalWorkflow.nl" } },
+  "targets": {
+    "main": {
+      "entry": "runPersonalWorkflow.nl"
+    }
+  },
   "serviceBinding": "explicit",
   "serviceScopes": {
-    "memory": ["runPersonalWorkflow/recallWorkspace.nl"],
-    "repositoryResumeRead": ["runPersonalWorkflow/resumeRepositoryWork/readRepository.nl"],
-    "repositoryOwnerRead": ["runPersonalWorkflow/resumeRepositoryWork/readOwnerRoute.nl"]
+    "memory": [
+      "runPersonalWorkflow/recallWorkspace.nl"
+    ],
+    "repositoryResumeRead": [],
+    "repositoryOwnerRead": []
   }
 }
