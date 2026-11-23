@@ -1,5 +1,6 @@
+import {assessObservedApplicationOutcome} from "@workspace-skills/system-testing/observed-application-outcome";
 import type {InvocationObservations} from "@workspace-skills/system-testing/observed-invocation";
-import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
+import type {SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { contextId, createPanelSlot } from "@workspace/runtime";
@@ -361,8 +362,8 @@ export async function prepareOpenBrowserMigration(
         isDeepStrictEqual(after?.nodes, expectedNodes),
     };
     const contract:SemanticOutcomeContract={effects:{checks:["discoveredMigrationSources", "preservedOtherProfiles", "verifiedRetainedHandoff", "preservedCollectionNeighbors"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["boundExactMigration", "matchedMigrationDisposition"],required:true,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:["returnedMigrationDelivery"],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
-    const incorrectReturnValues=contract.incidentalValues!.checks.some(name=>!(checks as Record<string,boolean>)[name])&&invocation ? (await invocation.returns(call=>call.parentCallId===null)).filter(row=>isDeepStrictEqual(row.value,wrapper)).map(({definition,value})=>({definition,value,required:contract.returnedValue.required&&contract.returnedValue.checks.some(name=>!(checks as Record<string,boolean>)[name])})) : [];
-    return assessSemanticOutcome({incorrectReturnValues,
+
+    const assessed=await assessObservedApplicationOutcome({
       caseId: world.id,
       goal: world.goal,
       contextId: owner,
@@ -374,7 +375,9 @@ export async function prepareOpenBrowserMigration(
       delivery,
       after,
       passed: Object.values(checks).every(Boolean),
-    },contract);
+    },contract,wrapper,invocation,[]);
+    const {observedChecks,...dimensions}=assessed;
+    return {...dimensions,checks:observedChecks};
   }
 
   async function qualify() {
@@ -430,13 +433,14 @@ export async function prepareOpenBrowserMigration(
           : { receiptId:"foreign-receipt" }),
       });
     return {
+      outcomeContract:{...positive.outcomeContract,effects:{...positive.outcomeContract.effects,checks:[...positive.outcomeContract.effects.checks,"rejectsWrongDisposition","rejectsAlias"]}},
       ...positive,
       checks: {
         ...positive.checks,
-        rejectsWrongDisposition: !negative.passed,
-        rejectsAlias: !aliases.passed,
+        rejectsWrongDisposition: !negative.outcomeDimensions.returnedValue.passed,
+        rejectsAlias: !aliases.outcomeDimensions.returnedValue.passed,
       },
-      passed: positive.passed && !negative.passed && !aliases.passed,
+      passed: positive.passed && !negative.outcomeDimensions.returnedValue.passed && !aliases.outcomeDimensions.returnedValue.passed,
     };
   }
 

@@ -1,5 +1,6 @@
+import {assessObservedApplicationOutcome} from "@workspace-skills/system-testing/observed-application-outcome";
 import type {InvocationObservations} from "@workspace-skills/system-testing/observed-invocation";
-import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
+import type {SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
 import { isDeepStrictEqual } from "node:util";
 import {
   contextId,
@@ -461,8 +462,8 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
             !files.includes("next-step.json"),
       };
       const contract:SemanticOutcomeContract={effects:{checks:["exactOwnedRepository", "exactGitHubPreflight", "preservedLocalAndOwnerState", "independentlyReadLocalHandoff"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["currentOwnerSetup", "exactGitHubDecision", "returnedGitHubDiagnosis"],required:true,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:["returnedGitHubHandoff"],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
-      const incorrectReturnValues=contract.incidentalValues!.checks.some(name=>!(checks as Record<string,boolean>)[name])&&invocation ? (await invocation.returns(call=>call.parentCallId===null)).filter(row=>isDeepStrictEqual(row.value,wrapper)).map(({definition,value})=>({definition,value,required:contract.returnedValue.required&&contract.returnedValue.checks.some(name=>!(checks as Record<string,boolean>)[name])})) : [];
-      return assessSemanticOutcome({incorrectReturnValues,
+
+      const assessed=await assessObservedApplicationOutcome({
         caseId: world.id,
         goal: world.goal,
         contextId: ownerContext,
@@ -473,7 +474,9 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
         profileLedger,
         handoff: saved,
         passed: Object.values(checks).every(Boolean),
-      },contract);
+      },contract,wrapper,invocation,[]);
+    const {observedChecks,...dimensions}=assessed;
+    return {...dimensions,checks:observedChecks};
     }
 
     async function qualify() {
@@ -541,8 +544,9 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
                 route === "report-local" ? "ready-for-owner" : "report-local",
             },
           })
-      ).passed;
+      ).outcomeDimensions.returnedValue.passed;
       return {
+      outcomeContract:{...result.outcomeContract,effects:{...result.outcomeContract.effects,checks:[...result.outcomeContract.effects.checks,"rejectsAlias","rejectsBasis","rejectsForeignApproval","rejectsWrongRoute"]}},
         ...result,
         checks: {
           ...result.checks,

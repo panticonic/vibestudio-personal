@@ -1,5 +1,6 @@
+import {assessObservedApplicationOutcome} from "@workspace-skills/system-testing/observed-application-outcome";
 import type {InvocationObservations} from "@workspace-skills/system-testing/observed-invocation";
-import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
+import type {SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
 import { isDeepStrictEqual } from "node:util";
 import { checkArtifactResult } from "./artifact-result.js";
 import {
@@ -708,8 +709,8 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
         }),
       };
       const contract:SemanticOutcomeContract={effects:{checks:["observedOwnedArtifacts", "exactLibraryState", "protectedBrowserRecords", "exactCollectionState", "verifiedBookmarkHandoff", "recoveredFreshBasis"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["reportedArtifactEvidence"],required:libraryWrites.length===0&&collectionWrites.length===0,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
-      const incorrectReturnValues=!contract.returnedValue.required&&contract.returnedValue.checks.some(name=>!(checks as Record<string,boolean>)[name])&&invocation ? (await invocation.returns(call=>call.parentCallId===null)).filter(row=>isDeepStrictEqual(row.value,value)).map(({definition,value})=>({definition,value,required:contract.returnedValue.required&&contract.returnedValue.checks.some(name=>!(checks as Record<string,boolean>)[name])})) : [];
-      return assessSemanticOutcome({incorrectReturnValues,
+
+      const assessed=await assessObservedApplicationOutcome({
         caseId,
         contextId,
         goal: world.goal,
@@ -723,7 +724,9 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
         refreshes,
         checks,
         passed: Object.values(checks).every((value) => value === true),
-      },contract);
+      },contract,value,invocation,[]);
+    const {observedChecks,...dimensions}=assessed;
+    return {...dimensions,checks:observedChecks};
     }
 
     async function qualify() {

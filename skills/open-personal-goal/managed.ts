@@ -1,5 +1,6 @@
+import {assessObservedApplicationOutcome} from "@workspace-skills/system-testing/observed-application-outcome";
 import type {InvocationObservations} from "@workspace-skills/system-testing/observed-invocation";
-import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
+import type {SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
 import { isDeepStrictEqual } from "node:util";
 import { sha256HexSyncText } from "@vibestudio/content-addressing";
 import type { Task } from "@workspace/mission-control";
@@ -255,9 +256,14 @@ export async function prepareOpenPersonalGoal({ contextId, caseId }: { contextId
       reportedMissionEvidence: isDeepStrictEqual(report?.findings, expectedFindings) && isDeepStrictEqual(report?.handoff, handoff),
     };
     const contract:SemanticOutcomeContract={effects:{checks:["observedMissionBoard", "exactMissionEffects", "recoveredMissionRevision", "preservedOtherMissions", "verifiedMissionHandoff"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["reportedMissionEvidence"],required:transitions.length===0,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
-    const incorrectReturnValues=!contract.returnedValue.required&&contract.returnedValue.checks.some(name=>!(checks as Record<string,boolean>)[name])&&invocation ? (await invocation.returns(call=>call.parentCallId===null)).filter(row=>isDeepStrictEqual(row.value,value)).map(({definition,value})=>({definition,value,required:contract.returnedValue.required&&contract.returnedValue.checks.some(name=>!(checks as Record<string,boolean>)[name])})) : [];
-    return assessSemanticOutcome({incorrectReturnValues, caseId, contextId, goal: world.goal, objectKey, baseline, transitions, concurrentEdit, handoff, handoffText,
-      final, checks, passed: Object.values(checks).every(Boolean) },contract);
+
+    const assessed=await assessObservedApplicationOutcome({ caseId, contextId, goal: world.goal, objectKey, baseline, transitions, concurrentEdit, handoff, handoffText,
+      final, checks, passed: Object.values(checks).every(Boolean) },contract,value,invocation,[
+    ...(Array.isArray(report?.findings)?report.findings.map((_,index)=>({checks:["reportedMissionEvidence"],rootPath:["findings",index],producerSourceSuffix:"workOnMissionGoal/executeMissionStep.nl",producerPath:["finding"]})):[]),
+    {checks:["reportedMissionEvidence"],rootPath:["handoff"],producerSourceSuffix:"workOnMissionGoal/prepareMissionHandoff.nl"},
+  ]);
+    const {observedChecks,...dimensions}=assessed;
+    return {...dimensions,checks:observedChecks};
   }
 
   async function qualify() {
