@@ -1,0 +1,178 @@
+[
+  {
+    "template": "personal",
+    "entry": "skills/browser-import-review/workOnBrowserMigrationGoal.nl",
+    "resultType": "OpenMigrationReport",
+    "decision": "compact audit-only fields",
+    "fields": {
+      "status": "requested application value",
+      "reason": "requested application value",
+      "choice": "internal input/observation; removed from public return",
+      "review": "requested preview/import/recovery findings",
+      "evidence": "approval previews internal; actual receiptId/phase/bookmarks projected",
+      "delivery": "actual bookmark handoff receipt"
+    },
+    "evidence": [
+      "skills/browser-import-review/workOnBrowserMigrationGoal.nl",
+      "skills/browser-import-review/types.ts"
+    ],
+    "consumers": [
+      "/home/werg/vibe-app-values-personal/skills/browser-import-review/natlang.json:13:      \"workOnBrowserMigrationGoal.nl\",",
+      "/home/werg/vibe-app-values-personal/skills/browser-import-review/natlang.json:14:      \"workOnBrowserMigrationGoal/leaveMigrationHandoff.nl\""
+    ],
+    "nativeConsumers": [
+      "/home/werg/vibe-app-values-personal/skills/browser-import-review/types.ts:119:export type OpenMigrationReport =",
+      "/home/werg/vibe-app-values-personal/skills/browser-import-review/workOnBrowserMigrationGoal/migrationResult.ts:1:import type {OpenMigrationReport,BrowserImportReviewReport,MigrationOutcomeEvidence,MigrationDelivery} from \"../types.js\";",
+      "/home/werg/vibe-app-values-personal/skills/browser-import-review/workOnBrowserMigrationGoal/migrationResult.ts:2:export default function migrationResult(status:\"observed\"|\"imported\"|\"retained\"|\"held\"|\"handed-off\",review:BrowserImportReviewReport,evidence:MigrationOutcomeEvidence,delivery:MigrationDelivery|null):OpenMigrationReport {",
+      "/home/werg/vibe-app-values-personal/skills/browser-import-runtime/open-migration-managed.ts:17:  OpenMigrationReport,",
+      "/home/werg/vibe-app-values-personal/skills/browser-import-runtime/open-migration-managed.ts:45:    status: Exclude<OpenMigrationReport[\"status\"], \"unresolved\">;",
+      "/home/werg/vibe-app-values-personal/skills/browser-import-runtime/open-migration-managed.ts:309:  type Wrapper = OpenMigrationReport;",
+      "/home/werg/vibe-app-values-personal/skills/browser-import-runtime/open-migration-managed.ts:409:    const outcome: OpenMigrationReport = {"
+    ]
+  },
+  {
+    "template": "personal",
+    "entry": "skills/github/natlang/workOnGitHubGoal.nl",
+    "resultType": "OpenGitHubReport",
+    "decision": "compact audit-only fields",
+    "fields": {
+      "status": "requested application value",
+      "reason": "requested application value",
+      "local": "internal input/observation; removed from public return",
+      "intent": "internal input/observation; removed from public return",
+      "preflight": "internal input/observation; removed from public return",
+      "setup": "requested account readiness findings",
+      "diagnosis": "requested actionable diagnosis",
+      "decision": "requested access/route/owner readiness finding",
+      "handoff": "actual native retained receipt"
+    },
+    "evidence": [
+      "skills/github/natlang/workOnGitHubGoal.nl",
+      "skills/github/natlang/types.ts"
+    ],
+    "consumers": [
+      "/home/werg/vibe-app-values-personal/skills/github/natlang/natlang.json:6:    \"workOnGitHubGoal.nl\",",
+      "/home/werg/vibe-app-values-personal/skills/github/natlang/natlang.json:7:    \"workOnGitHubGoal\",",
+      "/home/werg/vibe-app-values-personal/skills/github/natlang/natlang.json:26:      \"workOnGitHubGoal.nl\""
+    ],
+    "nativeConsumers": [
+      "/home/werg/vibe-app-values-personal/skills/github/natlang/types.ts:156:export type OpenGitHubReport =",
+      "/home/werg/vibe-app-values-personal/skills/github/open-github-managed.ts:31:  OpenGitHubReport,",
+      "/home/werg/vibe-app-values-personal/skills/github/open-github-managed.ts:69:type Wrapper = OpenGitHubReport;",
+      "/home/werg/vibe-app-values-personal/skills/github/open-github-managed.ts:524:      const outcome: OpenGitHubReport = {"
+    ]
+  },
+  {
+    "template": "personal",
+    "entry": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal.nl",
+    "resultType": "PersonalArtifactsReport",
+    "decision": "compact audit-only fields",
+    "fields": {
+      "kind": "requested application value",
+      "library": "actual final browser-reference state/query result and selected bookmark",
+      "collection": "actual final collection tree/query result",
+      "holds": "concrete conflict bookmark records or requested tied URLs; full library basis removed"
+    },
+    "evidence": [
+      "skills/open-personal-artifacts/workOnPersonalArtifactsGoal.nl",
+      "skills/open-personal-artifacts/types.ts"
+    ],
+    "consumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts/natlang.json:6:  \"targets\": { \"main\": { \"entry\": \"workOnPersonalArtifactsGoal.nl\" } },",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts/natlang.json:8:    \"artifactLibrary\": [\"workOnPersonalArtifactsGoal/maintainLibrary.nl\"],",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts/natlang.json:9:    \"artifactCollection\": [\"workOnPersonalArtifactsGoal/arrangeCollection.nl\"]",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts/SKILL.md:6:The goal entry point is `workOnPersonalArtifactsGoal.nl`. Use it with the"
+    ],
+    "nativeConsumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts-runtime/managed.ts:21:  PersonalArtifactsReport,",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts-runtime/managed.ts:82:type Envelope = PersonalArtifactsReport;",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts-runtime/artifact-result.ts:2:import type { ArtifactLibrary, ArtifactCollection, ArtifactHold, PersonalArtifactsReport } from \"../open-personal-artifacts/types.js\";",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts-runtime/artifact-result.ts:20:  const report = value as PersonalArtifactsReport;",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts/types.ts:70:export type PersonalArtifactsReport ="
+    ]
+  },
+  {
+    "template": "personal",
+    "entry": "skills/open-personal-automation/coordinatePersonalAutomation.nl",
+    "resultType": "Report",
+    "decision": "retain requested domain value",
+    "fields": {
+      "findings": "actual per-monitor state/change/hold findings with identity and revision",
+      "disposition": "requested complete/partial/held outcome"
+    },
+    "evidence": [
+      "skills/open-personal-automation/coordinatePersonalAutomation.nl",
+      "skills/open-personal-automation/types.ts"
+    ],
+    "consumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation/natlang.json:6:  \"targets\": { \"main\": { \"entry\": \"coordinatePersonalAutomation.nl\" } },",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation/natlang.json:9:      \"coordinatePersonalAutomation.nl\",",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation/natlang.json:10:      \"coordinatePersonalAutomation/operateMonitor.nl\""
+    ],
+    "nativeConsumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:10:  Report,",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:68:type Envelope = Report;",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:300:    const goalReportMatches =",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:397:      matchedGoalReport:",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:398:        goalReportMatches && report?.disposition === world.expected.disposition,"
+    ]
+  },
+  {
+    "template": "personal",
+    "entry": "skills/open-personal-goal/program/workOnMissionGoal.nl",
+    "resultType": "MissionGoalReport",
+    "decision": "retain requested domain value",
+    "fields": {
+      "findings": "actual mission outcomes, card handles/status, blockers and citation handles",
+      "handoff": "actual retained board handoff"
+    },
+    "evidence": [
+      "skills/open-personal-goal/program/workOnMissionGoal.nl",
+      "skills/open-personal-goal/program/types.ts"
+    ],
+    "consumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/natlang.json:5:  \"targets\": { \"main\": { \"entry\": \"workOnMissionGoal.nl\" } },",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/natlang.json:7:  \"include\": [\"workOnMissionGoal.nl\", \"workOnMissionGoal\", \"types.ts\", \"services.d.ts\"],",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/natlang.json:9:    \"missionGoalBoard\": [\"workOnMissionGoal.nl\"],",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/natlang.json:10:    \"missionGoalChange\": [\"workOnMissionGoal/executeMissionStep.nl\"],",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/natlang.json:11:    \"missionGoalHandoff\": [\"workOnMissionGoal/prepareMissionHandoff.nl\"]",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/workOnMissionGoal/prepareMissionHandoff.nl:3:uses: [workOnMissionGoal/locateMissionCard]",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/workOnMissionGoal/executeMissionStep/decideMissionStep.nl:3:uses: [workOnMissionGoal/locateMissionCard]",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/SKILL.md:6:Load `program/workOnMissionGoal.nl` with the caller's Mission Control and"
+    ],
+    "nativeConsumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/types.ts:43:export type MissionGoalReport = { findings: MissionFinding[]; handoff: HandoffReceipt | null };",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/managed.ts:7:import type { BoardChange, BoardSnapshot, BoardStatus, HandoffReceipt, MissionFinding, MissionGoalReport } from \"./program/types.js\";",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-goal/managed.ts:201:    const envelope = value as MissionGoalReport | null;"
+    ]
+  },
+  {
+    "template": "personal",
+    "entry": "skills/open-personal-history/reviewPersonalHistory.nl",
+    "resultType": "Report",
+    "decision": "retain requested domain value",
+    "fields": {
+      "findings": "requested historical findings with exact event/path/hash/line citations",
+      "relation": "requested comparison",
+      "action": "requested clear/hold outcome"
+    },
+    "evidence": [
+      "skills/open-personal-history/reviewPersonalHistory.nl",
+      "skills/open-personal-history/types.ts"
+    ],
+    "consumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history/natlang.json:6:  \"targets\": { \"main\": { \"entry\": \"reviewPersonalHistory.nl\" } },",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history/natlang.json:9:      \"reviewPersonalHistory.nl\",",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history/natlang.json:10:      \"reviewPersonalHistory/inspectMilestone.nl\""
+    ],
+    "nativeConsumers": [
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:14:  Report,",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:38:    relation: Report[\"relation\"];",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:39:    action: Report[\"action\"];",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:42:type Envelope = Report;",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:223:  async function expectedReport() {",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:277:      expectedReport(),",
+      "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:351:    const { findings, relation, action } = await expectedReport();"
+    ]
+  }
+]
