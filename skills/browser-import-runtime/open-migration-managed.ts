@@ -129,11 +129,9 @@ export async function prepareOpenBrowserMigration(
     journal.push(structuredClone({ method, args, result }));
     return structuredClone(result);
   };
-  let observed = false;
   let choice: MigrationChoice | undefined;
   let bound: ImportRun | undefined;
-  let view: MigrationHandoffView | undefined;
-  let basis: string | undefined;
+  const issuedViews = new Map<string, { view: MigrationHandoffView; basis: string; nodes: NonNullable<typeof baseline>["nodes"]; review: BrowserImportReviewReport }>();
   let delivery: MigrationDelivery | null = null;
   let writing = false;
 
@@ -168,19 +166,16 @@ export async function prepareOpenBrowserMigration(
     };
   }
 
-  let handoffReview: BrowserImportReviewReport | undefined;
   const openBrowserMigration = {
     async discover() {
-      observed = true;
       return record("discover", [], catalog);
     },
     async bind(revision: string, candidate: MigrationChoice) {
       const run = active.get(candidate?.sourceId);
       const profile = profiles.get(candidate?.sourceId)?.profile;
       if (
-        !observed ||
         revision !== catalog.revision ||
-        bound ||
+        (bound && (bound !== run || !isDeepStrictEqual(choice, candidate))) ||
         !run ||
         !profile ||
         candidate.operation !== run.request.kind ||
@@ -206,7 +201,6 @@ export async function prepareOpenBrowserMigration(
         !collection ||
         !evidence ||
         !evidence.bookmarks.length ||
-        delivery ||
         writing
       )
         return record("inspectHandoff", [review], null);
@@ -221,24 +215,23 @@ export async function prepareOpenBrowserMigration(
             snapshot.nodes.find(({ id }) => id === node.parentId)?.title ??
             null,
         }));
-      basis = snapshot.id;
-      handoffReview = structuredClone(review);
-      view = {
+      const view: MigrationHandoffView = {
         receiptId: evidence.id,
         revision: fingerprint([evidence, snapshot.id]),
         bookmarks: evidence.bookmarks,
         targets,
       };
+      issuedViews.set(view.revision, { view: structuredClone(view), basis: snapshot.id, nodes: structuredClone(snapshot.nodes), review: structuredClone(review) });
       return record("inspectHandoff", [review], view);
     },
     async stageHandoff(revision: string, candidate: MigrationHandoffChoice) {
+      const issued = issuedViews.get(revision);
+      const view = issued?.view;
       if (
         !collection ||
         !view ||
-        !basis ||
-        !handoffReview ||
+        !issued ||
         writing ||
-        delivery ||
         revision !== view.revision ||
         !view.targets.some(({ id }) => id === candidate?.targetId) ||
         !view.bookmarks.some((bookmark) =>
@@ -249,11 +242,18 @@ export async function prepareOpenBrowserMigration(
       }
       writing = true;
       try {
-        const current = await retained(handoffReview);
-        if (!current || fingerprint([current, basis]) !== revision)
+        const current = await retained(issued.review);
+        if (!current || fingerprint([current, issued.basis]) !== revision)
           return record("stageHandoff", [revision, candidate], null);
         const note = `${candidate.bookmark.title}: ${candidate.bookmark.url}`;
-        const after = await collection.collectionChange.apply(basis, {
+        if (delivery) {
+          const now = await collection.collectionState.observe();
+          const expectedNodes = issued.nodes.map(node => node.id === delivery!.targetId ? { ...node, note: delivery!.note } : node);
+          return record("stageHandoff", [revision, candidate], delivery.targetId === candidate.targetId &&
+            isDeepStrictEqual(delivery.bookmark, candidate.bookmark) && now.complete && isDeepStrictEqual(now.nodes, expectedNodes)
+            ? delivery : null);
+        }
+        const after = await collection.collectionChange.apply(issued.basis, {
           kind: "note",
           panelId: candidate.targetId,
           text: note,
@@ -345,22 +345,15 @@ export async function prepareOpenBrowserMigration(
         ),
     );
     const checks = {
-      discoveredMigrationSources:
-        journal.filter(({ method }) => method === "discover").length > 0,
+      discoveredMigrationSources: !!choice && active.has(choice.sourceId),
       boundExactMigration:
         selected?.passed === true &&
         choice?.sourceId === world.expected.source &&
         isDeepStrictEqual(outcome?.choice, choice) &&
-        journal.filter(({ method }) => method === "bind").length === 1 &&
-        journal.filter(({ method }) => method === "readOutcome").length > 0 &&
         isDeepStrictEqual(outcome?.evidence, recordedOutcome),
       preservedOtherProfiles: unchangedOthers.every(Boolean),
       matchedMigrationDisposition: outcome?.status === world.expected.status,
       verifiedRetainedHandoff:
-        journal.filter(({ method }) => method === "inspectHandoff").length ===
-          (expectedHandoff || world.expected.missingHandoff ? 1 : 0) &&
-        journal.filter(({ method }) => method === "stageHandoff").length ===
-          (expectedHandoff ? 1 : 0) &&
         (expectedHandoff
           ? Boolean(
               expectedTarget &&
