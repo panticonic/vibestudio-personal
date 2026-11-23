@@ -338,8 +338,8 @@ export async function prepareOpenBrowserMigration(
       discoveredMigrationSources: !!choice && active.has(choice.sourceId),
       boundExactMigration:
         selected?.passed === true && choice?.sourceId === world.expected.source &&
-        isDeepStrictEqual(outcome?.choice, choice) &&
-        isDeepStrictEqual(outcome?.evidence, recordedOutcome),
+        outcome?.receiptId===recordedOutcome?.receiptId && outcome?.phase===recordedOutcome?.phase &&
+        isDeepStrictEqual(outcome?.bookmarks,recordedOutcome?.retainedBookmarks),
       preservedOtherProfiles: unchangedOthers.every(Boolean),
       matchedMigrationDisposition: outcome?.status === world.expected.status,
       verifiedRetainedHandoff:
@@ -408,9 +408,8 @@ export async function prepareOpenBrowserMigration(
     }
     const outcome: OpenMigrationReport = {
       status: world.expected.status,
-      choice: candidate,
       review: report,
-      evidence,
+      receiptId:evidence.receiptId,phase:evidence.phase,bookmarks:evidence.retainedBookmarks,
       delivery: receipt,
     };
     const wrapper = outcome;
@@ -418,13 +417,13 @@ export async function prepareOpenBrowserMigration(
     const negative = await verify({
         ...outcome,
         status: "held",
-        choice: { ...candidate, sourceId: "foreign-profile" },
+        receiptId:"foreign-receipt",
       });
     const aliases = await verify({
         ...outcome,
         ...(receipt
           ? { delivery: { ...receipt, targetId: "foreign-panel" } }
-          : { choice: { ...candidate, categories: [] } }),
+          : { receiptId:"foreign-receipt" }),
       });
     return {
       ...positive,

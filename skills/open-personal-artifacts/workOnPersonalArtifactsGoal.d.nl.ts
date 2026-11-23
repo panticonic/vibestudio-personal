@@ -63,8 +63,8 @@ type ArtifactCollectionEffect = {
   status: ArtifactMutationStatus;
   state: ArtifactCollection;
 };
-type ArtifactHold = | { kind: "different-urls"; basis: ArtifactLibrary; leftId: number; rightId: number }
-  | { kind: "tied-latest-visits"; basis: ArtifactLibrary; reference: string; urls: string[] };
+type ArtifactHold = | { kind: "different-urls"; left: ArtifactBookmark; right: ArtifactBookmark }
+  | { kind: "tied-latest-visits"; reference: string; urls: string[] };
 type PersonalArtifactsReport = | { kind: "changed"; library?: ArtifactLibraryResult; collection?: ArtifactCollectionResult; holds: ArtifactHold[] }
   | { kind: "held"; holds: ArtifactHold[] }
   | { kind: "unchanged"; library?: ArtifactLibraryResult; collection?: ArtifactCollectionResult };

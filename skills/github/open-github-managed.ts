@@ -399,8 +399,6 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
         exactOwnedRepository: Boolean(
           observed &&
           observed.repository.id === expected.intent.repositoryId &&
-          isDeepStrictEqual(outcome?.local, observed) &&
-          isDeepStrictEqual(outcome?.intent, expected.intent) &&
           truth?.remote ===
             world.repositories.find(
               (repo) => repo.id === expected.intent.repositoryId,
@@ -413,7 +411,6 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
         ),
         exactGitHubPreflight:
           (provider?.status ?? null) === expected.preflight &&
-          isDeepStrictEqual(outcome?.preflight, provider ?? null) &&
           (!provider ||
             (requestedAccess === expected.access &&
               isDeepStrictEqual(boundIntent, expected.intent))) &&
@@ -526,9 +523,6 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
         })) === null;
       const outcome: OpenGitHubReport = {
         status: "reviewed",
-        intent,
-        local: localView,
-        preflight,
         setup: reviewed,
         diagnosis: diagnosis ? fixes(diagnosis) : null,
         decision,

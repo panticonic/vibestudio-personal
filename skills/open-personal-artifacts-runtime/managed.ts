@@ -796,17 +796,17 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
       }
       const report: Envelope = (() => {
           const holds = world.expected.libraryHeld ? (library.visits.length ? [{
-            kind: "tied-latest-visits" as const, basis: library, reference: library.visits[0]!.title.split(" ").filter(word=>library.visits.every(row=>row.title.includes(word))).join(" "),
+            kind: "tied-latest-visits" as const, reference: library.visits[0]!.title.split(" ").filter(word=>library.visits.every(row=>row.title.includes(word))).join(" "),
             urls: library.visits.filter(row=>row.lastVisitTime===Math.max(...library.visits.map(row=>row.lastVisitTime))).map(row=>row.url),
-          }] : [{ kind: "different-urls" as const, basis: library,
-            leftId: library.bookmarks[0]!.id, rightId: library.bookmarks[1]!.id }]) : [];
+          }] : [{ kind: "different-urls" as const,
+            left: library.bookmarks[0]!, right: library.bookmarks[1]! }]) : [];
           if (!libraryWrites.length && !collectionWrites.length && holds.length) return {kind:"held" as const, holds};
           return {kind: libraryWrites.length || collectionWrites.length ? "changed" as const : "unchanged" as const,
             library: {state:library,held:world.expected.libraryHeld,bookmarkId:world.expected.selected ? resolveLibrary(world.expected.selected,ids) : null},
             collection:{state:collection,held:world.expected.collectionHeld},holds};
         })();
       const verified = await verify(report);
-      const forged = await verify({kind:"held", holds:[{kind:"different-urls", basis:{...library,id:"unauthenticated-observation"},leftId:0,rightId:1}]});
+      const forged = await verify({kind:"held", holds:[{kind:"different-urls", left:{...library.bookmarks[0],url:"invented"},right:library.bookmarks[1]}]});
       return {
         ...verified,
         rejectedForgedEvidence: !forged.checks.reportedArtifactEvidence,

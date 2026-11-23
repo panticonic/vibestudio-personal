@@ -120,8 +120,9 @@ export type OpenMigrationReport =
   | { status: "unresolved"; reason: string }
   | {
       status: "observed" | "imported" | "retained" | "held" | "handed-off";
-      choice: MigrationChoice;
       review: BrowserImportReviewReport;
-      evidence: MigrationOutcomeEvidence;
+      receiptId: string | null;
+      phase: RetainedImportObservation["phase"] | null;
+      bookmarks: MigrationBookmark[];
       delivery: MigrationDelivery | null;
     };

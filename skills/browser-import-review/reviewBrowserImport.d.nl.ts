@@ -113,9 +113,10 @@ type MigrationOutcomeEvidence = {
 type OpenMigrationReport = | { status: "unresolved"; reason: string }
   | {
       status: "observed" | "imported" | "retained" | "held" | "handed-off";
-      choice: MigrationChoice;
       review: BrowserImportReviewReport;
-      evidence: MigrationOutcomeEvidence;
+      receiptId: string | null;
+      phase: RetainedImportObservation["phase"] | null;
+      bookmarks: MigrationBookmark[];
       delivery: MigrationDelivery | null;
     };
 declare const fn: NatlangFunction<[request: BrowserImportReviewRequest], BrowserImportReviewReport> & { readonly executeApprovedImport: NatlangFunction<[request: BrowserImportReviewRequest], BrowserImportReviewReport> & { readonly compareApprovedPreview: NatlangFunction<[approved: ImportPreviewObservation, observed: ImportPreviewObservation], boolean>; readonly startApprovedImport: NatlangFunction<[observed: ImportPreviewObservation], BrowserImportDispatch>; readonly inspectAssignedSource: NatlangFunction<[requested: PublicImportCategory[]], { observation: ImportSourceObservation; usable: boolean; findings: string[] }>; readonly inspectPreview: NatlangFunction<[requested: PublicImportCategory[]], { next: BrowserImportNext; totals: ImportTotal[]; findings: string[]; observation: ImportPreviewObservation }>; readonly inspectRetainedJob: NatlangFunction<[], RetainedImportObservation | null>; readonly interpretRetainedJob: NatlangFunction<[job: RetainedImportObservation], { next: BrowserImportNext; findings: string[] }> }; readonly inspectAssignedSource: NatlangFunction<[requested: PublicImportCategory[]], { observation: ImportSourceObservation; usable: boolean; findings: string[] }>; readonly inspectPreview: NatlangFunction<[requested: PublicImportCategory[]], { next: BrowserImportNext; totals: ImportTotal[]; findings: string[]; observation: ImportPreviewObservation }>; readonly inspectRetainedJob: NatlangFunction<[], RetainedImportObservation | null>; readonly interpretRetainedJob: NatlangFunction<[job: RetainedImportObservation], { next: BrowserImportNext; findings: string[] }> };

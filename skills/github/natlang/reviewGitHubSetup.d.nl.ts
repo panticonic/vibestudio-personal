@@ -148,9 +148,6 @@ type GitHubOpenHandoff = {
 type OpenGitHubReport = | { status: "unresolved"; reason: string }
   | {
       status: "reviewed";
-      local: GitHubLocalView;
-      intent: GitHubOpenIntent;
-      preflight: GitHubOpenPreflight | null;
       setup: GitHubSetupReport | null;
       diagnosis: NextStep | null;
       decision: GitHubOpenDecision;

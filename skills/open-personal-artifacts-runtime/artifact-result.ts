@@ -25,17 +25,17 @@ export function checkArtifactResult(value: unknown, evidence: Evidence): boolean
     isDeepStrictEqual(evidence.collectionObservations.get(state.id),state) &&
     isDeepStrictEqual(collectionPayload(state),collectionPayload(evidence.collection)));
   const hold = (item: ArtifactHold): boolean => {
-    if (!item || !library(item.basis) || !evidence.libraryHeld) return false;
+    if (!item || !evidence.libraryHeld || ![...evidence.libraryObservations.values()].some(observed=>isDeepStrictEqual(libraryPayload(observed),libraryPayload(evidence.library)))) return false;
     if (item.kind === "different-urls") {
-      const left=item.basis.bookmarks.find(row=>row.id===item.leftId);
-      const right=item.basis.bookmarks.find(row=>row.id===item.rightId);
+      const left=evidence.library.bookmarks.find(row=>isDeepStrictEqual(row,item.left));
+      const right=evidence.library.bookmarks.find(row=>isDeepStrictEqual(row,item.right));
       return Boolean(left && right && left.id!==right.id && left.url!==right.url &&
         left.title===right.title && evidence.goal.toLowerCase().includes(left.title.toLowerCase()));
     }
     if (item.kind === "tied-latest-visits") {
       if (typeof item.reference!=="string" || !item.reference.trim() ||
         !evidence.goal.toLowerCase().includes(item.reference.toLowerCase()) || !Array.isArray(item.urls)) return false;
-      const visits=item.basis.visits.filter(row=>row.title.toLowerCase().includes(item.reference.toLowerCase()));
+      const visits=evidence.library.visits.filter(row=>row.title.toLowerCase().includes(item.reference.toLowerCase()));
       const latest=Math.max(...visits.map(row=>row.lastVisitTime));
       const tied=[...new Set(visits.filter(row=>row.lastVisitTime===latest).map(row=>row.url))].sort();
       return tied.length>1 && isDeepStrictEqual(tied,[...item.urls].sort());
