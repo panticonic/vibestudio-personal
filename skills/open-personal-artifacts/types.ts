@@ -63,7 +63,7 @@ export type ArtifactCollectionEffect = {
   status: ArtifactMutationStatus;
   state: ArtifactCollection;
 };
-/** A decision cites the native library snapshot from which its facts were learned. */
+/** Requested preservation findings identify the concrete conflicting references. */
 export type ArtifactHold =
   | { kind: "different-urls"; left: ArtifactBookmark; right: ArtifactBookmark }
   | { kind: "tied-latest-visits"; reference: string; urls: string[] };
