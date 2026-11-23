@@ -306,19 +306,9 @@ export async function prepareOpenBrowserMigration(
     },
   };
 
-  type Wrapper = {
-    status: string;
-    skill: string;
-    outcome: OpenMigrationReport;
-  };
+  type Wrapper = OpenMigrationReport;
   async function verify(wrapper: Wrapper | null) {
-    const outcome =
-      wrapper?.status === "workspace-skill-reviewed" &&
-      wrapper.skill === world.kind &&
-      wrapper.outcome?.status &&
-      wrapper.outcome.status !== "unresolved"
-        ? wrapper.outcome
-        : null;
+    const outcome = wrapper?.status && wrapper.status !== "unresolved" ? wrapper : null;
     const selected = await bound?.verify(outcome?.review ?? null);
     const evidence = await bound?.readEvidence();
     const recordedOutcome = await bound?.readOutcome();
@@ -347,8 +337,7 @@ export async function prepareOpenBrowserMigration(
     const checks = {
       discoveredMigrationSources: !!choice && active.has(choice.sourceId),
       boundExactMigration:
-        selected?.passed === true &&
-        choice?.sourceId === world.expected.source &&
+        selected?.passed === true && choice?.sourceId === world.expected.source &&
         isDeepStrictEqual(outcome?.choice, choice) &&
         isDeepStrictEqual(outcome?.evidence, recordedOutcome),
       preservedOtherProfiles: unchangedOthers.every(Boolean),
@@ -424,29 +413,19 @@ export async function prepareOpenBrowserMigration(
       evidence,
       delivery: receipt,
     };
-    const wrapper = {
-      status: "workspace-skill-reviewed",
-      skill: world.kind,
-      outcome,
-    };
+    const wrapper = outcome;
     const positive = await verify(wrapper);
     const negative = await verify({
-      ...wrapper,
-      outcome: {
         ...outcome,
         status: "held",
         choice: { ...candidate, sourceId: "foreign-profile" },
-      },
-    });
+      });
     const aliases = await verify({
-      ...wrapper,
-      outcome: {
         ...outcome,
         ...(receipt
           ? { delivery: { ...receipt, targetId: "foreign-panel" } }
           : { choice: { ...candidate, categories: [] } }),
-      },
-    });
+      });
     return {
       ...positive,
       checks: {

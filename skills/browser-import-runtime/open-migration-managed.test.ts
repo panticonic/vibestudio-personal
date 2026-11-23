@@ -46,7 +46,7 @@ it("accepts unchanged earlier issued handoff evidence and harmless observation r
   expect(delivered).toMatchObject({ targetId, note: "Guide: https://example.com/guide" });
   await s.inspectHandoff(review as never);
   expect(await s.stageHandoff(first.revision, { targetId, bookmark })).toEqual(delivered);
-  expect((await prepared.verify({ status: "workspace-skill-reviewed", skill: "browserMigration", outcome: { status: "handed-off", choice, review, evidence, delivery: delivered } } as never)).passed).toBe(true);
+  expect((await prepared.verify({ status: "handed-off", choice, review, evidence, delivery: delivered } as never)).passed).toBe(true);
 });
 it("retains native current-state CAS and refuses foreign targets or invented revisions", async () => {
   const { s, review, bookmark } = await fixture();

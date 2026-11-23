@@ -39,11 +39,7 @@ type World = {
     action: Report["action"];
   };
 };
-type Envelope = {
-  status: "workspace-skill-reviewed";
-  skill: "personalHistory";
-  outcome: Report;
-};
+type Envelope = Report;
 type Operation =
   | { kind: "list"; eventId: string }
   | { kind: "read"; eventId: string; path: string };
@@ -275,10 +271,7 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
   async function verify(value: unknown) {
     const envelope = value as Envelope | null;
     const report =
-      envelope?.status === "workspace-skill-reviewed" &&
-      envelope.skill === "personalHistory"
-        ? envelope.outcome
-        : null;
+      envelope;
     const [after, expected] = await Promise.all([
       vcs.status(),
       expectedReport(),
@@ -356,19 +349,15 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
         await services.archiveTimeline.read(event.eventId, path);
     }
     const { findings, relation, action } = await expectedReport();
-    const answer: Envelope = {
-      status: "workspace-skill-reviewed",
-      skill: "personalHistory",
-      outcome: { findings, relation, action },
-    };
+    const answer: Envelope = { findings, relation, action };
     const qualified = await verify(answer);
     const forged = structuredClone(answer);
-    const target = forged.outcome.findings.find(
+    const target = forged.findings.find(
       ({ citations }) => citations.length,
     );
     if (target?.citations[0])
       target.citations[0].contentHash = "unobserved-content";
-    else forged.outcome.findings[0]!.status = "verified";
+    else forged.findings[0]!.status = "verified";
     const rejected = !(await verify(forged)).passed;
     return {
       ...qualified,

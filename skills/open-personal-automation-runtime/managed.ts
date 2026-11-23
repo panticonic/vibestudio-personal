@@ -65,11 +65,7 @@ type Op = {
   guard?: boolean;
   followup?: string;
 };
-type Envelope = {
-  status: "workspace-skill-reviewed";
-  skill: "personalAutomation";
-  outcome: Report;
-};
+type Envelope = Report;
 
 const desiredState = (action: Action): State =>
   action === "pause" ? "paused" : "active";
@@ -279,10 +275,7 @@ export async function prepareOpenPersonalAutomation(
   async function verify(value: unknown) {
     const envelope = value as Envelope | null;
     const report =
-      envelope?.status === "workspace-skill-reviewed" &&
-      envelope.skill === "personalAutomation"
-        ? envelope.outcome
-        : null;
+      envelope;
     const [live, protectedMonitor] = await Promise.all([
       snapshot(),
       missions.getDefault(defaultId),
@@ -481,14 +474,10 @@ export async function prepareOpenPersonalAutomation(
         evidence: queue.id,
       };
     });
-    const envelope: Envelope = {
-      status: "workspace-skill-reviewed",
-      skill: "personalAutomation",
-      outcome: { findings, disposition: world.expected.disposition },
-    };
+    const envelope: Envelope = { findings, disposition: world.expected.disposition };
     const verified = await verify(envelope);
     const altered = structuredClone(envelope);
-    altered.outcome.findings[0]!.evidence = "fabricated-queue";
+    altered.findings[0]!.evidence = "fabricated-queue";
     const rejectedUnboundEvidence = !(await verify(altered)).passed;
     return {
       ...verified,

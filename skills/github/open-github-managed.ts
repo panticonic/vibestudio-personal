@@ -66,7 +66,7 @@ export type OpenGitHubWorld = {
   };
 };
 
-type Wrapper = { status: string; skill: string; outcome?: OpenGitHubReport };
+type Wrapper = OpenGitHubReport;
 type Setup = ReturnType<typeof bindGitHubSetupReview>;
 type JournalRow = {
   service: string;
@@ -374,12 +374,7 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
     };
 
     async function verify(wrapper: Wrapper | null) {
-      const outcome =
-        wrapper?.status === "workspace-skill-reviewed" &&
-        wrapper.skill === world.kind &&
-        wrapper.outcome?.status === "reviewed"
-          ? wrapper.outcome
-          : null;
+      const outcome = wrapper?.status === "reviewed" ? wrapper : null;
       const final = new Map(
         await Promise.all(
           world.repositories.map(
@@ -539,24 +534,17 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
         decision,
         handoff: stage ? await port.stage(now, decision) : null,
       };
-      const wrapper = {
-        status: "workspace-skill-reviewed",
-        skill: world.kind,
-        outcome,
-      };
+      const wrapper = outcome;
       const result = await verify(wrapper);
       const rejectsWrongRoute = !(
         await verify({
-          ...wrapper,
-          outcome: {
             ...outcome,
             decision: {
               ...decision,
               route:
                 route === "report-local" ? "ready-for-owner" : "report-local",
             },
-          },
-        })
+          })
       ).passed;
       return {
         ...result,

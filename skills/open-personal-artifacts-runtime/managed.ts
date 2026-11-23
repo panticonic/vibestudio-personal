@@ -79,11 +79,7 @@ type LinkReceipt = {
   url: string;
   libraryBasis: string;
 };
-type Envelope = {
-  status: "workspace-skill-reviewed";
-  skill: "personalArtifacts";
-  outcome: PersonalArtifactsReport;
-};
+type Envelope = PersonalArtifactsReport;
 type Row = Awaited<ReturnType<typeof browserData.getBookmarks>>[number];
 const rowProjection = (row: Row) => ({
   id: row.id,
@@ -632,10 +628,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
     async function verify(value: unknown) {
       const envelope = value as Envelope | null;
       const report =
-        envelope?.status === "workspace-skill-reviewed" &&
-        envelope.skill === "personalArtifacts"
-          ? envelope.outcome
-          : null;
+        envelope;
       const currentRows = await rawLibrary();
       const independentLibrary = await libraryApi.browserLibraryState.observe();
       const independentCollection =
@@ -801,10 +794,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           panels.set(step.key, added.id);
         }
       }
-      const report: Envelope = {
-        status: "workspace-skill-reviewed",
-        skill: "personalArtifacts",
-        outcome: (() => {
+      const report: Envelope = (() => {
           const holds = world.expected.libraryHeld ? (library.visits.length ? [{
             kind: "tied-latest-visits" as const, basis: library, reference: library.visits[0]!.title.split(" ").filter(word=>library.visits.every(row=>row.title.includes(word))).join(" "),
             urls: library.visits.filter(row=>row.lastVisitTime===Math.max(...library.visits.map(row=>row.lastVisitTime))).map(row=>row.url),
@@ -814,13 +804,9 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           return {kind: libraryWrites.length || collectionWrites.length ? "changed" as const : "unchanged" as const,
             library: {state:library,held:world.expected.libraryHeld,bookmarkId:world.expected.selected ? resolveLibrary(world.expected.selected,ids) : null},
             collection:{state:collection,held:world.expected.collectionHeld},holds};
-        })(),
-      };
+        })();
       const verified = await verify(report);
-      const forged = await verify({
-        ...report,
-        outcome: {kind:"held", holds:[{kind:"different-urls", basis:{...library,id:"unauthenticated-observation"},leftId:0,rightId:1}]},
-      });
+      const forged = await verify({kind:"held", holds:[{kind:"different-urls", basis:{...library,id:"unauthenticated-observation"},leftId:0,rightId:1}]});
       return {
         ...verified,
         rejectedForgedEvidence: !forged.checks.reportedArtifactEvidence,

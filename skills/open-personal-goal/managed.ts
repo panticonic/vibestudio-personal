@@ -198,8 +198,8 @@ export async function prepareOpenPersonalGoal({ contextId, caseId }: { contextId
   }
 
   async function verify(value: unknown) {
-    const envelope = value as { status?: string; skill?: string; outcome?: MissionGoalReport } | null;
-    const report = envelope?.outcome;
+    const envelope = value as MissionGoalReport | null;
+    const report = envelope;
     const final = await readCards();
     const simulated = new Map(initial.map((row) => [row.id, row]));
     let basis = baseline;
@@ -250,8 +250,7 @@ export async function prepareOpenPersonalGoal({ contextId, caseId }: { contextId
       recoveredMissionRevision: recovered,
       preservedOtherMissions: isDeepStrictEqual(await store.call("getTask", { id: protectedCard.id }), protectedCard),
       verifiedMissionHandoff: handoffCards.length ? staged : handoff === null,
-      reportedMissionEvidence: envelope?.status === "workspace-skill-reviewed" && envelope.skill === "personal" &&
-        isDeepStrictEqual(report?.findings, expectedFindings) && isDeepStrictEqual(report?.handoff, handoff),
+      reportedMissionEvidence: isDeepStrictEqual(report?.findings, expectedFindings) && isDeepStrictEqual(report?.handoff, handoff),
     };
     return { caseId, contextId, goal: world.goal, objectKey, baseline, transitions, concurrentEdit, handoff, handoffText,
       final, checks, passed: Object.values(checks).every(Boolean) };
@@ -276,7 +275,7 @@ export async function prepareOpenPersonalGoal({ contextId, caseId }: { contextId
     }
     const receipt = world.expected.handoff.length
       ? await services.missionGoalHandoff.stage(snapshot.id, world.expected.handoff.map(cardId)) : null;
-    return verify({ status: "workspace-skill-reviewed", skill: "personal", outcome: { findings, handoff: receipt } });
+    return verify({ findings, handoff: receipt });
   }
 
   return { goal: world.goal, services, verify, qualify };
