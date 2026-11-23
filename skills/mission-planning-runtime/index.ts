@@ -28,6 +28,8 @@ export function bindMissionPlanning(
 ) {
   const assigned = new Set(assignedProjects);
   let current: MissionSnapshot | undefined;
+  const observations = new Map<string, MissionSnapshot>();
+  let reading: Promise<MissionSnapshot> | undefined;
   let busy = false;
 
   async function read(): Promise<MissionSnapshot> {
@@ -81,6 +83,7 @@ export function bindMissionPlanning(
     busy = true;
     try {
       current = await operation();
+      observations.set(current.id, current);
       return structuredClone(current);
     } finally {
       busy = false;
@@ -142,12 +145,15 @@ export function bindMissionPlanning(
   }
 
   return {
-    missionPlanningState: { observe: () => exclusive(read) },
+    missionPlanningState: { observe: () => {
+      reading ??= exclusive(read).finally(() => { reading = undefined; });
+      return reading.then(snapshot => structuredClone(snapshot));
+    } },
     missionPlanningChange: {
       apply: (snapshotId: string, change: MissionChanges) =>
         exclusive(async () => {
-          const basis = current;
-          if (!basis?.complete || basis.id !== snapshotId)
+          const basis = observations.get(snapshotId);
+          if (!basis?.complete)
             throw new Error("The planning observation is unavailable");
           const fresh = await read();
           if (

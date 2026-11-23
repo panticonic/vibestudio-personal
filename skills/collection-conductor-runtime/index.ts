@@ -10,6 +10,8 @@ export const collectionSource = "about/collection";
 export function bindCollection(rootId: string, contextId: string, limit = 48) {
   const root = panelTree.get(rootId);
   let current: CollectionSnapshot | undefined;
+  const observations = new Map<string, CollectionSnapshot>();
+  let reading: Promise<CollectionSnapshot> | undefined;
   let writing = false;
 
   async function observe(): Promise<CollectionSnapshot> {
@@ -49,6 +51,7 @@ export function bindCollection(rootId: string, contextId: string, limit = 48) {
 
   async function refresh() {
     current = await observe();
+    observations.set(current.id, current);
     return structuredClone(current);
   }
 
@@ -137,14 +140,15 @@ export function bindCollection(rootId: string, contextId: string, limit = 48) {
     collectionState: {
       observe() {
         if (writing) throw new Error("A collection change is in progress");
-        return refresh();
+        reading ??= refresh().finally(() => { reading = undefined; });
+        return reading.then(snapshot => structuredClone(snapshot));
       },
     },
     collectionChange: {
       async apply(basisId: string, mutation: CollectionMutation) {
-        if (writing || !current?.complete || current.id !== basisId)
+        const basis = observations.get(basisId);
+        if (writing || !basis?.complete)
           throw new Error("The supplied collection basis is unavailable");
-        const basis = current;
         writing = true;
         try {
           const fresh = await observe();

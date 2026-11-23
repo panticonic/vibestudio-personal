@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
+import { checkArtifactResult } from "./artifact-result.js";
 import {
   browserData,
   contextId as runtimeContext,
@@ -239,6 +240,18 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
     let libraryLatest: ArtifactLibrary | undefined;
     let collectionFirst: ArtifactCollection | undefined;
     let collectionLatest: ArtifactCollection | undefined;
+    const libraryObservations = new Map<string, ArtifactLibrary>();
+    const collectionObservations = new Map<string, ArtifactCollection>();
+    let readingLibrary: Promise<ArtifactLibrary> | undefined;
+    let readingCollection: Promise<ArtifactCollection> | undefined;
+    function retainLibrary(snapshot: ArtifactLibrary) {
+      libraryLatest = snapshot;
+      libraryObservations.set(snapshot.id, snapshot);
+    }
+    function retainCollection(snapshot: ArtifactCollection) {
+      collectionLatest = snapshot;
+      collectionObservations.set(snapshot.id, snapshot);
+    }
     let competing = false;
     const refreshes: {
       surface: "library" | "collection";
@@ -252,7 +265,8 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
 
     async function exclusive<T>(op: () => Promise<T>): Promise<T> {
       if (pending) throw new Error("Wait for the current artifact operation");
-      const attempt = op();
+      const reads = [readingLibrary, readingCollection].filter(Boolean);
+      const attempt = Promise.all(reads).then(op);
       pending = attempt;
       try {
         return await attempt;
@@ -264,9 +278,9 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
     async function collectionBasis(
       basis: string,
     ): Promise<ArtifactCollectionEffect> {
-      if (!collectionLatest || collectionLatest.id !== basis)
-        throw new Error("Use the latest owned collection observation");
-      const previous = collectionLatest;
+      const previous = collectionObservations.get(basis);
+      if (!previous)
+        throw new Error("Use an issued owned collection observation");
       if (!competing && world.concurrent?.surface === "collection") {
         const { key, note } = world.concurrent;
         await topCollection.stateArgs.patch({
@@ -281,7 +295,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           collectionPayload(current),
         )
       ) {
-        collectionLatest = current;
+        retainCollection(current);
         refreshes.push({ surface: "collection", basis, current: current.id });
         return { status: "changed", state: structuredClone(current) };
       }
@@ -298,7 +312,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
         current.id,
         mutation,
       );
-      collectionLatest = after;
+      retainCollection(after);
       collectionWrites.push({
         basis,
         mutation: structuredClone(mutation),
@@ -308,18 +322,21 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
     }
     const services = {
       artifactLibrary: {
-        observe: () =>
-          exclusive(async () => {
+        observe: () => {
+          readingLibrary ??= (async () => {
+            if (pending) await pending;
             const observed = await libraryApi.browserLibraryState.observe();
             libraryFirst ??= observed;
-            libraryLatest = observed;
-            return structuredClone(observed);
-          }),
+            retainLibrary(observed);
+            return observed;
+          })().finally(() => { readingLibrary = undefined; });
+          return readingLibrary.then(snapshot => structuredClone(snapshot));
+        },
         apply: (basis: string, mutation: ArtifactLibraryMutation) =>
           exclusive(async (): Promise<ArtifactLibraryEffect> => {
-            if (!libraryLatest || libraryLatest.id !== basis)
-              throw new Error("Use the latest owned library observation");
-            const previous = libraryLatest;
+            const previous = libraryObservations.get(basis);
+            if (!previous)
+              throw new Error("Use an issued owned library observation");
             if (!world.grants.library.includes(mutation.kind))
               return { status: "held", state: structuredClone(previous) };
             if (!competing && world.concurrent?.surface === "library") {
@@ -336,7 +353,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
                 libraryPayload(current),
               )
             ) {
-              libraryLatest = current;
+              retainLibrary(current);
               refreshes.push({
                 surface: "library",
                 basis,
@@ -348,7 +365,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
               current.id,
               mutation,
             );
-            libraryLatest = after;
+            retainLibrary(after);
             libraryWrites.push({
               basis,
               mutation: structuredClone(mutation),
@@ -358,21 +375,25 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           }),
       },
       artifactCollection: {
-        observe: () =>
-          exclusive(async () => {
+        observe: () => {
+          readingCollection ??= (async () => {
+            if (pending) await pending;
             const observed = await collectionApi.collectionState.observe();
             collectionFirst ??= observed;
-            collectionLatest = observed;
-            return structuredClone(observed);
-          }),
+            retainCollection(observed);
+            return observed;
+          })().finally(() => { readingCollection = undefined; });
+          return readingCollection.then(snapshot => structuredClone(snapshot));
+        },
         apply: (basis: string, mutation: ArtifactCollectionMutation) =>
           exclusive(async (): Promise<ArtifactCollectionEffect> => {
-            if (!collectionLatest || collectionLatest.id !== basis)
-              throw new Error("Use the latest owned collection observation");
+            const issuedCollection = collectionObservations.get(basis);
+            if (!issuedCollection)
+              throw new Error("Use an issued owned collection observation");
             if (!world.grants.collection.includes(mutation.kind))
               return {
                 status: "held",
-                state: structuredClone(collectionLatest),
+                state: structuredClone(collectionLatest!),
               };
             const check = await collectionBasis(basis);
             if (check.status !== "applied") return check;
@@ -386,19 +407,19 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           heading: string,
         ) =>
           exclusive(async (): Promise<ArtifactCollectionEffect> => {
-            if (!collectionLatest || collectionLatest.id !== basis)
-              throw new Error("Use the latest owned collection observation");
+            const issuedCollection = collectionObservations.get(basis);
+            if (!issuedCollection)
+              throw new Error("Use an issued owned collection observation");
             if (
               !world.grants.collection.includes("link") ||
-              !libraryLatest ||
-              libraryLatest.id !== libraryBasis ||
+              !libraryObservations.has(libraryBasis) ||
               !heading.trim() ||
               heading.length > 160 ||
               /[\r\n]/u.test(heading)
             ) {
               return {
                 status: "held",
-                state: structuredClone(collectionLatest),
+                state: structuredClone(collectionLatest!),
               };
             }
             const currentLibrary =
@@ -410,12 +431,12 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
               !bookmark ||
               !isDeepStrictEqual(
                 libraryPayload(currentLibrary),
-                libraryPayload(libraryLatest),
+                libraryPayload(libraryObservations.get(libraryBasis)!),
               )
             )
               return {
                 status: "held",
-                state: structuredClone(collectionLatest),
+                state: structuredClone(collectionLatest!),
               };
             const check = await collectionBasis(basis);
             if (check.status !== "applied") return check;
@@ -503,12 +524,12 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
       ids: Map<string, number>,
     ) {
       if (
-        !collectionFirst?.complete ||
+        (collectionFirst && !collectionFirst.complete) ||
         !actual.complete ||
         actual.rootId !== rootId
       )
         return false;
-      const expected = structuredClone(collectionFirst.nodes);
+      const expected = structuredClone(collectionFirst?.nodes ?? actual.nodes);
       const panels = new Map(panelIds);
       for (const row of world.panels) {
         const initial = expected.find(({ id }) => id === resolvePanel(row.key));
@@ -629,16 +650,10 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
         })),
       );
       const checks = {
-        observedOwnedArtifacts: Boolean(
-          libraryFirst &&
-          collectionFirst &&
-          collectionFirst.rootId === rootId &&
-          isDeepStrictEqual(
-            ordered(initialRows.map(rowProjection)),
-            libraryFirst.bookmarks,
-          ) &&
-          isDeepStrictEqual(observedVisits, libraryFirst.visits),
-        ),
+        observedOwnedArtifacts:
+          (libraryFirst ? isDeepStrictEqual(ordered(initialRows.map(rowProjection)), libraryFirst.bookmarks) &&
+            isDeepStrictEqual(observedVisits, libraryFirst.visits) : libraryWrites.length === 0 && links.length === 0) &&
+          (collectionFirst ? collectionFirst.rootId === rootId : collectionWrites.length === 0 && links.length === 0),
         exactLibraryState:
           checked.matches &&
           isDeepStrictEqual(
@@ -682,35 +697,20 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           ),
         recoveredFreshBasis: world.concurrent
           ? competing &&
-            refreshes.length === 1 &&
-            refreshes[0]?.surface === world.concurrent.surface &&
-            refreshes[0].basis !== refreshes[0].current &&
+            refreshes.length > 0 &&
+            refreshes.every(refresh => refresh.surface === world.concurrent!.surface && refresh.basis !== refresh.current) &&
             (world.concurrent.surface === "library"
               ? libraryWrites
               : collectionWrites
             ).some(({ basis }) => basis !== refreshes[0]?.basis)
           : !competing && refreshes.length === 0,
-        reportedArtifactEvidence:
-          report?.library?.held === world.expected.libraryHeld &&
-          report?.collection?.held === world.expected.collectionHeld &&
-          report?.library.bookmarkId ===
-            (world.expected.selected
-              ? checked.ids.get(world.expected.selected)
-              : null) &&
-          isDeepStrictEqual(report.library.state, libraryLatest) &&
-          isDeepStrictEqual(report.collection.state, collectionLatest) &&
-          Boolean(
-            libraryLatest &&
-            collectionLatest &&
-            isDeepStrictEqual(
-              libraryPayload(libraryLatest),
-              libraryPayload(independentLibrary),
-            ) &&
-            isDeepStrictEqual(
-              collectionPayload(collectionLatest),
-              collectionPayload(independentCollection),
-            ),
-          ),
+        reportedArtifactEvidence: checkArtifactResult(report, {
+          goal: world.goal, library: independentLibrary, collection: independentCollection,
+          libraryObservations, collectionObservations,
+          libraryChanged: libraryWrites.length > 0, collectionChanged: collectionWrites.length > 0,
+          libraryHeld: world.expected.libraryHeld, collectionHeld: world.expected.collectionHeld,
+          selected: world.expected.selected ? checked.ids.get(world.expected.selected) ?? null : null,
+        }),
       };
       return {
         caseId,
@@ -804,30 +804,22 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
       const report: Envelope = {
         status: "workspace-skill-reviewed",
         skill: "personalArtifacts",
-        outcome: {
-          library: {
-            state: library,
-            held: world.expected.libraryHeld,
-            bookmarkId: world.expected.selected
-              ? resolveLibrary(world.expected.selected, ids)
-              : null,
-          },
-          collection: {
-            state: collection,
-            held: world.expected.collectionHeld,
-          },
-        },
+        outcome: (() => {
+          const holds = world.expected.libraryHeld ? (library.visits.length ? [{
+            kind: "tied-latest-visits" as const, basis: library, reference: library.visits[0]!.title.split(" ").filter(word=>library.visits.every(row=>row.title.includes(word))).join(" "),
+            urls: library.visits.filter(row=>row.lastVisitTime===Math.max(...library.visits.map(row=>row.lastVisitTime))).map(row=>row.url),
+          }] : [{ kind: "different-urls" as const, basis: library,
+            leftId: library.bookmarks[0]!.id, rightId: library.bookmarks[1]!.id }]) : [];
+          if (!libraryWrites.length && !collectionWrites.length && holds.length) return {kind:"held" as const, holds};
+          return {kind: libraryWrites.length || collectionWrites.length ? "changed" as const : "unchanged" as const,
+            library: {state:library,held:world.expected.libraryHeld,bookmarkId:world.expected.selected ? resolveLibrary(world.expected.selected,ids) : null},
+            collection:{state:collection,held:world.expected.collectionHeld},holds};
+        })(),
       };
       const verified = await verify(report);
       const forged = await verify({
         ...report,
-        outcome: {
-          ...report.outcome,
-          library: {
-            ...report.outcome.library,
-            state: { ...library, id: "unauthenticated-observation" },
-          },
-        },
+        outcome: {kind:"held", holds:[{kind:"different-urls", basis:{...library,id:"unauthenticated-observation"},leftId:0,rightId:1}]},
       });
       return {
         ...verified,

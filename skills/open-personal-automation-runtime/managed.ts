@@ -194,8 +194,7 @@ export async function prepareOpenPersonalAutomation(
         }),
       apply: (basis: string, id: string, action: Action) =>
         exclusive(async (): Promise<Receipt> => {
-          requests.push({ id, action });
-          const start = current;
+          const start = observations.find(row=>row.id===basis);
           const item = fromId(id);
           const previous = start?.monitors.find((row) => row.id === id);
           if (
@@ -206,17 +205,10 @@ export async function prepareOpenPersonalAutomation(
             (action !== "pause" && action !== "resume")
           )
             throw new Error("Use an observed owned monitor and current queue");
-          if (
-            attempts.some((attempt) => attempt.id === id || !attempt.followup)
-          )
-            throw new Error(
-              "Read back the current transition and only attempt each control once",
-            );
           const live = (await snapshot()).map(({ monitor }) => monitor);
           const target = live.find((row) => row.id === id);
           if (
             !target ||
-            !target.permitted.includes(action) ||
             target.revision !== previous.revision ||
             target.revision !== target.reviewedRevision ||
             (action === "resume" &&
@@ -231,6 +223,14 @@ export async function prepareOpenPersonalAutomation(
           )
             return "blocked";
           if (target.state === desiredState(action)) return "already";
+          if (!target.permitted.includes(action)) return "blocked";
+          if (
+            attempts.some((attempt) => attempt.id === id || !attempt.followup)
+          )
+            throw new Error(
+              "Read back the current transition and only attempt each control once",
+            );
+          requests.push({ id, action });
           const attempt: Op = { key: item.spec.key, basis, id, action };
           attempts.push(attempt);
           const fault = item.spec.fault;

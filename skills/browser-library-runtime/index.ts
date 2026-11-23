@@ -25,6 +25,8 @@ export function bindBrowserLibrary(scope: BrowserLibraryScope) {
     ),
   ];
   let current: BrowserLibrarySnapshot | undefined;
+  const observations = new Map<string, BrowserLibrarySnapshot>();
+  let reading: Promise<BrowserLibrarySnapshot> | undefined;
   let busy = false;
 
   function allowsUrl(url: string) {
@@ -151,6 +153,7 @@ export function bindBrowserLibrary(scope: BrowserLibraryScope) {
     busy = true;
     try {
       current = await run();
+      observations.set(current.id, current);
       return structuredClone(current);
     } finally {
       busy = false;
@@ -158,12 +161,15 @@ export function bindBrowserLibrary(scope: BrowserLibraryScope) {
   }
 
   return {
-    browserLibraryState: { observe: () => exclusive(read) },
+    browserLibraryState: { observe: () => {
+      reading ??= exclusive(read).finally(() => { reading = undefined; });
+      return reading.then(snapshot => structuredClone(snapshot));
+    } },
     browserLibraryChange: {
       apply: (id: string, mutation: LibraryMutation) =>
         exclusive(async () => {
-          const basis = current;
-          if (!basis || basis.id !== id)
+          const basis = observations.get(id);
+          if (!basis)
             throw new Error(
               "The supplied browser-library observation is unavailable",
             );

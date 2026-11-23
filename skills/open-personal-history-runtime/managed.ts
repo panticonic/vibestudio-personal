@@ -188,9 +188,9 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
         return structuredClone(discovery);
       },
       async list(eventId: string): Promise<string[]> {
-        if (!discovery?.milestones.some((item) => item.eventId === eventId))
+        if (!assignedEvents.has(eventId))
           throw new Error(
-            "List an exact event from the observed archive catalog",
+            "List an exact milestone from the owned archive",
           );
         const manifest = await vcs.listFiles({
           state: { kind: "event", eventId },
@@ -212,9 +212,9 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
         return paths;
       },
       async read(eventId: string, path: string): Promise<Source | null> {
-        if (!listed.get(eventId)?.has(path))
+        if (!assignedEvents.has(eventId) || typeof path !== "string" || !path || path.startsWith("/") || path.split("/").some(part=>part===".."))
           throw new Error(
-            "Read an exact file from the observed historical inventory",
+            "Read an owned archive milestone using a repository-relative path",
           );
         const source = await read(eventId, path);
         operations.push({ kind: "read", eventId, path });
@@ -312,7 +312,6 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
           )?.eventId;
           return Boolean(
             eventId &&
-            listed.has(eventId) &&
             finding.reads.every((path) =>
               reads.some(
                 (seen) => seen.eventId === eventId && seen.path === path,

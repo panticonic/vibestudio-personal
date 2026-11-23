@@ -63,7 +63,11 @@ export type ArtifactCollectionEffect = {
   status: ArtifactMutationStatus;
   state: ArtifactCollection;
 };
-export type PersonalArtifactsReport = {
-  library: ArtifactLibraryResult;
-  collection: ArtifactCollectionResult;
-};
+/** A decision cites the native library snapshot from which its facts were learned. */
+export type ArtifactHold =
+  | { kind: "different-urls"; basis: ArtifactLibrary; leftId: number; rightId: number }
+  | { kind: "tied-latest-visits"; basis: ArtifactLibrary; reference: string; urls: string[] };
+export type PersonalArtifactsReport =
+  | { kind: "changed"; library?: ArtifactLibraryResult; collection?: ArtifactCollectionResult; holds: ArtifactHold[] }
+  | { kind: "held"; holds: ArtifactHold[] }
+  | { kind: "unchanged"; library?: ArtifactLibraryResult; collection?: ArtifactCollectionResult };

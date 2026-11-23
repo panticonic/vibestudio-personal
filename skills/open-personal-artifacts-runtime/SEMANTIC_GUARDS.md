@@ -1,0 +1,9 @@
+# Native evidence and application dispositions
+
+Browser library, mission planning, and collection mutations accept any snapshot issued by the same binding, then independently compare the current native payload before writing. Another identical readonly observation does not revoke authority. Concurrent identical public reads share native IO and return separate clones. Complete collection bounds, owned IDs, native card revision, permitted mutation, origin/folder restrictions and write exclusion remain enforced.
+
+The artifact wrapper follows the same issued-basis rule. Its changed/held/unchanged application result contains the relevant domain values, not mandatory snapshots of untouched domains. A hold cites its actual issued library state and the requested distinct-URL pair or tied latest visits. The verifier checks the native final state independently, and an actual requested preservation decision must be present regardless of the claimed result tag. A held prerequisite does not authorize omitting independent requested fallback work.
+
+Personal history reads require an owned archive milestone and safe repository-relative path. Prior list/discover calls are discovery aids, not authorization tokens. Actual source coordinates, exact cited bytes and final protected history remain checked. Personal automation accepts an issued basis if the live reviewed revision remains valid. A harmless already-desired-state return does not count as a native transition request; dispatched requests still obey the once-only and readback requirements.
+
+Targeted tests exercise actual bindings with native ports mocked at the service boundary. They do not establish installed workspace integration. Natlang root and declarations are compiled with the actual Base compileProgram/workspace linker. The successor release must include the system-testing contract which requires reportedArtifactEvidence for requested held decisions.

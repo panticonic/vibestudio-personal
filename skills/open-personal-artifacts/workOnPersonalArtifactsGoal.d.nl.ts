@@ -63,9 +63,10 @@ type ArtifactCollectionEffect = {
   status: ArtifactMutationStatus;
   state: ArtifactCollection;
 };
-type PersonalArtifactsReport = {
-  library: ArtifactLibraryResult;
-  collection: ArtifactCollectionResult;
-};
+type ArtifactHold = | { kind: "different-urls"; basis: ArtifactLibrary; leftId: number; rightId: number }
+  | { kind: "tied-latest-visits"; basis: ArtifactLibrary; reference: string; urls: string[] };
+type PersonalArtifactsReport = | { kind: "changed"; library?: ArtifactLibraryResult; collection?: ArtifactCollectionResult; holds: ArtifactHold[] }
+  | { kind: "held"; holds: ArtifactHold[] }
+  | { kind: "unchanged"; library?: ArtifactLibraryResult; collection?: ArtifactCollectionResult };
 declare const fn: NatlangFunction<[goal: string], PersonalArtifactsReport> & { readonly arrangeCollection: NatlangFunction<[goal: string, library: ArtifactLibraryResult], ArtifactCollectionResult> & { readonly decideCollection: NatlangFunction<[goal: string, collection: ArtifactCollection, library: ArtifactLibraryResult], ArtifactCollectionDecision> }; readonly maintainLibrary: NatlangFunction<[goal: string], ArtifactLibraryResult> & { readonly decideLibrary: NatlangFunction<[goal: string, state: ArtifactLibrary], ArtifactLibraryDecision> } };
 export default fn;
