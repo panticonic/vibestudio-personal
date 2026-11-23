@@ -3,11 +3,11 @@
   "name": "vibestudio-open-personal-automation",
   "version": "0.1.0",
   "serviceBinding": "explicit",
-  "targets": { "main": { "entry": "coordinatePersonalAutomation.nl" } },
+  "targets": { "main": { "entry": "coordinatePersonalAutomation.ts" } },
   "serviceScopes": {
     "operatorQueue": [
-      "coordinatePersonalAutomation.nl",
-      "coordinatePersonalAutomation/operateMonitor.nl"
+      "coordinatePersonalAutomation.ts",
+      "coordinatePersonalAutomation/operateMonitor.ts"
     ]
   }
 }

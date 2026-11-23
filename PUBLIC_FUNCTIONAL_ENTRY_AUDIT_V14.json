@@ -1,0 +1,77 @@
+{
+  "publicEntries": 6,
+  "entries": [
+    {
+      "entry": "skills/browser-import-review/workOnBrowserMigrationGoal.nl",
+      "kind": "semantic NL coordinator retained",
+      "rationale": "The root interprets requested import recovery and optional collection handoff authority from the original goal.",
+      "sourceSha256": "59dbe2863ca0fa062a5cc48b5874eddb6b3a7bcb28c1616020304af0d4afd8ec"
+    },
+    {
+      "entry": "skills/github/natlang/workOnGitHubGoal.nl",
+      "kind": "semantic NL coordinator retained",
+      "rationale": "The root interprets local/provider continuation and explicit handoff authority after actual local evidence.",
+      "sourceSha256": "4b39ed0a0575749d2276bc619c27dadd8465165e012ba51706b975892330aec0"
+    },
+    {
+      "entry": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal.nl",
+      "kind": "semantic NL coordinator retained",
+      "rationale": "The root semantically partitions independent library and collection work and selects requested fallbacks when one branch is held.",
+      "sourceSha256": "590d151edf52fa9af86afdf3d14d2ed58c3493089283e62184f0e4d64f5c6fcf"
+    },
+    {
+      "entry": "skills/open-personal-automation/coordinatePersonalAutomation.ts",
+      "kind": "typed composition",
+      "rationale": "Typed native I/O, exact result composition and deterministic state transitions; scoped NL descendants interpret goals, choose actions, reconcile evidence and form requested answers.",
+      "sourceSha256": "86b2c98ca5cd58668d5ec227960f53bc15b870d449cabd306fd942c6b9fd945a"
+    },
+    {
+      "entry": "skills/open-personal-goal/program/workOnMissionGoal.ts",
+      "kind": "typed composition",
+      "rationale": "Typed native I/O, exact result composition and deterministic state transitions; scoped NL descendants interpret goals, choose actions, reconcile evidence and form requested answers.",
+      "sourceSha256": "a4bfb5dcc1f521ceb1a829d5cf17ae9c5c1e773a0bf30116ff5d5baf1f71899f"
+    },
+    {
+      "entry": "skills/open-personal-history/reviewPersonalHistory.ts",
+      "kind": "typed composition",
+      "rationale": "Typed native I/O, exact result composition and deterministic state transitions; scoped NL descendants interpret goals, choose actions, reconcile evidence and form requested answers.",
+      "sourceSha256": "e8eec75db16e1c63efaf0b6d7b6615bbf55305ca513e78de1a726c711270b827"
+    }
+  ],
+  "sourceConversions": [
+    {
+      "template": "personal",
+      "old": "skills/open-personal-history/reviewPersonalHistory.nl",
+      "new": "skills/open-personal-history/reviewPersonalHistory.ts",
+      "originalSource": "---\ndescription: Verify an operational decision or comparison against its exact charted history.\nargs:\n  goal: string\nreturns: Report\nbudget: { maxTurns: 32 }\n---\n1. Use archiveTimeline.discover to read the workspace memory leads and the milestone catalog. Call chooseMilestones with the goal and that scope.\n2. For every milestone selected, call inspectMilestone with the milestone, the field, and the goal. Preserve the resulting evidence and order of milestones.\n3. Call reconcile with the goal and those verified findings. Return the actual findings along with the resulting comparison and action.\n",
+      "classification": "typed composition: actual native I/O and deterministic control flow; semantic choices remain in scoped NL descendants"
+    },
+    {
+      "template": "personal",
+      "old": "skills/open-personal-goal/program/workOnMissionGoal.nl",
+      "new": "skills/open-personal-goal/program/workOnMissionGoal.ts",
+      "originalSource": "---\ndescription: Discover the live Mission Control board and complete the user's planning or handoff request.\nbudget: { maxTurns: 22 }\nargs:\n  goal: string\nreturns: MissionGoalReport\n---\n1. Read the current board through missionGoalBoard.observe and call chooseMissionWork with the user's goal and that observation.\n2. For each chosen intent, call executeMissionStep with the current snapshot. Keep the finding and use the returned snapshot for the next intent. An unverified write stops further work.\n3. If the user requested a handoff and there was no unverified write, call prepareMissionHandoff with the final snapshot and selected card references. An accurately held card can be included in the handoff.\n4. Return the ordered findings and the actual handoff receipt, or null when no handoff was staged.\n",
+      "classification": "typed composition: actual native I/O and deterministic control flow; semantic choices remain in scoped NL descendants"
+    },
+    {
+      "template": "personal",
+      "old": "skills/open-personal-automation/coordinatePersonalAutomation.nl",
+      "new": "skills/open-personal-automation/coordinatePersonalAutomation.ts",
+      "originalSource": "---\ndescription: Resolve and verify scheduling changes across the Personal automation handoff.\nargs:\n  goal: string\nreturns: Report\nbudget: { maxTurns: 48 }\n---\n1. Observe operatorQueue. Keep the actual observation as the current queue. Start with an empty list of findings.\n2. Call chooseNext with the goal, current queue, and findings. For operate, call operateMonitor with the current observation ID, selected monitor, and requested action. Keep its actual queue and finding. For record, use recordFinding to preserve the selected live monitor or the observed absence. Add one finding for each requested target. Do not duplicate findings.\n3. Repeat only while there is unresolved goal work. When the planner finishes, report its disposition and all actual findings. A partial outcome preserves independently completed work.\n",
+      "classification": "typed composition: actual native I/O and deterministic control flow; semantic choices remain in scoped NL descendants"
+    },
+    {
+      "template": "personal",
+      "old": "skills/open-personal-automation/coordinatePersonalAutomation/operateMonitor.nl",
+      "new": "skills/open-personal-automation/coordinatePersonalAutomation/operateMonitor.ts",
+      "originalSource": "---\ndescription: Apply one authorized scheduling transition and reconcile the live readback.\nargs:\n  basis: string\n  monitor: Monitor\n  action: Action\nreturns: Step\nbudget: { maxTurns: 22 }\n---\n1. Apply the chosen action once using the exact owned monitor and observation. Keep the actual returned receipt. Read a fresh operatorQueue observation whether the receipt is applied, already, interrupted or blocked.\n2. Call interpretReadback with the original monitor, action, receipt and fresh queue. Return the actual fresh queue and the resulting finding.\n",
+      "classification": "typed composition: actual native I/O and deterministic control flow; semantic choices remain in scoped NL descendants"
+    }
+  ],
+  "validation": {
+    "unit": "vibe-v14-local-nonbase-types-20261123c",
+    "scope": "Actual static native compilation and declaration regeneration of all38 discovered programs across six templates; no model execution or training data.",
+    "memoryPeakMiB": 287.7
+  },
+  "taskGoalsChanged": false
+}

@@ -28,7 +28,8 @@
       "/home/werg/vibe-app-values-personal/skills/browser-import-runtime/open-migration-managed.ts:45:    status: Exclude<OpenMigrationReport[\"status\"], \"unresolved\">;",
       "/home/werg/vibe-app-values-personal/skills/browser-import-runtime/open-migration-managed.ts:309:  type Wrapper = OpenMigrationReport;",
       "/home/werg/vibe-app-values-personal/skills/browser-import-runtime/open-migration-managed.ts:409:    const outcome: OpenMigrationReport = {"
-    ]
+    ],
+    "functionalStructure": "semantic NL coordinator retained"
   },
   {
     "template": "personal",
@@ -60,7 +61,8 @@
       "/home/werg/vibe-app-values-personal/skills/github/open-github-managed.ts:31:  OpenGitHubReport,",
       "/home/werg/vibe-app-values-personal/skills/github/open-github-managed.ts:69:type Wrapper = OpenGitHubReport;",
       "/home/werg/vibe-app-values-personal/skills/github/open-github-managed.ts:524:      const outcome: OpenGitHubReport = {"
-    ]
+    ],
+    "functionalStructure": "semantic NL coordinator retained"
   },
   {
     "template": "personal",
@@ -89,11 +91,12 @@
       "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts-runtime/artifact-result.ts:2:import type { ArtifactLibrary, ArtifactCollection, ArtifactHold, PersonalArtifactsReport } from \"../open-personal-artifacts/types.js\";",
       "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts-runtime/artifact-result.ts:20:  const report = value as PersonalArtifactsReport;",
       "/home/werg/vibe-app-values-personal/skills/open-personal-artifacts/types.ts:70:export type PersonalArtifactsReport ="
-    ]
+    ],
+    "functionalStructure": "semantic NL coordinator retained"
   },
   {
     "template": "personal",
-    "entry": "skills/open-personal-automation/coordinatePersonalAutomation.nl",
+    "entry": "skills/open-personal-automation/coordinatePersonalAutomation.ts",
     "resultType": "Report",
     "decision": "retain requested domain value",
     "fields": {
@@ -101,7 +104,7 @@
       "disposition": "requested complete/partial/held outcome"
     },
     "evidence": [
-      "skills/open-personal-automation/coordinatePersonalAutomation.nl",
+      "skills/open-personal-automation/coordinatePersonalAutomation.ts",
       "skills/open-personal-automation/types.ts"
     ],
     "consumers": [
@@ -115,11 +118,12 @@
       "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:300:    const goalReportMatches =",
       "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:397:      matchedGoalReport:",
       "/home/werg/vibe-app-values-personal/skills/open-personal-automation-runtime/managed.ts:398:        goalReportMatches && report?.disposition === world.expected.disposition,"
-    ]
+    ],
+    "functionalStructure": "typed composition"
   },
   {
     "template": "personal",
-    "entry": "skills/open-personal-goal/program/workOnMissionGoal.nl",
+    "entry": "skills/open-personal-goal/program/workOnMissionGoal.ts",
     "resultType": "MissionGoalReport",
     "decision": "retain requested domain value",
     "fields": {
@@ -127,7 +131,7 @@
       "handoff": "actual retained board handoff"
     },
     "evidence": [
-      "skills/open-personal-goal/program/workOnMissionGoal.nl",
+      "skills/open-personal-goal/program/workOnMissionGoal.ts",
       "skills/open-personal-goal/program/types.ts"
     ],
     "consumers": [
@@ -144,11 +148,12 @@
       "/home/werg/vibe-app-values-personal/skills/open-personal-goal/program/types.ts:43:export type MissionGoalReport = { findings: MissionFinding[]; handoff: HandoffReceipt | null };",
       "/home/werg/vibe-app-values-personal/skills/open-personal-goal/managed.ts:7:import type { BoardChange, BoardSnapshot, BoardStatus, HandoffReceipt, MissionFinding, MissionGoalReport } from \"./program/types.js\";",
       "/home/werg/vibe-app-values-personal/skills/open-personal-goal/managed.ts:201:    const envelope = value as MissionGoalReport | null;"
-    ]
+    ],
+    "functionalStructure": "typed composition"
   },
   {
     "template": "personal",
-    "entry": "skills/open-personal-history/reviewPersonalHistory.nl",
+    "entry": "skills/open-personal-history/reviewPersonalHistory.ts",
     "resultType": "Report",
     "decision": "retain requested domain value",
     "fields": {
@@ -157,7 +162,7 @@
       "action": "requested clear/hold outcome"
     },
     "evidence": [
-      "skills/open-personal-history/reviewPersonalHistory.nl",
+      "skills/open-personal-history/reviewPersonalHistory.ts",
       "skills/open-personal-history/types.ts"
     ],
     "consumers": [
@@ -173,6 +178,7 @@
       "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:223:  async function expectedReport() {",
       "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:277:      expectedReport(),",
       "/home/werg/vibe-app-values-personal/skills/open-personal-history-runtime/managed.ts:351:    const { findings, relation, action } = await expectedReport();"
-    ]
+    ],
+    "functionalStructure": "typed composition"
   }
 ]
