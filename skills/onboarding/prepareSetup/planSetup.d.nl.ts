@@ -48,5 +48,5 @@ type SetupPlan = {
   unknown: string[];
   needsVerification: string[];
 };
-declare const fn: NatlangFunction<[request: SetupRequest], SetupPlan> & { readonly observeSetup: NatlangFunction<[], SetupObservation> & { readonly readOwnerSnapshot: NatlangFunction<[], SetupObservation> }; readonly reviewOwnerState: NatlangFunction<[rows: SetupRow[]], {unknown: string[]; needsVerification: string[]}>; readonly reviewSelection: NatlangFunction<[intent: SetupIntent, route: SetupRoute | null], PlanStatus> & { readonly chooseSurface: NatlangFunction<[intent: SetupIntent, route: SetupRoute | null], PlanStatus> } };
+declare const fn: NatlangFunction<[request: SetupRequest], SetupPlan> & { readonly observeSetup: NatlangFunction<[], SetupObservation> & { readonly readOwnerSnapshot: (() => Promise<SetupObservation>) & {  } }; readonly reviewOwnerState: NatlangFunction<[rows: SetupRow[]], {unknown: string[]; needsVerification: string[]}>; readonly reviewSelection: NatlangFunction<[intent: SetupIntent, route: SetupRoute | null], PlanStatus> & { readonly chooseSurface: NatlangFunction<[intent: SetupIntent, route: SetupRoute | null], PlanStatus> } };
 export default fn;

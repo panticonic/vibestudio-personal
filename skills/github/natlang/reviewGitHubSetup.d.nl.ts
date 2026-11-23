@@ -153,5 +153,5 @@ type OpenGitHubReport = | { status: "unresolved"; reason: string }
       decision: GitHubOpenDecision;
       handoff: GitHubOpenHandoff | null;
     };
-declare const fn: NatlangFunction<[request: GitHubSetupRequest], GitHubSetupReport> & { readonly chooseSetupHandoff: NatlangFunction<[route: GitHubSetupReceipt, interactive: boolean], GitHubSetupHandoff>; readonly readGitHubSetup: NatlangFunction<[operationId: string], GitHubSetupStatus>; readonly resolveGitHubRoute: NatlangFunction<[operationId: string, accessLevel: GitHubAccessLevel], GitHubSetupReceipt>; readonly accessLevelFor: NatlangFunction<[intent: string], GitHubAccessLevel> };
+declare const fn: NatlangFunction<[request: GitHubSetupRequest], GitHubSetupReport> & { readonly chooseSetupHandoff: NatlangFunction<[route: GitHubSetupReceipt, interactive: boolean], GitHubSetupHandoff>; readonly readGitHubSetup: ((operationId: string) => Promise<GitHubSetupStatus>) & {  }; readonly resolveGitHubRoute: ((operationId: string, accessLevel: GitHubAccessLevel) => Promise<GitHubSetupReceipt>) & {  }; readonly accessLevelFor: NatlangFunction<[intent: string], GitHubAccessLevel> };
 export default fn;
