@@ -89,8 +89,8 @@ export async function preparePersonalResume(
   const services = {
     repositoryResumeRead: {
       async inspect(id: string) {
-        if (id !== operationId || observedRepo)
-          throw new Error("Inspect the assigned repository once");
+        if (id !== operationId)
+          throw new Error("Inspect only the assigned repository");
         const status = await vcs.status({ contextId });
         if (!isDeepStrictEqual(status.workingHead, start.workingHead))
           throw new Error("The assigned worktree changed before inspection");
@@ -107,7 +107,6 @@ export async function preparePersonalResume(
         if (
           id !== operationId ||
           !observedRepo ||
-          ownerAction ||
           world.ownerAction !== action
         )
           throw new Error(

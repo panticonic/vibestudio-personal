@@ -368,8 +368,8 @@ export async function prepareManagedMissionFacility(world: FacilityWorld) {
   const services = {
     missionFacilityRead: {
       async inspect(id: string) {
-        if (id !== operationId || observed)
-          throw new Error("Read the assigned Mission Control card once");
+        if (id !== operationId)
+          throw new Error("Read only the assigned Mission Control card");
         const current = await read();
         observed = {
           kind: "mission",

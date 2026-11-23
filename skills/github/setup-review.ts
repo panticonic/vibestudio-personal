@@ -15,8 +15,6 @@ export function bindGitHubSetupReview(
     operationId: crypto.randomUUID(),
     interactive,
   };
-  let claimed = false;
-  let routed = false;
   let observed:
     | Awaited<ReturnType<typeof getGitHubOnboardingStatus>>
     | undefined;
@@ -25,11 +23,10 @@ export function bindGitHubSetupReview(
     services: {
       githubSetupRead: {
         async inspect(operationId: string) {
-          if (operationId !== request.operationId || claimed)
+          if (operationId !== request.operationId)
             throw new Error(
               "GitHub status can only be read for the assigned setup review",
             );
-          claimed = true;
           observed = await readStatus();
           const { stage, connected, verified } = observed;
           return { stage, connected, verified };
@@ -37,11 +34,10 @@ export function bindGitHubSetupReview(
       },
       githubSetupRoute: {
         async resolve(operationId: string, accessLevel: GitHubAccessLevel) {
-          if (operationId !== request.operationId || !observed || routed)
+          if (operationId !== request.operationId || !observed)
             throw new Error(
               "Read the assigned GitHub connection before resolving its setup route",
             );
-          routed = true;
           // Raw provider errors, account identities and credential inventory remain in the host scope.
           const { stage, credentialId, credentials } = observed;
           return routeGitHubSetup(

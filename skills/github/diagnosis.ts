@@ -14,13 +14,12 @@ type Check =
 export function bindGitHubDiagnosis(goal: string, check: Check) {
   const request: GitHubDiagnosisRequest = { goal, operationId: crypto.randomUUID() };
   const setup = check.kind === "publish" ? bindGitHubSetupReview(goal, check.interactive) : null;
-  let used = false;
   let needsSetup = false;
 
   async function inspect(operationId: string): Promise<GitHubDiagnosisObservation> {
-    if (used || operationId !== request.operationId)
-      throw new Error("Read only the assigned GitHub preflight once");
-    used = true;
+    if (operationId !== request.operationId)
+      throw new Error("Read only the assigned GitHub preflight");
+    needsSetup = false;
     if (check.kind === "remote") {
       try {
         normalizeGitHubRemoteUrl(check.remoteUrl);

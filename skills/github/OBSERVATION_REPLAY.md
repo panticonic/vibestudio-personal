@@ -1,0 +1,3 @@
+# Repeatable native observations
+
+GitHub diagnosis, setup status, pure setup-route selection and repository-owner observation now permit repeated reads of the exact assigned operation. Mission facility inspection likewise permits rereading the owned card. The existing context, worktree/version, operation-ID and allowed owner-action checks remain. Setup status observation may change as actual native credentials change; a later successful diagnosis clears the former setup-needed flag. No credential inventories are returned to the caller and no setup action is executed by pure route assessment. Tests cover repeated setup/route/remote diagnosis and foreign operation rejection. Browser/mission/artifact issued-basis protections from the preceding change remain unchanged.
