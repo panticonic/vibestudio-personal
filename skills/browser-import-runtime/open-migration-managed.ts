@@ -1,3 +1,5 @@
+import type {InvocationObservations} from "@workspace-skills/system-testing/observed-invocation";
+import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { contextId, createPanelSlot } from "@workspace/runtime";
@@ -307,7 +309,7 @@ export async function prepareOpenBrowserMigration(
   };
 
   type Wrapper = OpenMigrationReport;
-  async function verify(wrapper: Wrapper | null) {
+  async function verify(wrapper: Wrapper | null,invocation?:InvocationObservations) {
     const outcome = wrapper?.status && wrapper.status !== "unresolved" ? wrapper : null;
     const selected = await bound?.verify(outcome?.review ?? null);
     const evidence = await bound?.readEvidence();
@@ -335,6 +337,7 @@ export async function prepareOpenBrowserMigration(
         ),
     );
     const checks = {
+      returnedMigrationDelivery:isDeepStrictEqual(outcome?.delivery,delivery),
       discoveredMigrationSources: !!choice && active.has(choice.sourceId),
       boundExactMigration:
         selected?.passed === true && choice?.sourceId === world.expected.source &&
@@ -350,15 +353,16 @@ export async function prepareOpenBrowserMigration(
               delivery.receiptId === evidence?.id &&
               delivery.targetId === expectedTarget &&
               isDeepStrictEqual(delivery.bookmark, expectedHandoff.bookmark) &&
-              delivery.note === expectedNote &&
-              isDeepStrictEqual(outcome?.delivery, delivery),
+              delivery.note === expectedNote,
             )
-          : delivery === null && outcome?.delivery === null),
+          : delivery === null),
       preservedCollectionNeighbors:
         Boolean(after?.complete) === Boolean(baseline) &&
         isDeepStrictEqual(after?.nodes, expectedNodes),
     };
-    return {
+    const contract:SemanticOutcomeContract={effects:{checks:["discoveredMigrationSources", "preservedOtherProfiles", "verifiedRetainedHandoff", "preservedCollectionNeighbors"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["boundExactMigration", "matchedMigrationDisposition"],required:true,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:["returnedMigrationDelivery"],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
+    const incorrectReturnValues=contract.incidentalValues!.checks.some(name=>!(checks as Record<string,boolean>)[name])&&invocation ? (await invocation.returns(call=>call.parentCallId===null)).filter(row=>isDeepStrictEqual(row.value,wrapper)).map(({definition,value})=>({definition,value,required:contract.returnedValue.required&&contract.returnedValue.checks.some(name=>!(checks as Record<string,boolean>)[name])})) : [];
+    return assessSemanticOutcome({incorrectReturnValues,
       caseId: world.id,
       goal: world.goal,
       contextId: owner,
@@ -370,7 +374,7 @@ export async function prepareOpenBrowserMigration(
       delivery,
       after,
       passed: Object.values(checks).every(Boolean),
-    };
+    },contract);
   }
 
   async function qualify() {

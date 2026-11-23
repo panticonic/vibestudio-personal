@@ -1,3 +1,4 @@
+import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
 import { joinHistoryEvidence, matchHistoryFindings } from "./finding-evidence.js";
 import { isDeepStrictEqual } from "node:util";
 import { compareUtf16CodeUnits, sha256HexSyncText } from "@vibestudio/content-addressing";
@@ -321,7 +322,8 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
         report?.relation === expected.relation &&
         report.action === expected.action,
     };
-    return {
+    const contract:SemanticOutcomeContract={effects:{checks:["protectedHistory", "observedArchiveDiscovery", "readExactMilestones"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["joinedSourceEvidence", "matchedDecision"],required:true,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
+    return assessSemanticOutcome({
       contextId: input.contextId,
       caseId: world.id,
       goal: world.goal,
@@ -333,7 +335,7 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
       expectedFindings: expected.findings,
       checks,
       passed: Object.values(checks).every(Boolean),
-    };
+    },contract);
   }
 
   async function qualify() {

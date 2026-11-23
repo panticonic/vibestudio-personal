@@ -1,3 +1,4 @@
+import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
 import { isDeepStrictEqual } from "node:util";
 import { contextId as liveContext, missions } from "@workspace/runtime";
 import type {
@@ -427,7 +428,8 @@ export async function prepareOpenPersonalAutomation(
         return receipt === "applied" && effect === "controller";
       }),
     };
-    return {
+    const contract:SemanticOutcomeContract={effects:{checks:["authorizedSchedulingState", "observedLiveDefinitions", "independentReadback", "protectedWorkspaceMonitor", "noRunsDispatched", "expectedRecovery"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["matchedGoalReport"],required:true,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
+    return assessSemanticOutcome({
       caseId: world.id,
       contextId: input.contextId,
       goal: world.goal,
@@ -438,7 +440,7 @@ export async function prepareOpenPersonalAutomation(
       requests,
       checks,
       passed: Object.values(checks).every(Boolean),
-    };
+    },contract);
   }
 
   async function qualify() {
