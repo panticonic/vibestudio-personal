@@ -11,6 +11,7 @@
     "@vibestudio/content-addressing": "workspace:*",
     "@workspace/mission-control": "workspace:*",
     "@workspace/runtime": "workspace:*",
-    "@workspace-skills/mission-planning-runtime": "workspace:*"
+    "@workspace-skills/mission-planning-runtime": "workspace:*",
+    "@workspace/application-outcomes": "workspace:*"
   }
 }

@@ -9,6 +9,7 @@
   "dependencies": {
     "@workspace/runtime": "workspace:*",
     "@workspace-skills/browser-library-runtime": "workspace:*",
-    "@workspace-skills/collection-conductor-runtime": "workspace:*"
+    "@workspace-skills/collection-conductor-runtime": "workspace:*",
+    "@workspace/application-outcomes": "workspace:*"
   }
 }

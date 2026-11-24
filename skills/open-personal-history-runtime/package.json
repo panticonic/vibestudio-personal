@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@workspace/runtime": "workspace:*",
-    "@vibestudio/content-addressing": "workspace:*"
+    "@vibestudio/content-addressing": "workspace:*",
+    "@workspace/application-outcomes": "workspace:*"
   }
 }

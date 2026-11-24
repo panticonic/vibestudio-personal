@@ -1,4 +1,4 @@
-import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace-skills/system-testing/semantic-outcome-contract";
+import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
 import { joinHistoryEvidence, matchHistoryFindings } from "./finding-evidence.js";
 import { isDeepStrictEqual } from "node:util";
 import { compareUtf16CodeUnits, sha256HexSyncText } from "@vibestudio/content-addressing";
