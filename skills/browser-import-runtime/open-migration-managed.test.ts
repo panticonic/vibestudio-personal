@@ -20,6 +20,7 @@ vi.mock("./managed.js", () => ({ prepareManagedBrowserImport: async (_world: unk
     receipt: { phase: "complete", hostId: "host", sourceId: options.sourceId, requestedDataTypes: ["bookmarks"], progress: [{ dataType: "bookmarks", stored: 1, skipped: 0, errors: 0 }] } }),
   readOutcome: async () => ({ preview: null, approvedPreview: null, receiptId: "receipt", phase: "complete", retainedBookmarks: [{ title: "Guide", url: "https://example.com/guide" }] }),
   verify: async (review: { next: string }) => ({ passed: review?.next === "keep-results" }),
+  qualify: async () => ({ report: { next: "keep-results", source: null, totals: [], findings: [], progress: [{ category: "bookmarks", stored: 1, skipped: 0, errors: 0 }] } }),
 }) }));
 beforeEach(() => { state.nodes.clear(); state.notes = {}; state.revision = 0; });
 async function fixture() {
@@ -49,6 +50,11 @@ it("accepts unchanged earlier issued handoff evidence and harmless observation r
   const result = { status: "handed-off", review, receiptId: evidence.receiptId,
     phase: evidence.phase, bookmarks: evidence.retainedBookmarks, delivery: delivered };
   expect((await prepared.verify(result as never)).passed).toBe(true);
+  const incidental = await prepared.verify({ ...result, delivery: { ...delivered, targetId: "foreign-panel" } } as never);
+  expect(incidental.passed).toBe(true);
+  expect(incidental.outcomeDimensions.returnedValue.passed).toBe(true);
+  expect(incidental.outcomeDimensions.incidentalValues.passed).toBe(false);
+  expect((await prepared.verify({ ...result, receiptId: "foreign-receipt" } as never)).passed).toBe(false);
   expect((await prepared.verify({ ...result, bookmarks: [] } as never)).passed).toBe(false);
 });
 it("retains native current-state CAS and refuses foreign targets or invented revisions", async () => {
@@ -59,4 +65,12 @@ it("retains native current-state CAS and refuses foreign targets or invented rev
   state.nodes.get(targetId)!.title = "Changed while reading";
   await expect(s.stageHandoff(view.revision, { targetId, bookmark })).rejects.toThrow("collection changed");
   expect(state.notes[targetId]).toBe("old");
+});
+
+it("qualifies retained handoffs using a genuinely wrong required identity as its alias negative", async () => {
+  const { prepared } = await fixture();
+  const proof = await prepared.qualify();
+  expect(proof.passed).toBe(true);
+  expect(proof.checks.rejectsWrongDisposition).toBe(true);
+  expect(proof.checks.rejectsAlias).toBe(true);
 });

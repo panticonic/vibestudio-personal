@@ -428,9 +428,8 @@ export async function prepareOpenBrowserMigration(
       });
     const aliases = await verify({
         ...outcome,
-        ...(receipt
-          ? { delivery: { ...receipt, targetId: "foreign-panel" } }
-          : { receiptId:"foreign-receipt" }),
+        receiptId: "foreign-receipt",
+        ...(receipt ? { delivery: { ...receipt, targetId: "foreign-panel" } } : {}),
       });
     return {
       outcomeContract:{...positive.outcomeContract,effects:{...positive.outcomeContract.effects,checks:[...positive.outcomeContract.effects.checks,"rejectsWrongDisposition","rejectsAlias"]}},
