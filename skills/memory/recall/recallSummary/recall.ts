@@ -1,13 +1,12 @@
 /**
  * The fixed sequence of a recall summary: ask memory, keep the snippets that bear on the query, state the fact
- * each gives, merge facts that agree and flag those that conflict. The model judges meaning; the ids, the support
- * check and the caveats that follow from the records are exact.
+ * each gives, merge facts that agree and flag those that conflict. The model judges meaning; the ids and the caveats that follow from the records are exact; support is a semantic judgment.
  */
 import { memory } from "natlang:services";
 import relevant from "./relevant.nl";
 import factFrom from "./factFrom.nl";
 import relate from "./relate.nl";
-import { supported } from "./verify.js";
+import supported from "./supported.nl";
 import type { Caveat, CitedFacts, Fact, Relation, Snippet } from "../types.js";
 
 /** Facts compared pairwise at most; recall's best results come first. */
@@ -45,8 +44,9 @@ export default async function recallSummary(
   const sentences = await Promise.all(
     chosen.map((snippet) => factFrom(query, snippet)),
   );
+  const support = await Promise.all(chosen.map((snippet,index)=>supported(sentences[index]!,snippet.text)));
   const stated = chosen.flatMap((snippet, index) =>
-    supported(sentences[index]!, snippet.text)
+    support[index]
       ? [{ text: sentences[index]!.trim(), snippet }]
       : [],
   );
