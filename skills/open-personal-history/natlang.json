@@ -3,10 +3,14 @@
   "name": "vibestudio-open-personal-history",
   "version": "0.1.0",
   "serviceBinding": "explicit",
-  "targets": { "main": { "entry": "reviewPersonalHistory.ts" } },
+  "targets": {
+    "main": {
+      "entry": "reviewPersonalHistory.nl"
+    }
+  },
   "serviceScopes": {
     "archiveTimeline": [
-      "reviewPersonalHistory.ts",
+      "reviewPersonalHistory.nl",
       "reviewPersonalHistory/inspectMilestone.nl"
     ]
   }

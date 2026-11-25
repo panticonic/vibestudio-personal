@@ -7,5 +7,6 @@ args:
 returns: Finding
 budget: { maxTurns: 26 }
 ---
-1. List the actual paths at the milestone's event using archiveTimeline.list. Use chooseDocuments with the field, goal, and listed paths to choose the records to inspect, including plausible competing and withdrawal records. Read them using archiveTimeline.read at this same event.
-2. Call assessRecords with the actual files, milestone, field and goal. Use its status and citations verbatim.
+Investigate the requested field at this exact milestone event. Use archiveTimeline.list for its actual path inventory; chooseDocuments can help select relevant committed records, including competing or withdrawal evidence. Read only observed paths at this same event. Memory or an adjacent milestone is not a substitute for these committed bytes.
+
+Use assessRecords to interpret the actual files and their exact source citations. If evidence remains incomplete or conflicting, reconsider relevant unread paths and obtain further native records when that could resolve the user's question. Keep earlier actual records alongside the new observations. Return the supported Finding with its actual milestone label, status and hash-bound citations; unresolved evidence remains unresolved. Do not manufacture an observation to force a verified result.
