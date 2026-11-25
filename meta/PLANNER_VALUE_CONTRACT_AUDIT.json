@@ -1,0 +1,1017 @@
+{
+  "scope": "Non-Base/non-Spectrolite authored planner value/effect contract audit",
+  "sourceRefs": {
+    "examples": "a4f1e269536b4ba294013495c43fcf322af3dbcf",
+    "google-workspace": "34df3f31743cc0a3d9d500ad590c7183d6cca8fb",
+    "news": "66d10fd549faf17bc4aae77a30ce8787092d1c36",
+    "personal": "f95336de85cc487fe3a0d69b1f750cff69a48d3c",
+    "system": "5bb5bc453f54467a77d2ffbca086b60c09f97c75",
+    "system-testing": "dd1e4a0fc5f8c7b1c5d7dca9344380c1d950ac5d"
+  },
+  "allNlBodyScanCounts": {
+    "examples": 30,
+    "google-workspace": 68,
+    "news": 23,
+    "personal": 131,
+    "system": 83,
+    "system-testing": 44
+  },
+  "candidateCount": 80,
+  "candidates": [
+    {
+      "template": "examples",
+      "path": "skills/open-adventure-journey/reviewAdventureJourney/resolveTurn.nl",
+      "returns": "TurnDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-adventure-journey/reviewAdventureJourney.nl",
+      "manifest": "skills/open-adventure-journey/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "examples",
+      "path": "skills/examples-review/reviewExample/reviewLivePortfolio/decideReadiness.nl",
+      "returns": "ExampleReview",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/examples-review/reviewExample/reviewLivePortfolio.nl",
+      "manifest": "skills/examples-review/natlang.json",
+      "availableChildCallsMentioned": [
+        "combineFindings"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/gmail-workflow-review/planComposeContinuation.nl",
+      "returns": "ComposeContinuationReport",
+      "verdict": "authorized-orchestration",
+      "caller": null,
+      "manifest": "skills/gmail-workflow-review/natlang.json",
+      "availableChildCallsMentioned": [
+        "auditComposeHistory",
+        "decideContinuation"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/gmail-workflow-review/planComposeContinuation/decideContinuation.nl",
+      "returns": "ComposeContinuationDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/gmail-workflow-review/planComposeContinuation.nl",
+      "manifest": "skills/gmail-workflow-review/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/gmail-workflow-review/inspectComposeHistory/assessComposeState.nl",
+      "returns": "ComposeHistoryDecision",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/gmail-workflow-review/inspectComposeHistory.nl",
+      "manifest": "skills/gmail-workflow-review/natlang.json",
+      "availableChildCallsMentioned": [
+        "checkDelivery",
+        "checkDraft"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/gmail-workflow-review/inspectComposeHistory/assessComposeState/checkDelivery.nl",
+      "returns": "ComposeHistoryDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/gmail-workflow-review/inspectComposeHistory/assessComposeState.nl",
+      "manifest": "skills/gmail-workflow-review/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/gmail-workflow-review/inspectComposeHistory/assessComposeState/checkDraft.nl",
+      "returns": "ComposeHistoryDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/gmail-workflow-review/inspectComposeHistory/assessComposeState.nl",
+      "manifest": "skills/gmail-workflow-review/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-calendar-goal/program/workOnCalendarGoal/reconcileCalendarPlan.nl",
+      "returns": "CalendarDecision",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/open-calendar-goal/program/workOnCalendarGoal.ts",
+      "manifest": "skills/open-calendar-goal/program/natlang.json",
+      "availableChildCallsMentioned": [
+        "chooseCalendarOutcome",
+        "chooseCalendarOutcome",
+        "calendarGoalReadback.verify"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-calendar-goal/program/workOnCalendarGoal/chooseCalendarPlan.nl",
+      "returns": "'CalendarPlan | null'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-calendar-goal/program/workOnCalendarGoal.ts",
+      "manifest": "skills/open-calendar-goal/program/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-calendar-goal/program/workOnCalendarGoal/reconcileCalendarPlan/chooseCalendarOutcome.nl",
+      "returns": "CalendarDecision",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/open-calendar-goal/program/workOnCalendarGoal/reconcileCalendarPlan.nl",
+      "manifest": "skills/open-calendar-goal/program/natlang.json",
+      "availableChildCallsMentioned": [
+        "assessCalendarOptions"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff/chooseHandoffDecision.nl",
+      "returns": "HandoffDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff.ts",
+      "manifest": "skills/open-google-handoff-goal/program/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff/chooseHandoffPlan.nl",
+      "returns": "HandoffPlan",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff.ts",
+      "manifest": "skills/open-google-handoff-goal/program/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff/resolveMailDecision.nl",
+      "returns": "MailDecision",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff.ts",
+      "manifest": "skills/open-google-handoff-goal/program/natlang.json",
+      "availableChildCallsMentioned": [
+        "readMailThreads.",
+        "chooseMailEvidence"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff/resolveMailDecision/chooseMailEvidence.nl",
+      "returns": "MailDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-google-handoff-goal/program/reconcileGoogleHandoff/resolveMailDecision.nl",
+      "manifest": "skills/open-google-handoff-goal/program/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/google-drive/driveWorkflow/workOnDriveGoal/chooseGoalRoute.nl",
+      "returns": "'DriveGoalPlan | null'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/google-drive/driveWorkflow/workOnDriveGoal.ts",
+      "manifest": "skills/google-drive/driveWorkflow/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/google-drive/driveWorkflow/guideGoogleWorkspace/reviewInventorySharing/decideSharingGate.nl",
+      "returns": "GoogleSharingGate",
+      "verdict": "clear-value-policy",
+      "caller": "skills/google-drive/driveWorkflow/guideGoogleWorkspace/reviewInventorySharing.nl",
+      "manifest": "skills/google-drive/driveWorkflow/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/google-drive/driveWorkflow/guideGoogleWorkspace/inspectFolder/selectRows.nl",
+      "returns": "string[]",
+      "verdict": "clear-value-policy",
+      "caller": "skills/google-drive/driveWorkflow/guideGoogleWorkspace/inspectFolder.nl",
+      "manifest": "skills/google-drive/driveWorkflow/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/google-drive/setupGoal/workOnGoogleSetupGoal/chooseSetupRoute.nl",
+      "returns": "SetupDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/google-drive/setupGoal/workOnGoogleSetupGoal.nl",
+      "manifest": "skills/google-drive/setupGoal/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "google-workspace",
+      "path": "skills/open-gmail-goal/program/recoverGmailGoal/chooseCompose.nl",
+      "returns": "'string | null'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-gmail-goal/program/recoverGmailGoal.nl",
+      "manifest": "skills/open-gmail-goal/program/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "news",
+      "path": "skills/news-workflows/reviewUserNewsGoal/planNewsGoal.nl",
+      "returns": "NewsGoalPlan",
+      "verdict": "clear-value-policy",
+      "caller": "skills/news-workflows/reviewUserNewsGoal.ts",
+      "manifest": "skills/news-workflows/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "news",
+      "path": "skills/news-workflows/reviewNews/reviewLiveNews/reconcileCadence/chooseCadenceChange.nl",
+      "returns": "NewsCadenceChange",
+      "verdict": "clear-value-policy",
+      "caller": "skills/news-workflows/reviewNews/reviewLiveNews/reconcileCadence.nl",
+      "manifest": "skills/news-workflows/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "news",
+      "path": "skills/news-workflows/reviewers/reviewSchedule/chooseMissionLane.nl",
+      "returns": "NewsReview | null",
+      "verdict": "clear-value-policy",
+      "caller": "skills/news-workflows/reviewers/reviewSchedule.nl",
+      "manifest": "skills/news-workflows/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-history/reviewPersonalHistory/chooseMilestones.nl",
+      "returns": "Selection",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-personal-history/reviewPersonalHistory.ts",
+      "manifest": "skills/open-personal-history/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-history/reviewPersonalHistory/inspectMilestone/chooseDocuments.nl",
+      "returns": "string[]",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-personal-history/reviewPersonalHistory/inspectMilestone.nl",
+      "manifest": "skills/open-personal-history/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/explorer-probe/probeWorkspaceText/planProbe.nl",
+      "returns": "TextProbePlan",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/explorer-probe/probeWorkspaceText.nl",
+      "manifest": "skills/explorer-probe/natlang.json",
+      "availableChildCallsMentioned": [
+        "chooseTextCheck"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/explorer-probe/probeWorkspaceText/chooseNext.nl",
+      "returns": "string",
+      "verdict": "clear-value-policy",
+      "caller": "skills/explorer-probe/probeWorkspaceText.nl",
+      "manifest": "skills/explorer-probe/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/explorer-probe/probeWorkspaceText/planProbe/chooseTextCheck.nl",
+      "returns": "'\"utf8-size\" | \"line-endings\" | \"exact-content\"'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/explorer-probe/probeWorkspaceText/planProbe.nl",
+      "manifest": "skills/explorer-probe/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/collection-conductor/organizeCollection/applyCollectionChange.nl",
+      "returns": "CollectionStep",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/collection-conductor/organizeCollection.nl",
+      "manifest": "skills/collection-conductor/natlang.json",
+      "availableChildCallsMentioned": [
+        "collectionChange.apply",
+        "verifyCollectionChange"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/collection-conductor/organizeCollection/planCollectionChange.nl",
+      "returns": "CollectionMutation | null",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/collection-conductor/organizeCollection.nl",
+      "manifest": "skills/collection-conductor/natlang.json",
+      "availableChildCallsMentioned": [
+        "locateCollectionPanel",
+        "planCollectionPlacement."
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/collection-conductor/organizeCollection/planCollectionChange/planCollectionPlacement.nl",
+      "returns": "CollectionMutation | null",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/collection-conductor/organizeCollection/planCollectionChange.nl",
+      "manifest": "skills/collection-conductor/natlang.json",
+      "availableChildCallsMentioned": [
+        "locateCollectionPanel",
+        "locateCollectionPanel"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-goal/program/workOnMissionGoal/chooseMissionWork.nl",
+      "returns": "MissionGoalPlan",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-personal-goal/program/workOnMissionGoal.ts",
+      "manifest": "skills/open-personal-goal/program/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-goal/program/workOnMissionGoal/executeMissionStep.nl",
+      "returns": "MissionStep",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/open-personal-goal/program/workOnMissionGoal.ts",
+      "manifest": "skills/open-personal-goal/program/natlang.json",
+      "availableChildCallsMentioned": [
+        "decideMissionStep",
+        "missionGoalChange.apply",
+        "decideMissionStep",
+        "verifyMissionStep"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-goal/program/workOnMissionGoal/executeMissionStep/decideMissionStep.nl",
+      "returns": "MissionDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-personal-goal/program/workOnMissionGoal/executeMissionStep.nl",
+      "manifest": "skills/open-personal-goal/program/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/personal-facility-review/reviewPersonalFacility/reviewBrowserImport/chooseImportLane.nl",
+      "returns": "FacilityReview | null",
+      "verdict": "clear-value-policy",
+      "caller": "skills/personal-facility-review/reviewPersonalFacility/reviewBrowserImport.nl",
+      "manifest": "skills/personal-facility-review/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/github/natlang/troubleshootGithub.nl",
+      "returns": "NextStep",
+      "verdict": "authorized-orchestration",
+      "caller": null,
+      "manifest": "skills/github/natlang/natlang.json",
+      "availableChildCallsMentioned": [
+        "cause"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/github/natlang/reviewGitHubSetup/chooseSetupHandoff.nl",
+      "returns": "GitHubSetupHandoff",
+      "verdict": "clear-value-policy",
+      "caller": "skills/github/natlang/reviewGitHubSetup.nl",
+      "manifest": "skills/github/natlang/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/github/natlang/workOnGitHubGoal/chooseGitHubDecision.nl",
+      "returns": "GitHubOpenDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/github/natlang/workOnGitHubGoal.nl",
+      "manifest": "skills/github/natlang/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/github/natlang/workOnGitHubGoal/chooseGitHubIntent.nl",
+      "returns": "'GitHubOpenIntent | null'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/github/natlang/workOnGitHubGoal.nl",
+      "manifest": "skills/github/natlang/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-automation/coordinatePersonalAutomation/chooseNext.nl",
+      "returns": "Plan",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/open-personal-automation/coordinatePersonalAutomation.ts",
+      "manifest": "skills/open-personal-automation/natlang.json",
+      "availableChildCallsMentioned": [],
+      "coordinator": "skills/open-personal-automation/coordinatePersonalAutomation.ts",
+      "types": "skills/open-personal-automation/types.ts",
+      "mismatch": "record/operate/finish instructions omit that this helper must return exactly one Plan; coordinator records findings and performs native operations"
+    },
+    {
+      "template": "personal",
+      "path": "skills/personal-workflows/runPersonalWorkflow/planRepositoryWork.nl",
+      "returns": "PersonalRepoReport",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/personal-workflows/runPersonalWorkflow.nl",
+      "manifest": "skills/personal-workflows/natlang.json",
+      "availableChildCallsMentioned": [
+        "interpretGitWork",
+        "chooseAccess",
+        "assessRepo",
+        "writePlan"
+      ],
+      "coordinator": "skills/personal-workflows/runPersonalWorkflow/resumeRepositoryWork.nl",
+      "types": "skills/personal-workflows/types.ts",
+      "mismatch": "ask clarification imperative has no interaction tool; return clarify decision and question/recommendation as next plan values"
+    },
+    {
+      "template": "personal",
+      "path": "skills/personal-workflows/runPersonalWorkflow/planRepositoryWork/assessRepo.nl",
+      "returns": "PersonalRepoDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/personal-workflows/runPersonalWorkflow/planRepositoryWork.nl",
+      "manifest": "skills/personal-workflows/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/personal-workflows/runPersonalWorkflow/planRepositoryWork/chooseAccess.nl",
+      "returns": "PersonalAccess",
+      "verdict": "clear-value-policy",
+      "caller": "skills/personal-workflows/runPersonalWorkflow/planRepositoryWork.nl",
+      "manifest": "skills/personal-workflows/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/personal-workflows/runPersonalWorkflow/routeSetup/selectAction.nl",
+      "returns": "{action: PersonalSetupAction; routeId: string | null; workspaceScope: \"current\" | \"separate\"}",
+      "verdict": "clear-value-policy",
+      "caller": "skills/personal-workflows/runPersonalWorkflow/routeSetup.nl",
+      "manifest": "skills/personal-workflows/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/personal-workflows/runPersonalWorkflow/resumeRepositoryWork/chooseOwnerAction.nl",
+      "returns": "RepositoryOwnerAction",
+      "verdict": "clear-value-policy",
+      "caller": "skills/personal-workflows/runPersonalWorkflow/resumeRepositoryWork.nl",
+      "manifest": "skills/personal-workflows/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/memory/verifiedRecall/recallDecision/findDecision/chooseLead.nl",
+      "returns": "DecisionLead | null",
+      "verdict": "clear-value-policy",
+      "caller": "skills/memory/verifiedRecall/recallDecision/findDecision.nl",
+      "manifest": "skills/memory/verifiedRecall/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/onboarding/prepareSetup/planSetup.nl",
+      "returns": "SetupPlan",
+      "verdict": "clarify-return-contract",
+      "caller": null,
+      "manifest": "skills/onboarding/prepareSetup/natlang.json",
+      "availableChildCallsMentioned": [
+        "observeSetup",
+        "reviewOwnerState",
+        "reviewSelection"
+      ],
+      "coordinator": "skills/onboarding/prepareSetup/planSetup.nl",
+      "types": "skills/onboarding/prepareSetup/types.ts",
+      "mismatch": "claims workspace-creation plan opens workspace; result only carries separate-workspace status and shell owns actual creation"
+    },
+    {
+      "template": "personal",
+      "path": "skills/onboarding/prepareSetup/planSetup/reviewSelection/chooseSurface.nl",
+      "returns": "PlanStatus",
+      "verdict": "clear-value-policy",
+      "caller": "skills/onboarding/prepareSetup/planSetup/reviewSelection.nl",
+      "manifest": "skills/onboarding/prepareSetup/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal/arrangeCollection/decideCollection.nl",
+      "returns": "ArtifactCollectionDecision",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal/arrangeCollection.nl",
+      "manifest": "skills/open-personal-artifacts/natlang.json",
+      "availableChildCallsMentioned": [],
+      "coordinator": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal/arrangeCollection.nl",
+      "types": "skills/open-personal-artifacts/types.ts",
+      "mismatch": "complete/finish work instructions can demand effects; parent applies/links and supplies readback"
+    },
+    {
+      "template": "personal",
+      "path": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal/maintainLibrary/decideLibrary.nl",
+      "returns": "ArtifactLibraryDecision",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal/maintainLibrary.nl",
+      "manifest": "skills/open-personal-artifacts/natlang.json",
+      "availableChildCallsMentioned": [],
+      "coordinator": "skills/open-personal-artifacts/workOnPersonalArtifactsGoal/maintainLibrary.nl",
+      "types": "skills/open-personal-artifacts/types.ts",
+      "mismatch": "recover bookmark imperative is a returned save mutation; parent owns library mutation"
+    },
+    {
+      "template": "personal",
+      "path": "skills/browser-import-review/workOnBrowserMigrationGoal/chooseMigration.nl",
+      "returns": "'MigrationChoice | null'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/browser-import-review/workOnBrowserMigrationGoal.nl",
+      "manifest": "skills/browser-import-review/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/browser-import-review/workOnBrowserMigrationGoal/leaveMigrationHandoff/selectHandoff.nl",
+      "returns": "'MigrationHandoffChoice | null'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/browser-import-review/workOnBrowserMigrationGoal/leaveMigrationHandoff.nl",
+      "manifest": "skills/browser-import-review/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/browser-library/curateBrowserLibrary/planLibraryChange.nl",
+      "returns": "LibraryMutation | null",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/browser-library/curateBrowserLibrary.nl",
+      "manifest": "skills/browser-library/natlang.json",
+      "availableChildCallsMentioned": [
+        "planVisitRecovery.",
+        "findBookmark",
+        "confirmRetainedReference."
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/browser-library/curateBrowserLibrary/applyLibraryChange.nl",
+      "returns": "LibraryStep",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/browser-library/curateBrowserLibrary.nl",
+      "manifest": "skills/browser-library/natlang.json",
+      "availableChildCallsMentioned": [
+        "browserLibraryChange.apply",
+        "verifyLibraryChange"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/browser-library/curateBrowserLibrary/planLibraryChange/planVisitRecovery.nl",
+      "returns": "LibraryMutation | null",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/browser-library/curateBrowserLibrary/planLibraryChange.nl",
+      "manifest": "skills/browser-library/natlang.json",
+      "availableChildCallsMentioned": [
+        "resolveRecentVisit"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/mission-planning/reconcileMissionPlan/applyCardChange.nl",
+      "returns": "MissionPlanStep",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/mission-planning/reconcileMissionPlan.nl",
+      "manifest": "skills/mission-planning/natlang.json",
+      "availableChildCallsMentioned": [
+        "missionPlanningChange.apply",
+        "verifyCardChange"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/mission-planning/reconcileMissionPlan/planCardChange.nl",
+      "returns": "MissionDecision",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/mission-planning/reconcileMissionPlan.nl",
+      "manifest": "skills/mission-planning/natlang.json",
+      "availableChildCallsMentioned": [
+        "locateCard",
+        "planPrerequisites",
+        "planRelocation",
+        "assessReadiness"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/mission-planning/reconcileMissionPlan/planCardChange/planRelocation.nl",
+      "returns": "MissionDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/mission-planning/reconcileMissionPlan/planCardChange.nl",
+      "manifest": "skills/mission-planning/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/mission-planning/reconcileMissionPlan/planCardChange/planPrerequisites.nl",
+      "returns": "MissionDecision",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/mission-planning/reconcileMissionPlan/planCardChange.nl",
+      "manifest": "skills/mission-planning/natlang.json",
+      "availableChildCallsMentioned": [
+        "locateCard",
+        "checkPrerequisitePaths."
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/mission-planning/reconcileMissionPlan/planCardChange/assessReadiness.nl",
+      "returns": "MissionDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/mission-planning/reconcileMissionPlan/planCardChange.nl",
+      "manifest": "skills/mission-planning/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "personal",
+      "path": "skills/tour-rehearsal/rehearseTour/planRehearsal.nl",
+      "returns": "TourPlan",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/tour-rehearsal/rehearseTour.nl",
+      "manifest": "skills/tour-rehearsal/natlang.json",
+      "availableChildCallsMentioned": [
+        "resolveTourTopic"
+      ],
+      "coordinator": "skills/tour-rehearsal/rehearseTour.nl",
+      "types": "skills/tour-rehearsal/types.ts",
+      "mismatch": "enable/hide presenter notes requires returning stop.notes; reviewStops applies native state"
+    },
+    {
+      "template": "system",
+      "path": "skills/remote-access/planCliContinuation.nl",
+      "returns": "CliContinuation",
+      "verdict": "authorized-orchestration",
+      "caller": null,
+      "manifest": "skills/remote-access/natlang.json",
+      "availableChildCallsMentioned": [
+        "selectContextSource",
+        "assessCliContext",
+        "chooseCliAction"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/performance/build/reviewBuildPerformance/chooseFollowup.nl",
+      "returns": "BuildPerformanceFollowup",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/performance/build/reviewBuildPerformance.nl",
+      "manifest": "skills/performance/build/natlang.json",
+      "availableChildCallsMentioned": [],
+      "coordinator": "skills/performance/build/reviewBuildPerformance.nl",
+      "types": "skills/performance/build/types.ts",
+      "mismatch": "confirm changed-state metric instruction demands future measurement; helper returns followup action and reason only"
+    },
+    {
+      "template": "system",
+      "path": "skills/performance/build/reviewBuildPerformance/reviewPayload/chooseInitialContributor.nl",
+      "returns": "'{ source: string; bytes: number }'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/performance/build/reviewBuildPerformance/reviewPayload.nl",
+      "manifest": "skills/performance/build/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/server-logs/reviewLogCursor/checkCursor.nl",
+      "returns": "ServerLogCursorDecision",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/server-logs/reviewLogCursor.nl",
+      "manifest": "skills/server-logs/natlang.json",
+      "availableChildCallsMentioned": [
+        "compareBoot",
+        "checkCoverage"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/server-logs/reviewLogCursor/checkCursor/checkCoverage.nl",
+      "returns": "ServerLogCursorDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/server-logs/reviewLogCursor/checkCursor.nl",
+      "manifest": "skills/server-logs/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/open-system-operations/workOnSystemGoal/chooseOperatorGoal.nl",
+      "returns": "'OperatorChoice | null'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-system-operations/workOnSystemGoal.ts",
+      "manifest": "skills/open-system-operations/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/open-system-operations/workOnSystemGoal/handleDeployment/decideLifecycle.nl",
+      "returns": "DeploymentDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/open-system-operations/workOnSystemGoal/handleDeployment.nl",
+      "manifest": "skills/open-system-operations/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/open-system-diagnostics/workTowardDiagnosticGoal/chooseCheckpoints.nl",
+      "returns": "string[]",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/open-system-diagnostics/workTowardDiagnosticGoal.ts",
+      "manifest": "skills/open-system-diagnostics/natlang.json",
+      "availableChildCallsMentioned": [],
+      "coordinator": "skills/open-system-diagnostics/workTowardDiagnosticGoal.ts",
+      "types": "skills/open-system-diagnostics/types.ts",
+      "mismatch": "helper is told to read checkpoint despite only receiving catalog and returning IDs; TS reads initial windows before reconsidering fallback"
+    },
+    {
+      "template": "system",
+      "path": "skills/open-system-diagnostics/workTowardDiagnosticGoal/decideOutcome.nl",
+      "returns": "DiagnosticDecision",
+      "verdict": "clarify-return-contract",
+      "caller": "skills/open-system-diagnostics/workTowardDiagnosticGoal.ts",
+      "manifest": "skills/open-system-diagnostics/natlang.json",
+      "availableChildCallsMentioned": [],
+      "coordinator": "skills/open-system-diagnostics/workTowardDiagnosticGoal.ts",
+      "types": "skills/open-system-diagnostics/types.ts",
+      "mismatch": "stage imperative belongs to returned stage boolean; TS binds report and stages retained artifact"
+    },
+    {
+      "template": "system",
+      "path": "skills/clientdev/natlang/reviewClientAdmission/chooseNext.nl",
+      "returns": "ClientDecision",
+      "verdict": "clear-value-policy",
+      "caller": "skills/clientdev/natlang/reviewClientAdmission.nl",
+      "manifest": "skills/clientdev/natlang/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/remote-access/deployRemoteServer/decideDeployment.nl",
+      "returns": "\"apply\" | \"already-running\" | \"baseline-unverified\" | \"update-needs-existing-server\"",
+      "verdict": "clear-value-policy",
+      "caller": "skills/remote-access/deployRemoteServer.nl",
+      "manifest": "skills/remote-access/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/remote-access/openRemoteWorkspace/decideAdmission.nl",
+      "returns": "\"pair\" | \"route\" | \"invite-required\" | \"different-profile\" | \"recover-profile\"",
+      "verdict": "clear-value-policy",
+      "caller": "skills/remote-access/openRemoteWorkspace.nl",
+      "manifest": "skills/remote-access/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/remote-access/planCliContinuation/chooseCliAction.nl",
+      "returns": "'CliContinuation[\"action\"]'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/remote-access/planCliContinuation.nl",
+      "manifest": "skills/remote-access/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/remote-access/planCliContinuation/selectContextSource.nl",
+      "returns": "CliContextChoice",
+      "verdict": "clear-value-policy",
+      "caller": "skills/remote-access/planCliContinuation.nl",
+      "manifest": "skills/remote-access/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/system-investigation/investigateSystem/traceClient/decideClient.nl",
+      "returns": "SystemInvestigationReport",
+      "verdict": "clear-value-policy",
+      "caller": "skills/system-investigation/investigateSystem/traceClient.nl",
+      "manifest": "skills/system-investigation/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/system-investigation/investigateSystem/auditClientSurface/inspectBootstrap/decideBootstrap.nl",
+      "returns": "SystemInvestigationReport",
+      "verdict": "clear-value-policy",
+      "caller": "skills/system-investigation/investigateSystem/auditClientSurface/inspectBootstrap.nl",
+      "manifest": "skills/system-investigation/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/local-model-task/prepareLocalModel/decideInstallation.nl",
+      "returns": "'\"install\" | \"confirm\" | \"skip\"'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/local-model-task/prepareLocalModel.nl",
+      "manifest": "skills/local-model-task/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system",
+      "path": "skills/local-model-task/prepareLocalModel/planDelegation.nl",
+      "returns": "'{ disposition: LocalTaskDisposition; handoff: { ref: string; mode: \"fresh\" | \"fork\" } | null }'",
+      "verdict": "clear-value-policy",
+      "caller": "skills/local-model-task/prepareLocalModel.nl",
+      "manifest": "skills/local-model-task/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system-testing",
+      "path": "skills/mobile-system-testing/scenario/runMobileScenario/reviewSetup.nl",
+      "returns": "TargetSelection",
+      "verdict": "authorized-orchestration",
+      "caller": "skills/mobile-system-testing/scenario/runMobileScenario.nl",
+      "manifest": "skills/mobile-system-testing/scenario/natlang.json",
+      "availableChildCallsMentioned": [
+        "readInventory",
+        "selectTarget"
+      ],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    },
+    {
+      "template": "system-testing",
+      "path": "skills/mobile-system-testing/scenario/runMobileScenario/reviewSetup/selectTarget.nl",
+      "returns": "TargetSelection",
+      "verdict": "clear-value-policy",
+      "caller": "skills/mobile-system-testing/scenario/runMobileScenario/reviewSetup.nl",
+      "manifest": "skills/mobile-system-testing/scenario/natlang.json",
+      "availableChildCallsMentioned": [],
+      "exclusion": "Instructions select/classify supplied evidence or explicitly call existing scoped child functions; no unavailable operation identified in reviewed body."
+    }
+  ],
+  "excludedMechanisms": [
+    "Base and Spectrolite are independently owned repair strands",
+    "Effectful NL routines retain authorized service/child calls; no blanket value-only rewriting",
+    "Clear classifiers returning policy enums, IDs or evidence values remain unchanged",
+    "Runtime oracles, world goals/IDs/splits, return signatures and service grants do not change"
+  ],
+  "validation": {
+    "method": "Exact comparison of changed files against their baseline git contents",
+    "nlBodiesChanged": 9,
+    "frontmatterSignaturesUnchanged": true,
+    "serviceManifestsTypesCoordinatorsWorldGoalsIdsSplitsChanged": false,
+    "modelOrPaidCalls": 0,
+    "tests": "No new prose-mirroring tests; deterministic coordinator code is unchanged. Model behavior is not claimed measured."
+  },
+  "concreteExclusions": [
+    {
+      "template": "examples",
+      "paths": [
+        "skills/open-adventure-journey/reviewAdventureJourney/resolveTurn.nl",
+        "skills/examples-review/reviewExample/reviewLivePortfolio/decideReadiness.nl"
+      ],
+      "reason": "resolveTurn selects a TurnDecision from supplied player state; reviewAdventureJourney.nl explicitly delegates writes to resolveTurn/changeTurn.nl, the only adventurePlayerTurn-scoped routine. decideReadiness composes combineFindings and returns observed reports. Neither planner demands a missing operation.",
+      "scopeEvidence": [
+        "skills/open-adventure-journey/natlang.json",
+        "skills/open-adventure-journey/reviewAdventureJourney.nl",
+        "skills/examples-review/reviewExample/reviewLivePortfolio.nl"
+      ]
+    },
+    {
+      "template": "google-workspace",
+      "paths": [
+        "skills/open-calendar-goal/program/workOnCalendarGoal/chooseCalendarPlan.nl",
+        "skills/open-google-handoff-goal/program/reconcileGoogleHandoff/resolveMailDecision/chooseMailEvidence.nl",
+        "skills/gmail-workflow-review/planComposeContinuation/decideContinuation.nl"
+      ],
+      "reason": "Calendar planner already explicitly returns source IDs/time bounds for its TS coordinator. Mail decision explicitly says the caller owns reads/handoff. Gmail continuation explicitly reports a recommendation, neither launching nor writing. Remaining selected Google routines classify typed observations or call their existing allowed read/helper functions.",
+      "scopeEvidence": [
+        "skills/open-calendar-goal/program/natlang.json",
+        "skills/open-calendar-goal/program/workOnCalendarGoal.ts",
+        "skills/open-google-handoff-goal/program/natlang.json"
+      ]
+    },
+    {
+      "template": "news",
+      "paths": [
+        "skills/news-workflows/reviewUserNewsGoal/planNewsGoal.nl",
+        "skills/news-workflows/reviewNews/reviewLiveNews/reconcileCadence/chooseCadenceChange.nl",
+        "skills/news-workflows/reviewers/reviewSchedule/chooseMissionLane.nl"
+      ],
+      "reason": "Plan chooses readers/changes/checks as data; reviewUserNewsGoal.ts performs reconciliation and native reads. Other two selectors return an intent/null or policy result. No unavailable action demand found.",
+      "scopeEvidence": [
+        "skills/news-workflows/reviewUserNewsGoal.ts",
+        "skills/news-workflows/types.ts",
+        "skills/news-workflows/natlang.json"
+      ]
+    },
+    {
+      "template": "system-testing",
+      "paths": [
+        "skills/mobile-system-testing/scenario/runMobileScenario/reviewSetup.nl",
+        "skills/mobile-system-testing/scenario/runMobileScenario/reviewSetup/selectTarget.nl"
+      ],
+      "reason": "reviewSetup calls the existing readInventory.ts capability wrapper then a pure target selector. The caller dispatches the authorized pairing/development routines. No mutation is demanded from the selector. No SST edit, so c482 successor is not modified.",
+      "scopeEvidence": [
+        "skills/mobile-system-testing/scenario/runMobileScenario/reviewSetup/readInventory.ts",
+        "skills/mobile-system-testing/scenario/runMobileScenario.nl",
+        "skills/mobile-system-testing/scenario/natlang.json"
+      ]
+    },
+    {
+      "template": "personal",
+      "paths": [
+        "skills/collection-conductor/organizeCollection/applyCollectionChange.nl",
+        "skills/browser-library/curateBrowserLibrary/applyLibraryChange.nl",
+        "skills/mission-planning/reconcileMissionPlan/applyCardChange.nl",
+        "skills/open-personal-goal/program/workOnMissionGoal/executeMissionStep.nl"
+      ],
+      "reason": "These are effectful routines with the named native mutation service grants. They apply the change and verify returned observations; their Step returns do not make them pure planners. Retained unchanged.",
+      "scopeEvidence": [
+        "skills/collection-conductor/natlang.json",
+        "skills/browser-library/natlang.json",
+        "skills/mission-planning/natlang.json",
+        "skills/open-personal-goal/program/natlang.json"
+      ]
+    },
+    {
+      "template": "system",
+      "paths": [
+        "skills/open-system-operations/workOnSystemGoal/handleDeployment/decideLifecycle.nl",
+        "skills/remote-access/deployRemoteServer/decideDeployment.nl",
+        "skills/local-model-task/prepareLocalModel/decideInstallation.nl",
+        "skills/local-model-task/prepareLocalModel/planDelegation.nl"
+      ],
+      "reason": "These already return explicit action/status policy values. Actual effects belong to existing caller subroutines; the delegation planner explicitly says the caller starts the normal runtime separately. No new contract wording needed.",
+      "scopeEvidence": [
+        "skills/open-system-operations/natlang.json",
+        "skills/remote-access/deployRemoteServer.nl",
+        "skills/local-model-task/prepareLocalModel.nl"
+      ]
+    }
+  ]
+}

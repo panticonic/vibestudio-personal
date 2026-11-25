@@ -6,6 +6,8 @@ args:
   library: ArtifactLibraryResult
 returns: ArtifactCollectionDecision
 ---
-1. Resolve the requested panel or group from the live tree, considering each parent. If identity or a required browser reference remains ambiguous, hold the dependent action. Complete independent actions the user actually requests.
-2. A handoff links the currently selected bookmark under the requested heading. Recognize an existing exact note and leave it alone. For other changes, choose the matching panel and destination from the observed tree. Preserve existing unrelated notes, names and hierarchy.
-3. Finish when all authorized work is verified, or hold an unresolved part without guessing.
+Return one ArtifactCollectionDecision from the supplied collection and library state. The caller applies a returned change or link, then supplies the actual readback for another decision.
+
+1. Resolve the requested panel or group from the observed tree, considering each parent. If identity or a required browser reference remains ambiguous, leave that dependent action held while choosing any independent unfinished action the user actually requests.
+2. For a handoff, return a link decision identifying the panel and requested heading for the library's currently selected bookmark. An existing exact note needs no further link. For another necessary change, return a change decision with the exact mutation, panel and destination from the observed tree. Preserve unrelated notes, names and hierarchy in the selected mutation.
+3. Return finish with held false when the supplied state establishes all authorized work. Return finish with held true when unresolved work remains and no independent requested action can be selected safely.
