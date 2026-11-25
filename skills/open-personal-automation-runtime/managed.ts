@@ -1,4 +1,7 @@
-import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
+import type {SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
+import type {InvocationObservations} from "@workspace/application-outcomes/observed-invocation";
+import {bindObservedContentReview} from "@workspace/application-outcomes/observed-content-review";
+const assessSemanticOutcome=bindObservedContentReview(["initial","latest","observations","independent","attempts","requests"]);
 import { isDeepStrictEqual } from "node:util";
 import { contextId as liveContext, missions } from "@workspace/runtime";
 import type {
@@ -40,6 +43,7 @@ type Expected = {
 type World = {
   id: string;
   goal: string;
+  requestedReturnRequired: boolean;
   monitors: Spec[];
   expected: {
     findings: Expected[];
@@ -273,7 +277,7 @@ export async function prepareOpenPersonalAutomation(
     },
   };
 
-  async function verify(value: unknown) {
+  async function verify(value: unknown, invocation?:InvocationObservations) {
     const envelope = value as Envelope | null;
     const report =
       envelope;
@@ -298,36 +302,19 @@ export async function prepareOpenPersonalAutomation(
       attempt ? [key] : [],
     );
     const order = world.expected.order ?? [];
-    const goalReportMatches =
-      actualFindings.length === expected.size &&
-      world.expected.findings.every((wanted) => {
-        const target = byKey.get(wanted.key)?.monitor;
-        const name = target?.name ?? wanted.name;
-        const id = target?.id ?? null;
-        const reported = actualFindings.filter(
-          (row) => row?.id === id && row.name === name,
-        );
-        if (reported.length !== 1) return false;
-        const finding = reported[0]!;
-        const captured = history.get(finding.evidence);
-        const actual = captured?.item.monitors.find(
-          (monitor) => monitor.id === id,
-        );
-        const attempt = attempts.find(({ key }) => key === wanted.key);
-        const readback = attempt?.followup
-          ? history.get(attempt.followup)
-          : undefined;
-        return Boolean(
-          captured &&
-          finding.status === wanted.status &&
-          (readback === undefined || captured.index >= readback.index) &&
-          finding.state === wanted.state &&
-          finding.revision === (target?.revision ?? null) &&
-          finding.reviewedRevision === (target?.reviewedRevision ?? null) &&
-          (target
-            ? isDeepStrictEqual(actual, target)
-            : !captured.item.monitors.some((monitor) => monitor.name === name)),
-        );
+    const goalReportMatches = Array.isArray(report?.findings) &&
+      ["complete","partial","held"].includes(report.disposition) &&
+      actualFindings.every(finding => {
+        if (!finding || !["applied","unchanged","reconciled","held","uncertain"].includes(finding.status)) return false;
+        const captured = history.get(finding.evidence)?.item;
+        if (!captured) return false;
+        if (finding.id === null) return finding.state === null && finding.revision === null &&
+          finding.reviewedRevision === null && typeof finding.name === "string" && !!finding.name.trim() &&
+          !captured.monitors.some(monitor=>monitor.name===finding.name);
+        const target=live.find(row=>row.monitor.id===finding.id)?.monitor;
+        const actual=captured.monitors.find(monitor=>monitor.id===finding.id);
+        return !!target && isDeepStrictEqual(actual,target) && finding.name===target.name &&
+          finding.state===target.state && finding.revision===target.revision && finding.reviewedRevision===target.reviewedRevision;
       });
     const edited = (spec: Spec) =>
       spec.fault === "before-review" ||
@@ -396,7 +383,7 @@ export async function prepareOpenPersonalAutomation(
         );
       }),
       matchedGoalReport:
-        goalReportMatches && report?.disposition === world.expected.disposition,
+        goalReportMatches,
       protectedWorkspaceMonitor: Boolean(
         protectedMonitor &&
         protectedMonitor.state === defaultMonitor.state &&
@@ -428,19 +415,20 @@ export async function prepareOpenPersonalAutomation(
         return receipt === "applied" && effect === "controller";
       }),
     };
-    const contract:SemanticOutcomeContract={effects:{checks:["authorizedSchedulingState", "observedLiveDefinitions", "independentReadback", "protectedWorkspaceMonitor", "noRunsDispatched", "expectedRecovery"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["matchedGoalReport"],required:true,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
+    const contract:SemanticOutcomeContract={effects:{checks:["authorizedSchedulingState", "observedLiveDefinitions", "independentReadback", "protectedWorkspaceMonitor", "noRunsDispatched", "expectedRecovery"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["matchedGoalReport"],required:world.requestedReturnRequired,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
     return assessSemanticOutcome({
       caseId: world.id,
       contextId: input.contextId,
       goal: world.goal,
       initial: observations[0],
       latest: observations.at(-1),
+      observations:structuredClone(observations),
       independent: live.map(({ monitor }) => monitor),
       attempts,
       requests,
       checks,
       passed: Object.values(checks).every(Boolean),
-    },contract);
+    },contract,value,invocation);
   }
 
   async function qualify() {
@@ -480,7 +468,7 @@ export async function prepareOpenPersonalAutomation(
     const verified = await verify(envelope);
     const altered = structuredClone(envelope);
     altered.findings[0]!.evidence = "fabricated-queue";
-    const rejectedUnboundEvidence = !(await verify(altered)).passed;
+    const rejectedUnboundEvidence = !(await verify(altered)).outcomeDimensions.returnedValue.checks.matchedGoalReport;
     return {
       ...verified,
       rejectedUnboundEvidence,

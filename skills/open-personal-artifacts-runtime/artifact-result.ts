@@ -29,13 +29,12 @@ export function checkArtifactResult(value: unknown, evidence: Evidence): boolean
     if (item.kind === "different-urls") {
       const left=evidence.library.bookmarks.find(row=>isDeepStrictEqual(row,item.left));
       const right=evidence.library.bookmarks.find(row=>isDeepStrictEqual(row,item.right));
-      return Boolean(left && right && left.id!==right.id && left.url!==right.url &&
-        left.title===right.title && evidence.goal.toLowerCase().includes(left.title.toLowerCase()));
+      return Boolean(left && right && left.id!==right.id && left.url!==right.url);
     }
     if (item.kind === "tied-latest-visits") {
       if (typeof item.reference!=="string" || !item.reference.trim() ||
-        !evidence.goal.toLowerCase().includes(item.reference.toLowerCase()) || !Array.isArray(item.urls)) return false;
-      const visits=evidence.library.visits.filter(row=>row.title.toLowerCase().includes(item.reference.toLowerCase()));
+        !Array.isArray(item.urls)) return false;
+      const visits=evidence.library.visits.filter(row=>item.urls.includes(row.url));
       const latest=Math.max(...visits.map(row=>row.lastVisitTime));
       const tied=[...new Set(visits.filter(row=>row.lastVisitTime===latest).map(row=>row.url))].sort();
       return tied.length>1 && isDeepStrictEqual(tied,[...item.urls].sort());

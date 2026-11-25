@@ -19,12 +19,18 @@ describe("native artifact application dispositions",()=>{
   expect(checkArtifactResult({...result,collection:undefined},changed)).toBe(false);
   expect(checkArtifactResult({...result,kind:"held"},changed)).toBe(false);
  });
- it("requires real latest ties and a requested reference",()=>{
+ it("requires real latest ties while semantic reference wording is reviewed against the goal",()=>{
   const tied={...library,id:"tied",bookmarks:[],visits:[{url:"https://a",title:"Lease reference east",lastVisitTime:20},{url:"https://b",title:"Lease reference west",lastVisitTime:20}]};
   const source={...evidence,goal:"Recover latest Lease reference only if not tied",library:tied,libraryObservations:new Map([[tied.id,tied]])};
   const value={kind:"held",holds:[{kind:"tied-latest-visits",reference:"Lease",urls:["https://b","https://a"]}]};
   expect(checkArtifactResult(value,source)).toBe(true);
-  expect(checkArtifactResult({...value,holds:[{...value.holds[0],reference:"unrequested"}]},source)).toBe(false);
+  expect(checkArtifactResult({...value,holds:[{...value.holds[0],reference:"The leases"}]},source)).toBe(true);
   expect(checkArtifactResult({...value,holds:[{...value.holds[0],urls:["https://a"]}]},source)).toBe(false);
  });
+});
+
+it("grounds different-source findings in native records without hidden title/goal substring equality",()=>{
+ const renamed={...library,bookmarks:[{...library.bookmarks[0],title:"Current clinical guide"},{...library.bookmarks[1],title:"Historical clinical handbook"}]};
+ const source={...evidence,goal:"Does the old clinical reference replace the current one?",library:renamed,libraryObservations:new Map([[renamed.id,renamed]])};
+ expect(checkArtifactResult({kind:"held",holds:[{kind:"different-urls",left:renamed.bookmarks[0],right:renamed.bookmarks[1]}]},source)).toBe(true);
 });

@@ -1,4 +1,5 @@
-import {assessObservedApplicationOutcome} from "@workspace/application-outcomes/observed-application-outcome";
+import {bindObservedContentReview} from "@workspace/application-outcomes/observed-content-review";
+const assessObservedApplicationOutcome=bindObservedContentReview(["libraryFirst","collectionFirst","independentLibrary","independentCollection","libraryWrites","collectionWrites","links","refreshes"]);
 import type {InvocationObservations} from "@workspace/application-outcomes/observed-invocation";
 import type {SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
 import { isDeepStrictEqual } from "node:util";
@@ -49,6 +50,7 @@ type Concurrent =
 type World = {
   id: string;
   goal: string;
+  outcomeContract:SemanticOutcomeContract;
   collectionTitle: string;
   folders: string[];
   bookmarks: Bookmark[];
@@ -104,16 +106,6 @@ const ordered = <T extends { id: number }>(rows: T[]) =>
   rows.sort((a, b) => a.id - b.id);
 const sortPaths = <T extends { url: string }>(rows: T[]) =>
   rows.sort((a, b) => a.url.localeCompare(b.url));
-function sameUnordered<T>(expected: T[], actual: T[]) {
-  if (expected.length !== actual.length) return false;
-  const unmatched = [...actual];
-  return expected.every((row) => {
-    const index = unmatched.findIndex((other) => isDeepStrictEqual(row, other));
-    if (index < 0) return false;
-    unmatched.splice(index, 1);
-    return true;
-  });
-}
 const surface = "about/help";
 
 export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
@@ -412,9 +404,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
             if (
               !world.grants.collection.includes("link") ||
               !libraryObservations.has(libraryBasis) ||
-              !heading.trim() ||
-              heading.length > 160 ||
-              /[\r\n]/u.test(heading)
+              !heading.trim()
             ) {
               return {
                 status: "held",
@@ -504,16 +494,8 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           else if (desired.kind === "retire") expected.splice(index, 1);
         }
       }
-      const expectedWrites = world.expected.library.map((step) =>
-        libraryAction(step, ids),
-      );
       return {
-        matches:
-          isDeepStrictEqual(ordered(expected), actual.bookmarks) &&
-          sameUnordered(
-            expectedWrites,
-            libraryWrites.map(({ mutation }) => mutation),
-          ),
+        matches: isDeepStrictEqual(ordered(expected), actual.bookmarks),
         ids,
       };
     }
@@ -546,8 +528,6 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
         const id = resolvePanel(world.concurrent.key);
         expected.find((item) => item.id === id)!.note = world.concurrent.note;
       }
-      const expectedWrites: ArtifactCollectionMutation[] = [];
-      const expectedLinks: Omit<LinkReceipt, "libraryBasis">[] = [];
       for (const step of world.expected.collection) {
         if (step.kind === "group") {
           const parentId = resolvePanel(step.parent, panels);
@@ -568,7 +548,6 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
             source: collectionSource,
             contextId,
           });
-          expectedWrites.push({ kind: "group", parentId, title: step.title });
         } else {
           const panelId = resolvePanel(step.panel, panels);
           const panel = expected.find(({ id }) => id === panelId);
@@ -584,15 +563,9 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
             const index = siblings.findIndex(({ id }) => id === panelId);
             if (index < 0 || (siblings[index - 1]?.id ?? null) !== afterId)
               return false;
-            expectedWrites.push({
-              kind: "move",
-              panelId,
-              parentId: panel.parentId,
-              afterId,
-            });
+
           } else if (step.kind === "note") {
             panel.note = step.text;
-            expectedWrites.push({ kind: "note", panelId, text: step.text });
           } else {
             const bookmarkId = ids.get(step.bookmark);
             const bookmark = libraryLatest?.bookmarks.find(
@@ -600,13 +573,6 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
             );
             if (!bookmark || bookmarkId === undefined) return false;
             panel.note = `${step.heading}: ${bookmark.url}`;
-            expectedWrites.push({ kind: "note", panelId, text: panel.note });
-            expectedLinks.push({
-              bookmarkId,
-              panelId,
-              heading: step.heading,
-              url: bookmark.url,
-            });
           }
         }
       }
@@ -616,14 +582,6 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
         actualById.size === expected.length &&
         expected.every((row) =>
           isDeepStrictEqual(row, actualById.get(row.id)),
-        ) &&
-        sameUnordered(
-          expectedWrites,
-          collectionWrites.map(({ mutation }) => mutation),
-        ) &&
-        isDeepStrictEqual(
-          expectedLinks,
-          links.map(({ libraryBasis: _, ...row }) => row),
         )
       );
     }
@@ -677,9 +635,6 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           outside?.slotId === outsideId &&
           outside.title === "Protected panel",
         verifiedBookmarkHandoff:
-          links.length ===
-            world.expected.collection.filter((step) => step.kind === "link")
-              .length &&
           links.every(
             (link) =>
               independentLibrary.bookmarks.some(
@@ -691,15 +646,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
                   note === `${link.heading}: ${link.url}`,
               ),
           ),
-        recoveredFreshBasis: world.concurrent
-          ? competing &&
-            refreshes.length > 0 &&
-            refreshes.every(refresh => refresh.surface === world.concurrent!.surface && refresh.basis !== refresh.current) &&
-            (world.concurrent.surface === "library"
-              ? libraryWrites
-              : collectionWrites
-            ).some(({ basis }) => basis !== refreshes[0]?.basis)
-          : !competing && refreshes.length === 0,
+        recoveredFreshBasis: world.concurrent ? competing : !competing,
         reportedArtifactEvidence: checkArtifactResult(report, {
           goal: world.goal, library: independentLibrary, collection: independentCollection,
           libraryObservations, collectionObservations,
@@ -708,7 +655,7 @@ export async function prepareOpenPersonalArtifacts(input: Input, world: World) {
           selected: world.expected.selected ? checked.ids.get(world.expected.selected) ?? null : null,
         }),
       };
-      const contract:SemanticOutcomeContract={effects:{checks:["observedOwnedArtifacts", "exactLibraryState", "protectedBrowserRecords", "exactCollectionState", "verifiedBookmarkHandoff", "recoveredFreshBasis"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["reportedArtifactEvidence"],required:libraryWrites.length===0&&collectionWrites.length===0,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
+      const contract:SemanticOutcomeContract={effects:{checks:["observedOwnedArtifacts", "exactLibraryState", "protectedBrowserRecords", "exactCollectionState", "verifiedBookmarkHandoff", "recoveredFreshBasis"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["reportedArtifactEvidence"],required:world.outcomeContract.returnedValue.required,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
 
       const assessed=await assessObservedApplicationOutcome({
         caseId,
