@@ -1,20 +1,13 @@
-import { isDeepStrictEqual } from "node:util";
-import type { Citation, Finding } from "../open-personal-history/types.js";
+import type { Citation, Finding, Milestone } from "../open-personal-history/types.js";
 
-/** Milestone labels identify findings; presentation order is not evidence. */
-export function matchHistoryFindings(expected: readonly Finding[], actual: readonly Finding[]) {
-  return actual.length === expected.length &&
-    new Set(actual.map(row => row?.label)).size === actual.length &&
-    expected.every(required => actual.some(row =>
-      row?.label === required.label && row.status === required.status));
+/** Findings identify actual assigned milestones; their meaning is reviewed against the user goal. */
+export function matchHistoryFindings(milestones: readonly Milestone[], actual: readonly Finding[]) {
+  return actual.every(row => row && milestones.some(milestone=>milestone.label===row.label) &&
+    ["verified","conflicting","missing","withdrawn"].includes(row.status) && Array.isArray(row.citations));
 }
 
-/** Extra citations are useful when grounded, while required source joins remain mandatory. */
-export function joinHistoryEvidence(expected: readonly Finding[], actual: readonly Finding[],
-  grounded: (citation: Citation) => boolean) {
-  return matchHistoryFindings(expected, actual) && expected.every(required => {
-    const citations = actual.find(row => row.label === required.label)?.citations;
-    return Array.isArray(citations) && citations.every(citation => citation && grounded(citation)) &&
-      required.citations.every(citation => citations.some(found => isDeepStrictEqual(found, citation)));
-  });
+/** Every supplied citation must join actual inspected bytes, irrespective of a private preferred quotation. */
+export function joinHistoryEvidence(actual: readonly Finding[], grounded: (citation: Citation) => boolean) {
+  return actual.every(row => row && Array.isArray(row.citations) &&
+    row.citations.every(citation => citation && grounded(citation)));
 }

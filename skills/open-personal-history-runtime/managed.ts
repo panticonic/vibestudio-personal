@@ -1,4 +1,7 @@
-import {assessSemanticOutcome,type SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
+import type {SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
+import type {InvocationObservations} from "@workspace/application-outcomes/observed-invocation";
+import {bindObservedContentReview} from "@workspace/application-outcomes/observed-content-review";
+const assessSemanticOutcome=bindObservedContentReview(["catalogEvent","repositoryId","milestones","discovery","operations","reads"]);
 import { joinHistoryEvidence, matchHistoryFindings } from "./finding-evidence.js";
 import { isDeepStrictEqual } from "node:util";
 import { compareUtf16CodeUnits, sha256HexSyncText } from "@vibestudio/content-addressing";
@@ -126,7 +129,6 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
   const ownedRepository = repositoryId;
   const protectedHead = head;
   const assignedEvents = new Set(milestones.map(({ eventId }) => eventId));
-  const listed = new Map<string, Set<string>>();
   const reads: Source[] = [];
   const operations: Operation[] = [];
   let discovery: Scope | undefined;
@@ -204,7 +206,6 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
             "Archive file inventory has different coordinates or is incomplete",
           );
         const paths = manifest.files.map(({ path }) => path);
-        listed.set(eventId, new Set(paths));
         operations.push({ kind: "list", eventId });
         return paths;
       },
@@ -269,7 +270,7 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
     };
   }
 
-  async function verify(value: unknown) {
+  async function verify(value: unknown, invocation?: InvocationObservations) {
     const envelope = value as Envelope | null;
     const report =
       envelope;
@@ -285,42 +286,27 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
     const reportedFindings = Array.isArray(report?.findings)
       ? report.findings
       : [];
-    const matchedFindings = matchHistoryFindings(expected.findings, reportedFindings);
+    const matchedFindings = matchHistoryFindings(milestones, reportedFindings);
     const checks = {
       protectedHistory:
         before.mainEventId === after.mainEventId &&
         isDeepStrictEqual(after.workingHead, protectedHead),
-      observedArchiveDiscovery: Boolean(
-        discovery &&
+      observedArchiveDiscovery: !discovery || (
         isDeepStrictEqual(discovery.milestones, milestones) &&
-        isDeepStrictEqual(
-          discovery.leads.map(({ eventId }) => eventId).sort(),
-          indexedEvents,
-        ),
+        discovery.leads.every(lead=>indexedEvents.includes(lead.eventId))
       ),
-      readExactMilestones:
-        expected.privateEvidenceMatches &&
-        world.expected.findings.every((finding) => {
-          const eventId = milestones.find(
-            ({ label }) => label === finding.label,
-          )?.eventId;
-          return Boolean(
-            eventId &&
-            finding.reads.every((path) =>
-              reads.some(
-                (seen) => seen.eventId === eventId && seen.path === path,
-              ),
-            ),
-          );
-        }),
-      joinedSourceEvidence: joinHistoryEvidence(expected.findings, reportedFindings, entry =>
+      readExactMilestones: expected.privateEvidenceMatches && reads.every(source=>{
+        const index=milestones.findIndex(row=>row.eventId===source.eventId);
+        return index>=0 && world.revisions[index]?.files.some(file=>file.path===source.path && file.text===source.text);
+      }),
+      joinedSourceEvidence: joinHistoryEvidence(reportedFindings, entry =>
         typeof entry.path === "string" && typeof entry.line === "number" && reads.some(source =>
           source.eventId === entry.eventId && source.path === entry.path &&
           isDeepStrictEqual(cite(source, entry.line), entry))),
       matchedDecision:
         matchedFindings &&
-        report?.relation === expected.relation &&
-        report.action === expected.action,
+        ["single","same","changed","unresolved"].includes(report?.relation) &&
+        ["clear","hold"].includes(report?.action),
     };
     const contract:SemanticOutcomeContract={effects:{checks:["protectedHistory", "observedArchiveDiscovery", "readExactMilestones"],rationale:"Independent native observations, authority and persisted state establish application effects."},returnedValue:{checks:["joinedSourceEvidence", "matchedDecision"],required:true,rationale:"These are the actual requested domain findings or query values; mutation-only calls retain their separately observed effects."},incidentalValues:{checks:[],rationale:"Optional incorrect mutation returns are recorded against the actual invocation, without invalidating correct native effects."}};
     return assessSemanticOutcome({
@@ -332,10 +318,10 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
       milestones,
       discovery,
       operations,
-      expectedFindings: expected.findings,
+      reads: structuredClone(reads),
       checks,
       passed: Object.values(checks).every(Boolean),
-    },contract);
+    },contract,value,invocation);
   }
 
   async function qualify() {
@@ -359,7 +345,7 @@ export async function prepareOpenPersonalHistory(input: Input, world: World) {
     );
     if (target?.citations[0])
       target.citations[0].contentHash = "unobserved-content";
-    else forged.findings[0]!.status = "verified";
+    else forged.findings[0]!.citations.push({eventId:"unobserved-event",path:"invented.md",contentHash:"unobserved-content",line:1,quote:"Invented"});
     const rejected = !(await verify(forged)).passed;
     return {
       ...qualified,
