@@ -73,4 +73,8 @@ it("qualifies retained handoffs using a genuinely wrong required identity as its
   expect(proof.passed).toBe(true);
   expect(proof.checks.rejectsWrongDisposition).toBe(true);
   expect(proof.checks.rejectsAlias).toBe(true);
+  expect(proof.outcomeContract.effects.checks).toContain("rejectsAlias");
+  expect(proof.outcomeContract.effects.checks).toContain("rejectsWrongDisposition");
+  expect(proof.outcomeDimensions.effects.checks.rejectsAlias).toBe(true);
+  expect(proof.outcomeDimensions.effects.checks.rejectsWrongDisposition).toBe(true);
 });

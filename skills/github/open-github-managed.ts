@@ -1,6 +1,6 @@
 import {assessObservedApplicationOutcome} from "@workspace/application-outcomes/observed-application-outcome";
 import type {InvocationObservations} from "@workspace/application-outcomes/observed-invocation";
-import type {SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
+import {extendSemanticOutcomeEffects,type SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
 import { isDeepStrictEqual } from "node:util";
 import {
   contextId,
@@ -545,23 +545,7 @@ export async function prepareOpenGitHub(world: OpenGitHubWorld) {
             },
           })
       ).outcomeDimensions.returnedValue.passed;
-      return {
-      outcomeContract:{...result.outcomeContract,effects:{...result.outcomeContract.effects,checks:[...result.outcomeContract.effects.checks,"rejectsAlias","rejectsBasis","rejectsForeignApproval","rejectsWrongRoute"]}},
-        ...result,
-        checks: {
-          ...result.checks,
-          rejectsAlias,
-          rejectsBasis,
-          rejectsForeignApproval,
-          rejectsWrongRoute,
-        },
-        passed:
-          result.passed &&
-          rejectsAlias &&
-          rejectsBasis &&
-          rejectsForeignApproval &&
-          rejectsWrongRoute,
-      };
+      return extendSemanticOutcomeEffects(result,{rejectsAlias,rejectsBasis,rejectsForeignApproval,rejectsWrongRoute});
     }
 
     return { services, verify, qualify, close: local.close };

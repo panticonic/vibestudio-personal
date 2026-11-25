@@ -1,6 +1,6 @@
 import {assessObservedApplicationOutcome} from "@workspace/application-outcomes/observed-application-outcome";
 import type {InvocationObservations} from "@workspace/application-outcomes/observed-invocation";
-import type {SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
+import {extendSemanticOutcomeEffects,type SemanticOutcomeContract} from "@workspace/application-outcomes/semantic-outcome-contract";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { contextId, createPanelSlot } from "@workspace/runtime";
@@ -431,16 +431,7 @@ export async function prepareOpenBrowserMigration(
         receiptId: "foreign-receipt",
         ...(receipt ? { delivery: { ...receipt, targetId: "foreign-panel" } } : {}),
       });
-    return {
-      outcomeContract:{...positive.outcomeContract,effects:{...positive.outcomeContract.effects,checks:[...positive.outcomeContract.effects.checks,"rejectsWrongDisposition","rejectsAlias"]}},
-      ...positive,
-      checks: {
-        ...positive.checks,
-        rejectsWrongDisposition: !negative.outcomeDimensions.returnedValue.passed,
-        rejectsAlias: !aliases.outcomeDimensions.returnedValue.passed,
-      },
-      passed: positive.passed && !negative.outcomeDimensions.returnedValue.passed && !aliases.outcomeDimensions.returnedValue.passed,
-    };
+    return extendSemanticOutcomeEffects(positive,{rejectsWrongDisposition: !negative.outcomeDimensions.returnedValue.passed,rejectsAlias: !aliases.outcomeDimensions.returnedValue.passed});
   }
 
   return { services, verify, qualify };
